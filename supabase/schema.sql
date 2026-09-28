@@ -170,7 +170,7 @@ create or replace function create_order_with_items(
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $order_fn$
 declare
   v_order_id uuid;
   v_subtotal int := 0;
@@ -228,7 +228,7 @@ begin
 
   return v_order_id;
 end;
-$$;
+$order_fn$;
 
 revoke all on function create_order_with_items(text,text,text,uuid,jsonb,uuid,int,int,jsonb,jsonb) from public;
 grant execute on function create_order_with_items(text,text,text,uuid,jsonb,uuid,int,int,jsonb,jsonb) to service_role;
@@ -240,7 +240,7 @@ create or replace function cancel_order(p_order_id uuid) returns void
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $cancel_fn$
 declare
   v_status text;
   v_item record;
@@ -268,7 +268,7 @@ begin
 
   update orders set status = 'cancelled', updated_at = now() where id = p_order_id;
 end;
-$$;
+$cancel_fn$;
 
 revoke all on function cancel_order(uuid) from public;
 grant execute on function cancel_order(uuid) to service_role;
