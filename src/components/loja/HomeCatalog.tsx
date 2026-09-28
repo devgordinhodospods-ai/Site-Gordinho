@@ -3,9 +3,12 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { ProductCard } from "@/components/loja/ProductCard";
+import { ProductCarousel } from "@/components/loja/ProductCarousel";
 import type { Category, ProductWithFlavors } from "@/lib/types";
 
 type Sort = "recent" | "price-asc" | "price-desc" | "discount";
+
+const CAROUSEL_THRESHOLD = 8;
 
 function normalize(text: string) {
   return text
@@ -58,6 +61,12 @@ export function HomeCatalog({
   }, [products, selected, query, sort]);
 
   const hasFilters = Boolean(selected || query);
+
+  // Com muitos produtos, a vitrine sem filtro vira fileiras em carrossel
+  // (Novidades + uma por categoria) em vez de uma grade enorme.
+  const useCarousels = !hasFilters && products.length > CAROUSEL_THRESHOLD;
+  const categoryIds = new Set(categories.map((c) => c.id));
+  const uncategorized = visible.filter((p) => !p.category_id || !categoryIds.has(p.category_id));
 
   function clearFilters() {
     setSelectedId(null);
@@ -168,6 +177,22 @@ export function HomeCatalog({
               Limpar filtros
             </button>
           )}
+        </div>
+      ) : useCarousels ? (
+        <div>
+          <ProductCarousel title="Novidades" products={visible.slice(0, 12)} seeAllHref="/produtos" />
+          {categories.map((cat) => {
+            const rowProducts = visible.filter((p) => p.category_id === cat.id);
+            return rowProducts.length > 0 ? (
+              <ProductCarousel
+                key={cat.id}
+                title={cat.name}
+                products={rowProducts}
+                seeAllHref={`/produtos?categoria=${cat.slug}`}
+              />
+            ) : null;
+          })}
+          {uncategorized.length > 0 && <ProductCarousel title="Outros" products={uncategorized} />}
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
