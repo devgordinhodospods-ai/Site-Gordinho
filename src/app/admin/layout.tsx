@@ -12,12 +12,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-blue-50/40">
-      <div className="mx-auto max-w-6xl px-4 py-6">
-        <h1 className="font-display mb-4 flex items-center gap-2 text-xl text-slate-900">
-          Painel Administrativo
-        </h1>
-        <AdminNav />
-        <div className="mt-6">{children}</div>
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:grid lg:grid-cols-[220px_1fr] lg:items-start lg:gap-8">
+        <aside>
+          <p className="font-display mb-3 hidden text-xs uppercase tracking-widest text-slate-400 lg:block">
+            Painel administrativo
+          </p>
+          <AdminNav />
+        </aside>
+        <div className="mt-6 min-w-0 lg:mt-0">{children}</div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { safePath } from "@/lib/safePath";
 import { Suspense, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,7 +13,7 @@ function CompletarCadastroContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/";
+  const next = safePath(searchParams.get("next"));
 
   const [checking, setChecking] = useState(true);
   const [name, setName] = useState("");

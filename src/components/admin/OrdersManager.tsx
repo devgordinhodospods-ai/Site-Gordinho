@@ -6,6 +6,7 @@ import { adminApi } from "@/lib/adminApi";
 import { centsToBRL } from "@/lib/money";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { PeriodFilter, isWithinPeriod, type Period } from "@/components/ui/PeriodFilter";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 
 const STATUS_FLOW: OrderStatus[] = [
@@ -63,6 +64,7 @@ export function OrdersManager() {
   const [filter, setFilter] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<Period>("30d");
   const { confirm, dialog } = useConfirm();
 
   async function load() {
@@ -98,10 +100,19 @@ export function OrdersManager() {
     await load();
   }
 
+  const visibleOrders = orders.filter((o) => isWithinPeriod(o.created_at, period));
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-2xl text-slate-900">Pedidos Realizados</h1>
+        <div>
+          <h1 className="font-display text-2xl text-slate-900">Pedidos</h1>
+          {!loading && (
+            <p className="text-sm text-slate-500">
+              {visibleOrders.length} {visibleOrders.length === 1 ? "pedido" : "pedidos"} no período
+            </p>
+          )}
+        </div>
         <select className="input w-56" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">Todos os status</option>
           {STATUS_FLOW.map((s) => (
@@ -112,15 +123,19 @@ export function OrdersManager() {
         </select>
       </div>
 
+      <div className="mb-4">
+        <PeriodFilter value={period} onChange={setPeriod} />
+      </div>
+
       {actionError && <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{actionError}</p>}
 
       {loading ? (
         <p className="text-slate-500">Carregando...</p>
-      ) : orders.length === 0 ? (
+      ) : visibleOrders.length === 0 ? (
         <p className="text-slate-500">Nenhum pedido encontrado.</p>
       ) : (
         <div className="space-y-3">
-          {orders.map((order) => (
+          {visibleOrders.map((order) => (
             <div key={order.id} className="card p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <p className="font-display text-brand">Pedido #{order.id.slice(0, 8).toUpperCase()}</p>

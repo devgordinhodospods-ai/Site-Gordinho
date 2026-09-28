@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Lock, MapPin, Phone, ShoppingBag, Truck } from "lucide-react";
@@ -34,6 +35,7 @@ function StepTitle({ n, icon: Icon, children }: { n: number; icon: typeof MapPin
 
 export default function CheckoutPage() {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const hydrated = useCartStore((s) => s.hydrated);
   const items = useCartStore((s) => s.items);
   const subtotal = useCartStore((s) => s.subtotalCents());
@@ -72,13 +74,17 @@ export default function CheckoutPage() {
       fetch("/api/enderecos").then((r) => r.json()).catch(() => ({})),
       fetch("/api/conta").then((r) => r.json()).catch(() => ({})),
     ]).then(([addrData, contaData]) => {
+      if (contaData.user && !contaData.user.cpf) {
+        router.replace("/completar-cadastro?next=/checkout");
+        return;
+      }
       const list: UserAddress[] = addrData.addresses ?? [];
       setAddresses(list);
       if (list.length > 0) setSelectedAddressId((list.find((a) => a.is_default) ?? list[0]).id);
       if (contaData.user?.phone) setPhone(contaData.user.phone);
       setLoadingAccount(false);
     });
-  }, [status]);
+  }, [status, router]);
 
   const address: AddressValues = useMemo(() => {
     const saved = addresses.find((a) => a.id === selectedAddressId);

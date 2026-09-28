@@ -1,5 +1,6 @@
 "use client";
 
+import { safePath } from "@/lib/safePath";
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,7 +12,7 @@ import { Loader } from "@/components/ui/Loader";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const callbackUrl = safePath(searchParams.get("callbackUrl"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,7 +37,9 @@ function LoginForm() {
       return;
     }
 
-    router.push(callbackUrl);
+    // Contas sem CPF/endereço passam pelo "completar cadastro" (ela pula
+    // sozinha se já estiver tudo preenchido).
+    router.push(`/completar-cadastro?next=${encodeURIComponent(callbackUrl)}`);
   }
 
   return (
@@ -94,7 +97,10 @@ function LoginForm() {
 
         <p className="mt-6 text-center text-sm text-slate-500">
           Não tem conta?{" "}
-          <Link href="/cadastro" className="font-bold text-brand hover:underline">
+          <Link
+            href={`/cadastro?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+            className="font-bold text-brand hover:underline"
+          >
             Cadastre-se
           </Link>
         </p>
