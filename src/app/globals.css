@@ -3,26 +3,132 @@
 @tailwind utilities;
 
 :root {
-  --store-primary: #1a1a1a;
-  --store-accent: #c9a227;
+  --store-primary: #1d4ed8;
+  --store-primary-dark: #0f2f8f;
+  --store-accent: #2563eb;
 }
 
-body {
-  @apply bg-neutral-50 text-neutral-900 antialiased;
+@layer base {
+  body {
+    @apply bg-white text-slate-900 antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-weight: 900;
+    letter-spacing: -0.01em;
+  }
 }
 
-.btn-primary {
-  @apply inline-flex items-center justify-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-700 disabled:opacity-50 disabled:pointer-events-none;
+/* ---------------------------------------------------------------------- */
+/* Botões — gradiente azul com efeito de brilho no hover (estilo uiverse)  */
+/* Ficam em @layer components pra que utilities passadas via className    */
+/* (ex.: pl-10 num input com ícone) continuem podendo sobrescrever aqui.   */
+/* ---------------------------------------------------------------------- */
+
+@layer components {
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-brand transition-all duration-200;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 60%, #0f2f8f 100%);
+  }
+
+  .btn-primary::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      120deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.35) 50%,
+      transparent 80%
+    );
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+  }
+
+  .btn-primary:hover:not(:disabled)::before {
+    transform: translateX(100%);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    @apply -translate-y-0.5 shadow-lg;
+  }
+
+  .btn-primary:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border-2 border-blue-100 bg-white px-5 py-2.5 text-sm font-bold text-brand transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:bg-blue-50 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-google {
+    @apply inline-flex w-full items-center justify-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-md;
+  }
+
+  .input {
+    @apply w-full rounded-xl border-2 border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand focus:ring-4 focus:ring-blue-100;
+  }
+
+  .card {
+    @apply rounded-2xl border border-blue-100 bg-white shadow-[0_4px_20px_-6px_rgba(29,78,216,0.12)];
+  }
 }
 
-.btn-secondary {
-  @apply inline-flex items-center justify-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-900 transition hover:bg-neutral-100 disabled:opacity-50;
+/* ---------------------------------------------------------------------- */
+/* Loaders                                                                 */
+/* ---------------------------------------------------------------------- */
+
+.loader-ring {
+  --loader-size: 40px;
+  width: var(--loader-size);
+  height: var(--loader-size);
+  border-radius: 50%;
+  display: inline-block;
+  border-top: 4px solid #1d4ed8;
+  border-right: 4px solid transparent;
+  box-sizing: border-box;
+  animation: loader-ring-spin 0.7s linear infinite;
 }
 
-.input {
-  @apply w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900;
+@keyframes loader-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.card {
-  @apply rounded-lg border border-neutral-200 bg-white shadow-sm;
+.loader-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.loader-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: loader-dots-bounce 1s ease-in-out infinite;
+}
+
+.loader-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.loader-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes loader-dots-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

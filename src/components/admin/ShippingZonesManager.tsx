@@ -72,7 +72,7 @@ export function ShippingZonesManager() {
   return (
     <div>
       <h1 className="mb-2 text-2xl font-bold">Regiões de entrega</h1>
-      <p className="mb-6 text-sm text-neutral-500">
+      <p className="mb-6 text-sm text-slate-500">
         Configure a taxa base e a distância aproximada de cada região. O valor final do frete mostrado
         ao cliente varia automaticamente com horário de pico e chuva no local da loja — veja a lógica em{" "}
         <code>src/lib/shipping.ts</code>.
@@ -142,7 +142,7 @@ export function ShippingZonesManager() {
           <div key={z.id} className="card flex items-center justify-between p-3">
             <div>
               <p className="font-medium">{z.name}</p>
-              <p className="text-sm text-neutral-500">
+              <p className="text-sm text-slate-500">
                 Base: {centsToBRL(z.base_fee_cents)} · {z.km_from_origin} km
               </p>
             </div>

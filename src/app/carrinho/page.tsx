@@ -35,12 +35,12 @@ export default function CarrinhoPage() {
       <div className="space-y-4">
         {items.map((item) => (
           <div key={item.productId} className="card flex items-center gap-4 p-3">
-            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-neutral-100">
+            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-slate-100">
               {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
             </div>
             <div className="flex-1">
               <p className="font-medium">{item.name}</p>
-              <p className="text-sm text-neutral-500">{centsToBRL(item.priceCents)}</p>
+              <p className="text-sm text-slate-500">{centsToBRL(item.priceCents)}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -72,7 +72,7 @@ export default function CarrinhoPage() {
           <span>Subtotal</span>
           <span>{centsToBRL(subtotal)}</span>
         </div>
-        <p className="mt-1 text-sm text-neutral-500">Frete e taxa de serviço calculados no checkout.</p>
+        <p className="mt-1 text-sm text-slate-500">Frete e taxa de serviço calculados no checkout.</p>
         <Link href="/checkout" className="btn-primary mt-4 flex w-full">
           Ir para o checkout
         </Link>

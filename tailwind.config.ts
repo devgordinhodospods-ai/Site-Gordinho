@@ -8,15 +8,28 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          "var(--font-lato)",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "sans-serif",
+        ],
+      },
       colors: {
         brand: {
-          DEFAULT: "#1a1a1a",
-          light: "#2d2d2d",
+          DEFAULT: "#1d4ed8",
+          dark: "#0f2f8f",
+          light: "#3b82f6",
         },
         accent: {
-          DEFAULT: "#c9a227",
-          light: "#e0c158",
+          DEFAULT: "#2563eb",
+          light: "#60a5fa",
         },
+      },
+      boxShadow: {
+        brand: "0 10px 30px -10px rgb(29 78 216 / 0.35)",
       },
     },
   },

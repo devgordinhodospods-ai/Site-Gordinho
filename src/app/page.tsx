@@ -20,20 +20,26 @@ export default async function HomePage() {
 
   return (
     <div>
-      <section className="bg-neutral-900 py-16 text-center text-white">
-        <h1 className="text-3xl font-bold sm:text-4xl">{settings.store_name}</h1>
-        <p className="mx-auto mt-3 max-w-xl text-neutral-300">
+      <section
+        className="py-20 text-center text-white"
+        style={{ background: "linear-gradient(160deg, #1d4ed8 0%, #0f2f8f 100%)" }}
+      >
+        <h1 className="font-display text-3xl sm:text-4xl">{settings.store_name}</h1>
+        <p className="mx-auto mt-3 max-w-xl text-blue-100">
           Confira nossos produtos e faça seu pedido com entrega rápida.
         </p>
-        <Link href="/produtos" className="btn-primary mt-6 inline-flex bg-accent hover:bg-accent-light">
+        <Link
+          href="/produtos"
+          className="btn-secondary mt-6 inline-flex border-white bg-white text-brand hover:border-white hover:bg-blue-50"
+        >
           Ver produtos
         </Link>
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-10">
-        <h2 className="mb-4 text-xl font-bold">Novidades</h2>
+        <h2 className="font-display mb-4 text-xl">Novidades</h2>
         {products.length === 0 ? (
-          <p className="text-neutral-500">
+          <p className="text-slate-500">
             Nenhum produto cadastrado ainda. Acesse o painel administrativo para começar a montar o catálogo.
           </p>
         ) : (

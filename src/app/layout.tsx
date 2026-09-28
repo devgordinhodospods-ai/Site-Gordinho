@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
+import { Lato } from "next/font/google";
 import "./globals.css";
 import { SessionProviderWrapper } from "@/components/providers/SessionProviderWrapper";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { getSiteSettings } from "@/lib/settings";
+
+const lato = Lato({
+  subsets: ["latin"],
+  weight: ["400", "700", "900"],
+  variable: "--font-lato",
+  display: "swap",
+});
 
 // A loja troca nome/logo/catálogo pelo painel admin a qualquer momento, então
 // renderizamos tudo sob demanda em vez de gerar páginas estáticas no build
@@ -24,8 +32,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const settings = await getSiteSettings();
 
   return (
-    <html lang="pt-BR">
-      <body className="flex min-h-screen flex-col">
+    <html lang="pt-BR" className={lato.variable}>
+      <body className="flex min-h-screen flex-col font-sans">
         <SessionProviderWrapper>
           <Navbar storeName={settings.store_name} logoUrl={settings.store_logo_url} />
           <main className="flex-1">{children}</main>

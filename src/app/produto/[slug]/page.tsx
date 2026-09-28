@@ -26,21 +26,21 @@ export default async function ProdutoPage({ params }: { params: Promise<{ slug: 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="grid gap-8 md:grid-cols-2">
-        <div className="relative aspect-square overflow-hidden rounded-lg bg-neutral-100">
+        <div className="relative aspect-square overflow-hidden rounded-lg bg-slate-100">
           {image ? (
             <Image src={image} alt={product.name} fill className="object-cover" sizes="50vw" />
           ) : (
-            <div className="flex h-full items-center justify-center text-neutral-400">Sem imagem</div>
+            <div className="flex h-full items-center justify-center text-slate-400">Sem imagem</div>
           )}
         </div>
 
         <div>
           <h1 className="text-2xl font-bold">{product.name}</h1>
-          <p className="mt-2 text-2xl font-bold text-neutral-900">{centsToBRL(product.price_cents)}</p>
+          <p className="mt-2 text-2xl font-bold text-slate-900">{centsToBRL(product.price_cents)}</p>
           {product.description && (
-            <p className="mt-4 whitespace-pre-line text-neutral-600">{product.description}</p>
+            <p className="mt-4 whitespace-pre-line text-slate-600">{product.description}</p>
           )}
-          <p className="mt-2 text-sm text-neutral-500">
+          <p className="mt-2 text-sm text-slate-500">
             {product.stock > 0 ? `${product.stock} em estoque` : "Sem estoque no momento"}
           </p>
 
