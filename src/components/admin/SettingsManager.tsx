@@ -103,6 +103,37 @@ export function SettingsManager() {
           />
         </div>
 
+        <div>
+          <label className="mb-1 block text-sm font-medium">Texto da barra de avisos (topo do site)</label>
+          <input
+            className="input"
+            placeholder="Ex: Frete grátis acima de R$ 150"
+            value={settings.announcement_text ?? ""}
+            onChange={(e) => setSettings({ ...settings, announcement_text: e.target.value || null })}
+          />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium">Título de destaque (banner da home)</label>
+            <input
+              className="input"
+              placeholder={settings.store_name}
+              value={settings.hero_title ?? ""}
+              onChange={(e) => setSettings({ ...settings, hero_title: e.target.value || null })}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">Subtítulo (banner da home)</label>
+            <input
+              className="input"
+              placeholder="Confira nossos produtos e faça seu pedido com entrega rápida."
+              value={settings.hero_subtitle ?? ""}
+              onChange={(e) => setSettings({ ...settings, hero_subtitle: e.target.value || null })}
+            />
+          </div>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-sm font-medium">Logo</label>

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { adminApi } from "@/lib/adminApi";
+import { supabase } from "@/lib/supabase";
 import type { Category } from "@/lib/types";
 
 function slugify(text: string) {
@@ -16,6 +18,8 @@ function slugify(text: string) {
 export function CategoriesManager() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
@@ -27,14 +31,44 @@ export function CategoriesManager() {
     load();
   }, []);
 
+  async function handleImageUpload(file: File) {
+    setUploading(true);
+    setError(null);
+    try {
+      const path = `categories/${Date.now()}-${slugify(file.name)}`;
+      const { upload } = await adminApi<{ upload: { path: string; token: string } }>(
+        "createUploadUrl",
+        { path }
+      );
+      const { error: uploadError } = await supabase.storage
+        .from("product-images")
+        .uploadToSignedUrl(upload.path, upload.token, file);
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from("product-images").getPublicUrl(upload.path);
+      setImageUrl(data.publicUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar imagem.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     try {
       await adminApi("saveCategory", {
-        fields: { name, slug: slugify(name), position: categories.length, active: true },
+        fields: {
+          name,
+          slug: slugify(name),
+          image_url: imageUrl,
+          position: categories.length,
+          active: true,
+        },
       });
       setName("");
+      setImageUrl(null);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar categoria.");
@@ -54,19 +88,42 @@ export function CategoriesManager() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold">Categorias</h1>
+      <h1 className="font-display mb-2 text-2xl text-slate-900">Categorias</h1>
+      <p className="mb-6 text-sm text-slate-500">
+        A imagem de capa aparece na vitrine &ldquo;Compre por categoria&rdquo; da home.
+      </p>
 
-      <form onSubmit={handleAdd} className="card mb-6 flex gap-2 p-4">
-        <input
-          className="input"
-          placeholder="Nome da categoria"
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <button type="submit" className="btn-primary">
-          Adicionar
-        </button>
+      <form onSubmit={handleAdd} className="card mb-6 space-y-3 p-4">
+        <div className="flex gap-2">
+          <input
+            className="input"
+            placeholder="Nome da categoria"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <button type="submit" className="btn-primary whitespace-nowrap">
+            Adicionar
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          {imageUrl && (
+            <div className="relative h-14 w-14 overflow-hidden rounded-lg border border-blue-100">
+              <Image src={imageUrl} alt="" fill className="object-cover" />
+            </div>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            disabled={uploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImageUpload(file);
+              e.target.value = "";
+            }}
+          />
+          {uploading && <span className="text-sm text-slate-500">Enviando...</span>}
+        </div>
       </form>
 
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
@@ -74,9 +131,14 @@ export function CategoriesManager() {
       <div className="space-y-2">
         {categories.map((c) => (
           <div key={c.id} className="card flex items-center justify-between p-3">
-            <span>
-              {c.name} {!c.active && <span className="text-xs text-slate-400">(oculta)</span>}
-            </span>
+            <div className="flex items-center gap-3">
+              <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-slate-100">
+                {c.image_url && <Image src={c.image_url} alt="" fill className="object-cover" />}
+              </div>
+              <span>
+                {c.name} {!c.active && <span className="text-xs text-slate-400">(oculta)</span>}
+              </span>
+            </div>
             <div className="flex gap-2">
               <button className="btn-secondary" onClick={() => toggleActive(c)}>
                 {c.active ? "Ocultar" : "Mostrar"}

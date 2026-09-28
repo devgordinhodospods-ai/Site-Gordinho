@@ -31,6 +31,7 @@ create table if not exists categories (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text not null unique,
+  image_url text,
   position int not null default 0,
   active boolean not null default true,
   created_at timestamptz not null default now()
@@ -300,5 +301,8 @@ insert into site_settings (key, value) values
   ('origin_lat', 'null'),
   ('origin_lng', 'null'),
   ('service_fee_percent', '5'),
-  ('service_fee_fixed', '0')
+  ('service_fee_fixed', '0'),
+  ('announcement_text', '"Compra 100% segura • Pagamento via Mercado Pago"'),
+  ('hero_title', 'null'),
+  ('hero_subtitle', 'null')
 on conflict (key) do nothing;

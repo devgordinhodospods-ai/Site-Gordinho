@@ -4,7 +4,9 @@ import "./globals.css";
 import { SessionProviderWrapper } from "@/components/providers/SessionProviderWrapper";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { getSiteSettings } from "@/lib/settings";
+import { getActiveCategories } from "@/lib/categories";
 
 const lato = Lato({
   subsets: ["latin"],
@@ -29,13 +31,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const settings = await getSiteSettings();
+  const [settings, categories] = await Promise.all([getSiteSettings(), getActiveCategories()]);
 
   return (
     <html lang="pt-BR" className={lato.variable}>
       <body className="flex min-h-screen flex-col font-sans">
         <SessionProviderWrapper>
-          <Navbar storeName={settings.store_name} logoUrl={settings.store_logo_url} />
+          <AnnouncementBar text={settings.announcement_text} />
+          <Navbar storeName={settings.store_name} logoUrl={settings.store_logo_url} categories={categories} />
           <main className="flex-1">{children}</main>
           <Footer settings={settings} />
         </SessionProviderWrapper>

@@ -120,6 +120,25 @@
   animation-delay: 0.3s;
 }
 
+/* ---------------------------------------------------------------------- */
+/* Ticker de confiança (marquee)                                           */
+/* ---------------------------------------------------------------------- */
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 22s linear infinite;
+}
+
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 @keyframes loader-dots-bounce {
   0%,
   80%,

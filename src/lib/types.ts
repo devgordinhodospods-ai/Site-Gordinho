@@ -10,12 +10,16 @@ export type SiteSettings = {
   origin_lng: number | null;
   service_fee_percent: number;
   service_fee_fixed: number;
+  announcement_text: string | null;
+  hero_title: string | null;
+  hero_subtitle: string | null;
 };
 
 export type Category = {
   id: string;
   name: string;
   slug: string;
+  image_url: string | null;
   position: number;
   active: boolean;
 };
