@@ -49,7 +49,7 @@ export default async function HomePage() {
   return (
     <div>
       {settings.hero_image_url && (
-        <section className="relative h-28 w-full bg-black sm:h-40">
+        <section className="relative h-40 w-full bg-black sm:h-56 md:h-72 lg:h-96">
           <Image
             src={settings.hero_image_url}
             alt={settings.store_name}

@@ -10,7 +10,9 @@ import { getActiveCategories } from "@/lib/categories";
 
 const lato = Lato({
   subsets: ["latin"],
-  weight: ["400", "700", "900"],
+  // Site inteiro usa Lato Black (900) — ver tailwind.config.ts, que remapeia
+  // todas as utilidades de peso pra 900.
+  weight: ["900"],
   variable: "--font-lato",
   display: "swap",
 });
