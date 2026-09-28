@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mail, MapPin, Phone, Search, ShoppingBag, User, X } from "lucide-react";
+import { Mail, MapPin, Phone, Search, ShoppingBag, Trash2, User, X } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { centsToBRL } from "@/lib/money";
 import { formatCPF } from "@/lib/cpf";
 import { Loader } from "@/components/ui/Loader";
 import { Pagination } from "@/components/ui/Pagination";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { OrderStatus, UserAddress } from "@/lib/types";
 
 type UserRow = { id: string; name: string; email: string; auth_provider: string; created_at: string };
@@ -40,6 +41,8 @@ export function UsersManager() {
   const [page, setPage] = useState(1);
   const [details, setDetails] = useState<UserDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   useEffect(() => {
     adminApi<{ users: UserRow[] }>("listUsers")
@@ -62,6 +65,21 @@ export function UsersManager() {
       setDetails(await adminApi<UserDetails>("getUserDetails", { id }));
     } finally {
       setLoadingDetails(false);
+    }
+  }
+
+  async function deleteUser(user: UserRow) {
+    setActionError(null);
+    const ok = await confirm(
+      "A conta e os endereços dela são apagados de vez e a pessoa é deslogada do site. Os pedidos que ela já fez continuam na aba Pedidos.",
+      { title: `Excluir ${user.name}?`, confirmLabel: "Excluir usuário" }
+    );
+    if (!ok) return;
+    try {
+      await adminApi("deleteUser", { id: user.id });
+      setUsers((list) => list.filter((u) => u.id !== user.id));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Não foi possível excluir o usuário.");
     }
   }
 
@@ -98,6 +116,8 @@ export function UsersManager() {
         />
       </div>
 
+      {actionError && <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{actionError}</p>}
+
       {loading ? (
         <div className="flex justify-center py-12">
           <Loader />
@@ -119,15 +139,27 @@ export function UsersManager() {
                   </p>
                 </div>
               </div>
-              <button className="btn-secondary shrink-0 px-3 py-2" onClick={() => openDetails(u.id)}>
-                Ver detalhes
-              </button>
+              <div className="flex shrink-0 items-center gap-1">
+                <button className="btn-secondary px-3 py-2" onClick={() => openDetails(u.id)}>
+                  Ver detalhes
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                  onClick={() => deleteUser(u)}
+                  aria-label={`Excluir ${u.name}`}
+                  title="Excluir usuário"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
       )}
 
       <Pagination page={currentPage} totalPages={totalPages} onChange={setPage} />
+      {dialog}
 
       {(details || loadingDetails) && (
         <div

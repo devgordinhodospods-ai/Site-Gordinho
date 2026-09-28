@@ -73,12 +73,16 @@ export const authOptions: AuthOptions = {
         token.isAdmin = isAdminEmail(token.email as string);
 
         const db = getSupabaseAdmin();
-        const { data } = await db
+        const { data, error } = await db
           .from("site_users")
           .select("id")
           .eq("email", (token.email as string).toLowerCase())
           .maybeSingle();
-        if (data) token.userId = data.id;
+        if (!error) {
+          token.userId = data?.id;
+          // Conta excluída pelo painel: o navegador dela é deslogado (AccountRemovedGuard).
+          token.removed = !data && !token.isAdmin;
+        }
       }
       return token;
     },
@@ -86,6 +90,7 @@ export const authOptions: AuthOptions = {
       if (session.user) {
         session.user.isAdmin = Boolean(token.isAdmin);
         session.user.id = (token.userId as string) ?? undefined;
+        session.user.removed = Boolean(token.removed);
       }
       return session;
     },

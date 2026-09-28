@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ShoppingCart, User, LayoutDashboard, Search } from "lucide-react";
 import { useCartStore } from "@/store/cart";
-import { useState } from "react";
+import { useEffect } from "react";
+import { scrollToProducts, useSearchStore } from "@/store/search";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { SmoothTopLink } from "@/components/ui/SmoothTopLink";
 
@@ -15,12 +16,34 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
   const { data: session } = useSession();
   const totalQuantity = useCartStore((s) => s.totalQuantity());
   const cartHydrated = useCartStore((s) => s.hydrated);
-  const [search, setSearch] = useState("");
+  const pathname = usePathname();
+  const onHome = pathname === "/";
+  const search = useSearchStore((s) => s.query);
+  const setSearch = useSearchStore((s) => s.setQuery);
+
+  function goToResults() {
+    const q = search.trim();
+    router.push(q ? `/?busca=${encodeURIComponent(q)}#produtos` : "/#produtos");
+  }
+
+  // Na home a vitrine filtra ao vivo; em outra página, uma pausa na
+  // digitação já leva pra home com os resultados.
+  function handleChange(value: string) {
+    setSearch(value);
+    if (onHome && value.trim()) scrollToProducts();
+  }
+
+  useEffect(() => {
+    if (onHome || !search.trim()) return;
+    const timer = setTimeout(goToResults, 700);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, onHome]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    const q = search.trim();
-    router.push(q ? `/?busca=${encodeURIComponent(q)}#produtos` : "/#produtos");
+    if (onHome) scrollToProducts();
+    else goToResults();
   }
 
   return (
@@ -60,7 +83,7 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
               className="input pl-10"
               placeholder="Buscar produtos..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleChange(e.target.value)}
             />
           </div>
         </form>

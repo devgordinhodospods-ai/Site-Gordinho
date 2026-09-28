@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { ProductCard } from "@/components/loja/ProductCard";
 import { ProductCarousel } from "@/components/loja/ProductCarousel";
+import { useSearchStore } from "@/store/search";
 import type { Category, ProductWithFlavors } from "@/lib/types";
 
 type Sort = "recent" | "price-asc" | "price-desc" | "discount";
@@ -33,9 +34,34 @@ export function HomeCatalog({
   const [selectedId, setSelectedId] = useState<string | null>(
     categories.find((c) => c.slug === initialCategorySlug)?.id ?? null,
   );
-  const [query, setQuery] = useState(initialQuery);
   const [showAll, setShowAll] = useState(false);
   const [sort, setSort] = useState<Sort>("recent");
+  // A busca vive num store compartilhado com a barra do topo. No 1º render
+  // usa a da URL (?busca=), pra não piscar "Todos os produtos".
+  const storeQuery = useSearchStore((s) => s.query);
+  const setQuery = useSearchStore((s) => s.setQuery);
+  const [synced, setSynced] = useState(false);
+  const query = synced ? storeQuery : initialQuery;
+
+  useEffect(() => {
+    // Veio da barra do topo em outra página: o store já tem o texto (talvez
+    // até mais letras digitadas durante a navegação) — não sobrescreve.
+    const current = useSearchStore.getState().query;
+    if (!initialQuery || !current) setQuery(initialQuery);
+    setSynced(true);
+  }, [initialQuery, setQuery]);
+
+  // Ao começar a digitar (aqui ou no topo), a busca vale pro catálogo
+  // inteiro — antes ela ficava presa na categoria selecionada.
+  const hadQuery = useRef(Boolean(initialQuery.trim()));
+  useEffect(() => {
+    const has = Boolean(query.trim());
+    if (has && !hadQuery.current) {
+      setSelectedId(null);
+      setShowAll(false);
+    }
+    hadQuery.current = has;
+  }, [query]);
 
   const countByCategory = useMemo(() => {
     const counts = new Map<string, number>();
@@ -76,13 +102,6 @@ export function HomeCatalog({
     setSelectedId(null);
     setQuery("");
     setShowAll(false);
-  }
-
-  // Ao começar a digitar, a busca vale pro catálogo inteiro (antes ela
-  // ficava presa na categoria selecionada e dava "0 produtos").
-  function handleQueryChange(value: string) {
-    if (!query.trim() && value.trim()) setSelectedId(null);
-    setQuery(value);
   }
 
   function selectCategory(id: string | null) {
@@ -132,7 +151,7 @@ export function HomeCatalog({
                 className="input pl-10 pr-9"
                 placeholder="O que você está procurando?"
                 value={query}
-                onChange={(e) => handleQueryChange(e.target.value)}
+                onChange={(e) => setQuery(e.target.value)}
               />
               {query && (
                 <button

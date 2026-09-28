@@ -417,6 +417,20 @@ export async function POST(req: Request) {
         return NextResponse.json({ user, addresses: addresses ?? [], orders });
       }
 
+      case "deleteUser": {
+        const { data: user } = await db.from("site_users").select("id, email").eq("id", body.id).maybeSingle();
+        if (!user) return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
+        if (isAdminEmail(user.email)) {
+          return NextResponse.json({ error: "Não dá pra excluir a conta de um administrador." }, { status: 400 });
+        }
+
+        // Endereços somem junto (cascade); os pedidos ficam no histórico da loja, só sem vínculo com a conta.
+        const { error } = await db.from("site_users").delete().eq("id", user.id);
+        if (error) throw error;
+        await db.from("pending_signups").delete().eq("email", user.email);
+        return NextResponse.json({ ok: true });
+      }
+
       // ---------------- configurações da loja ----------------
       case "getSettings": {
         const { data, error } = await db.from("site_settings").select("key, value");
