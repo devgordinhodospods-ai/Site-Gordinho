@@ -64,6 +64,13 @@ export function Navbar({
         </form>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          <Link
+            href="/produtos"
+            className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-blue-50 hover:text-brand"
+          >
+            <LayoutGrid size={16} /> <span className="hidden sm:inline">Todas categorias</span>
+          </Link>
+
           {session?.user?.isAdmin && (
             <Link
               href="/admin"
@@ -100,38 +107,29 @@ export function Navbar({
         </div>
       </div>
 
-      <div className="border-t border-blue-50">
-        <div className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto px-4 py-2 text-sm font-bold text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <Link
-            href="/produtos"
-            className="flex shrink-0 items-center gap-1 whitespace-nowrap transition-colors hover:text-brand"
-          >
-            <LayoutGrid size={15} /> Todas categorias
-          </Link>
-          {categories.map((cat) => (
-            <Link
-              key={cat.id}
-              href={`/produtos?categoria=${cat.slug}`}
-              className="shrink-0 whitespace-nowrap transition-colors hover:text-brand"
-            >
-              {cat.name}
-            </Link>
-          ))}
-          {session?.user && (
-            <Link href="/pedidos" className="shrink-0 whitespace-nowrap transition-colors hover:text-brand">
-              Meus pedidos
-            </Link>
-          )}
-          {session?.user?.isAdmin && (
-            <Link
-              href="/admin"
-              className="flex shrink-0 items-center gap-1 whitespace-nowrap transition-colors hover:text-brand md:hidden"
-            >
-              <LayoutDashboard size={15} /> Painel
-            </Link>
-          )}
+      {categories.length > 0 && (
+        <div className="border-t border-blue-50">
+          <div className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto px-4 py-2 text-sm font-bold text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {categories.map((cat) => (
+              <Link
+                key={cat.id}
+                href={`/produtos?categoria=${cat.slug}`}
+                className="shrink-0 whitespace-nowrap transition-colors hover:text-brand"
+              >
+                {cat.name}
+              </Link>
+            ))}
+            {session?.user?.isAdmin && (
+              <Link
+                href="/admin"
+                className="flex shrink-0 items-center gap-1 whitespace-nowrap transition-colors hover:text-brand md:hidden"
+              >
+                <LayoutDashboard size={15} /> Painel
+              </Link>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </header>
   );
 }
