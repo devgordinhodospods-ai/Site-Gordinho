@@ -34,32 +34,33 @@ export default function CarrinhoPage() {
 
       <div className="space-y-4">
         {items.map((item) => (
-          <div key={item.productId} className="card flex items-center gap-4 p-3">
+          <div key={`${item.productId}-${item.flavorId ?? ""}`} className="card flex items-center gap-4 p-3">
             <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-slate-100">
               {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
             </div>
             <div className="flex-1">
               <p className="font-medium">{item.name}</p>
+              {item.flavorName && <p className="text-xs text-slate-400">Sabor: {item.flavorName}</p>}
               <p className="text-sm text-slate-500">{centsToBRL(item.priceCents)}</p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 className="btn-secondary h-8 w-8 p-0"
-                onClick={() => setQuantity(item.productId, item.quantity - 1)}
+                onClick={() => setQuantity(item.productId, item.quantity - 1, item.flavorId)}
               >
                 -
               </button>
               <span className="w-6 text-center">{item.quantity}</span>
               <button
                 className="btn-secondary h-8 w-8 p-0"
-                onClick={() => setQuantity(item.productId, item.quantity + 1)}
+                onClick={() => setQuantity(item.productId, item.quantity + 1, item.flavorId)}
               >
                 +
               </button>
             </div>
             <button
               className="text-sm text-red-600 hover:underline"
-              onClick={() => removeItem(item.productId)}
+              onClick={() => removeItem(item.productId, item.flavorId)}
             >
               Remover
             </button>

@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { Plus, X } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { supabase } from "@/lib/supabase";
 import { brlToCents, centsToBRL } from "@/lib/money";
-import type { Product, Category } from "@/lib/types";
+import type { ProductWithFullFlavors, Category, ProductFlavor } from "@/lib/types";
 
 function slugify(text: string) {
   return text
@@ -16,29 +17,34 @@ function slugify(text: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+type FlavorForm = { name: string; stock: string; image_url: string | null };
+
 const EMPTY_FORM = {
   id: "",
   name: "",
   slug: "",
   description: "",
   price: "",
+  cost: "",
   stock: "0",
   category_id: "",
   active: true,
   images: [] as string[],
+  flavors: [] as FlavorForm[],
 };
 
 export function ProductsManager() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductWithFullFlavors[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [uploading, setUploading] = useState(false);
+  const [uploadingFlavorIdx, setUploadingFlavorIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
     const [p, c] = await Promise.all([
-      adminApi<{ products: Product[] }>("listProducts"),
+      adminApi<{ products: ProductWithFullFlavors[] }>("listProducts"),
       adminApi<{ categories: Category[] }>("listCategories"),
     ]);
     setProducts(p.products);
@@ -49,17 +55,22 @@ export function ProductsManager() {
     load();
   }, []);
 
-  function edit(product: Product) {
+  function edit(product: ProductWithFullFlavors) {
     setForm({
       id: product.id,
       name: product.name,
       slug: product.slug,
       description: product.description ?? "",
       price: (product.price_cents / 100).toString(),
+      cost: product.cost_cents != null ? (product.cost_cents / 100).toString() : "",
       stock: product.stock.toString(),
       category_id: product.category_id ?? "",
       active: product.active,
       images: product.images ?? [],
+      flavors: (product.product_flavors ?? [])
+        .slice()
+        .sort((a, b) => a.position - b.position)
+        .map((f) => ({ name: f.name, stock: f.stock.toString(), image_url: f.image_url })),
     });
   }
 
@@ -67,29 +78,62 @@ export function ProductsManager() {
     setForm(EMPTY_FORM);
   }
 
+  async function uploadFile(file: File, folder: string) {
+    const path = `${folder}/${Date.now()}-${slugify(file.name)}`;
+    const { upload } = await adminApi<{ upload: { signedUrl: string; token: string; path: string } }>(
+      "createUploadUrl",
+      { path }
+    );
+    const { error: uploadError } = await supabase.storage
+      .from("product-images")
+      .uploadToSignedUrl(upload.path, upload.token, file);
+    if (uploadError) throw uploadError;
+    const { data } = supabase.storage.from("product-images").getPublicUrl(upload.path);
+    return data.publicUrl;
+  }
+
   async function handleImageUpload(file: File) {
     setUploading(true);
     setError(null);
     try {
-      const path = `products/${Date.now()}-${slugify(file.name)}`;
-      const { upload } = await adminApi<{ upload: { signedUrl: string; token: string; path: string } }>(
-        "createUploadUrl",
-        { path }
-      );
-
-      const { error: uploadError } = await supabase.storage
-        .from("product-images")
-        .uploadToSignedUrl(upload.path, upload.token, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage.from("product-images").getPublicUrl(upload.path);
-      setForm((f) => ({ ...f, images: [...f.images, data.publicUrl] }));
+      const url = await uploadFile(file, "products");
+      setForm((f) => ({ ...f, images: [...f.images, url] }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao enviar imagem.");
     } finally {
       setUploading(false);
     }
+  }
+
+  async function handleFlavorImageUpload(file: File, index: number) {
+    setUploadingFlavorIdx(index);
+    setError(null);
+    try {
+      const url = await uploadFile(file, "flavors");
+      setForm((f) => ({
+        ...f,
+        flavors: f.flavors.map((fl, i) => (i === index ? { ...fl, image_url: url } : fl)),
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar imagem do sabor.");
+    } finally {
+      setUploadingFlavorIdx(null);
+    }
+  }
+
+  function addFlavor() {
+    setForm((f) => ({ ...f, flavors: [...f.flavors, { name: "", stock: "0", image_url: null }] }));
+  }
+
+  function updateFlavor(index: number, patch: Partial<FlavorForm>) {
+    setForm((f) => ({
+      ...f,
+      flavors: f.flavors.map((fl, i) => (i === index ? { ...fl, ...patch } : fl)),
+    }));
+  }
+
+  function removeFlavor(index: number) {
+    setForm((f) => ({ ...f, flavors: f.flavors.filter((_, i) => i !== index) }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -105,11 +149,15 @@ export function ProductsManager() {
           slug: form.slug || slugify(form.name),
           description: form.description,
           price_cents: brlToCents(Number(form.price.replace(",", "."))),
+          cost_cents: form.cost ? brlToCents(Number(form.cost.replace(",", "."))) : null,
           stock: Number(form.stock),
           category_id: form.category_id || null,
           active: form.active,
           images: form.images,
         },
+        flavors: form.flavors
+          .filter((fl) => fl.name.trim())
+          .map((fl) => ({ name: fl.name.trim(), stock: Number(fl.stock) || 0, image_url: fl.image_url })),
       });
       resetForm();
       await load();
@@ -126,9 +174,21 @@ export function ProductsManager() {
     await load();
   }
 
+  function totalStock(p: ProductWithFullFlavors) {
+    const flavors = p.product_flavors ?? [];
+    return flavors.length > 0 ? flavors.reduce((sum: number, f: ProductFlavor) => sum + f.stock, 0) : p.stock;
+  }
+
+  const margemPercent =
+    form.price && form.cost && Number(form.price.replace(",", ".")) > 0
+      ? ((Number(form.price.replace(",", ".")) - Number(form.cost.replace(",", "."))) /
+          Number(form.price.replace(",", "."))) *
+        100
+      : null;
+
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold">Produtos</h1>
+      <h1 className="font-display mb-6 text-2xl text-slate-900">Produtos &amp; Sabores</h1>
 
       <form onSubmit={handleSubmit} className="card mb-8 grid gap-3 p-4 md:grid-cols-2">
         <input
@@ -144,17 +204,39 @@ export function ProductsManager() {
           value={form.slug}
           onChange={(e) => setForm({ ...form, slug: slugify(e.target.value) })}
         />
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-500">Preço de venda (R$)</label>
+          <input
+            className="input"
+            placeholder="0,00"
+            required
+            inputMode="decimal"
+            value={form.price}
+            onChange={(e) => setForm({ ...form, price: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Valor de fornecimento / custo (R$)
+          </label>
+          <input
+            className="input"
+            placeholder="Opcional"
+            inputMode="decimal"
+            value={form.cost}
+            onChange={(e) => setForm({ ...form, cost: e.target.value })}
+          />
+        </div>
+
+        {margemPercent != null && (
+          <p className="text-sm font-bold text-brand md:col-span-2">
+            Margem estimada: {margemPercent.toFixed(1)}%
+          </p>
+        )}
+
         <input
           className="input"
-          placeholder="Preço (R$)"
-          required
-          inputMode="decimal"
-          value={form.price}
-          onChange={(e) => setForm({ ...form, price: e.target.value })}
-        />
-        <input
-          className="input"
-          placeholder="Estoque"
+          placeholder="Estoque (ignorado se tiver sabores)"
           type="number"
           min={0}
           value={form.stock}
@@ -189,7 +271,7 @@ export function ProductsManager() {
         />
 
         <div className="md:col-span-2">
-          <label className="mb-1 block text-sm font-medium">Imagens</label>
+          <label className="mb-1 block text-sm font-bold text-slate-700">Imagem principal</label>
           <div className="mb-2 flex flex-wrap gap-2">
             {form.images.map((url) => (
               <div key={url} className="relative h-16 w-16 overflow-hidden rounded border">
@@ -210,6 +292,66 @@ export function ProductsManager() {
           {uploading && <span className="ml-2 text-sm text-slate-500">Enviando...</span>}
         </div>
 
+        <div className="card md:col-span-2 space-y-3 border-blue-100 bg-blue-50/40 p-4">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-bold text-slate-700">
+              Sabores (opcional — cada um com seu próprio estoque)
+            </label>
+            <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={addFlavor}>
+              <Plus size={14} /> Adicionar sabor
+            </button>
+          </div>
+
+          {form.flavors.length === 0 && (
+            <p className="text-xs text-slate-500">
+              Sem sabores cadastrados — o estoque do produto acima é usado diretamente.
+            </p>
+          )}
+
+          {form.flavors.map((flavor, index) => (
+            <div key={index} className="flex flex-wrap items-center gap-2 rounded-lg bg-white p-2">
+              {flavor.image_url && (
+                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border">
+                  <Image src={flavor.image_url} alt="" fill className="object-cover" />
+                </div>
+              )}
+              <input
+                className="input flex-1"
+                placeholder="Nome do sabor"
+                value={flavor.name}
+                onChange={(e) => updateFlavor(index, { name: e.target.value })}
+              />
+              <input
+                className="input w-24"
+                type="number"
+                min={0}
+                placeholder="Estoque"
+                value={flavor.stock}
+                onChange={(e) => updateFlavor(index, { stock: e.target.value })}
+              />
+              <input
+                type="file"
+                accept="image/*"
+                className="w-40 text-xs"
+                disabled={uploadingFlavorIdx === index}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFlavorImageUpload(file, index);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                className="rounded-lg bg-red-50 p-2 text-red-600 hover:bg-red-100"
+                onClick={() => removeFlavor(index)}
+                aria-label="Remover sabor"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+
         {error && <p className="text-sm text-red-600 md:col-span-2">{error}</p>}
 
         <div className="flex gap-2 md:col-span-2">
@@ -226,7 +368,7 @@ export function ProductsManager() {
 
       <div className="space-y-2">
         {products.map((p) => (
-          <div key={p.id} className="card flex items-center justify-between p-3">
+          <div key={p.id} className="card flex flex-wrap items-center justify-between gap-2 p-3">
             <div className="flex items-center gap-3">
               <div className="relative h-12 w-12 overflow-hidden rounded bg-slate-100">
                 {p.images?.[0] && <Image src={p.images[0]} alt="" fill className="object-cover" />}
@@ -236,7 +378,8 @@ export function ProductsManager() {
                   {p.name} {!p.active && <span className="text-xs text-slate-400">(inativo)</span>}
                 </p>
                 <p className="text-sm text-slate-500">
-                  {centsToBRL(p.price_cents)} · estoque: {p.stock}
+                  {centsToBRL(p.price_cents)} · estoque: {totalStock(p)}
+                  {(p.product_flavors?.length ?? 0) > 0 && ` (${p.product_flavors!.length} sabores)`}
                 </p>
               </div>
             </div>

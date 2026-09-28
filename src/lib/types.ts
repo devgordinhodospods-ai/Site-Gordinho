@@ -31,11 +31,29 @@ export type Product = {
   description: string | null;
   price_cents: number;
   compare_at_price_cents: number | null;
+  cost_cents: number | null;
   images: string[];
   category_id: string | null;
   stock: number;
   active: boolean;
   created_at: string;
+};
+
+export type ProductFlavor = {
+  id: string;
+  product_id: string;
+  name: string;
+  stock: number;
+  image_url: string | null;
+  position: number;
+};
+
+export type ProductWithFlavors = Product & {
+  product_flavors?: Pick<ProductFlavor, "id" | "stock">[];
+};
+
+export type ProductWithFullFlavors = Product & {
+  product_flavors?: ProductFlavor[];
 };
 
 export type ProductWithCategory = Product & {
@@ -86,7 +104,10 @@ export type OrderItem = {
   order_id: string;
   product_id: string | null;
   product_name: string;
+  flavor_id: string | null;
+  flavor_name: string | null;
   unit_price_cents: number;
+  unit_cost_cents: number | null;
   quantity: number;
 };
 
@@ -98,4 +119,6 @@ export type CartItem = {
   image: string | null;
   quantity: number;
   stock: number;
+  flavorId?: string | null;
+  flavorName?: string | null;
 };

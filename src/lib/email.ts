@@ -27,7 +27,9 @@ export async function sendOrderConfirmationEmail(params: {
     .map(
       (item) =>
         `<tr>
-          <td style="padding:4px 8px;">${item.product_name}</td>
+          <td style="padding:4px 8px;">${item.product_name}${
+          item.flavor_name ? ` (${item.flavor_name})` : ""
+        }</td>
           <td style="padding:4px 8px;text-align:center;">${item.quantity}x</td>
           <td style="padding:4px 8px;text-align:right;">${centsToBRL(
             item.unit_price_cents * item.quantity

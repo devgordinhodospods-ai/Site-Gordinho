@@ -1,16 +1,7 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admins";
-
-const NAV = [
-  { href: "/admin", label: "Visão geral" },
-  { href: "/admin/produtos", label: "Produtos" },
-  { href: "/admin/categorias", label: "Categorias" },
-  { href: "/admin/frete", label: "Frete" },
-  { href: "/admin/pedidos", label: "Pedidos" },
-  { href: "/admin/configuracoes", label: "Configurações da loja" },
-];
+import { AdminNav } from "@/components/admin/AdminNav";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -20,22 +11,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-6 px-4 py-8">
-      <aside className="w-56 flex-shrink-0">
-        <h2 className="mb-4 text-lg font-bold">Painel admin</h2>
-        <nav className="space-y-1">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="block rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
-      <div className="flex-1">{children}</div>
+    <div className="min-h-[calc(100vh-4rem)] bg-blue-50/40">
+      <div className="mx-auto max-w-6xl px-4 py-6">
+        <h1 className="font-display mb-4 flex items-center gap-2 text-xl text-slate-900">
+          Painel Administrativo
+        </h1>
+        <AdminNav />
+        <div className="mt-6">{children}</div>
+      </div>
     </div>
   );
 }
