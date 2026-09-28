@@ -111,6 +111,21 @@ export type OrderItem = {
   quantity: number;
 };
 
+export type UserAddress = {
+  id: string;
+  user_id: string;
+  label: string | null;
+  street: string;
+  number: string;
+  complement: string | null;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zip: string;
+  is_default: boolean;
+  created_at: string;
+};
+
 export type CartItem = {
   productId: string;
   name: string;

@@ -122,12 +122,36 @@ create table if not exists site_users (
   name text not null,
   email text not null unique,
   phone text,
+  cpf text,
   password_hash text,
   auth_provider text not null default 'credentials',
   created_at timestamptz not null default now()
 );
 
 alter table site_users enable row level security;
+-- Sem policy de leitura/escrita pública: tudo passa pela service_role via /api.
+
+-- ----------------------------------------------------------------------------
+-- user_addresses: endereços salvos do cliente (pode ter mais de um)
+-- ----------------------------------------------------------------------------
+create table if not exists user_addresses (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references site_users(id) on delete cascade,
+  label text,
+  street text not null,
+  number text not null,
+  complement text,
+  neighborhood text not null,
+  city text not null,
+  state text not null,
+  zip text not null,
+  is_default boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists user_addresses_user_idx on user_addresses(user_id);
+
+alter table user_addresses enable row level security;
 -- Sem policy de leitura/escrita pública: tudo passa pela service_role via /api.
 
 -- ----------------------------------------------------------------------------

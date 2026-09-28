@@ -3,16 +3,34 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { User, Mail, Phone } from "lucide-react";
+import { User, Mail, Phone, CreditCard, MapPin, Plus, Pencil, Star } from "lucide-react";
 import { Loader } from "@/components/ui/Loader";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { AddressForm, type AddressFormValues } from "@/components/account/AddressForm";
+import { formatCPF, isValidCPF } from "@/lib/cpf";
+import type { UserAddress } from "@/lib/types";
 
 export default function MinhaContaPage() {
   const { data: session, status } = useSession();
-  const [form, setForm] = useState({ name: "", email: "", phone: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", cpf: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [addresses, setAddresses] = useState<UserAddress[]>([]);
+  const [addressesLoading, setAddressesLoading] = useState(true);
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<UserAddress | null>(null);
+  const { confirm, dialog } = useConfirm();
+
+  async function loadAddresses() {
+    setAddressesLoading(true);
+    const res = await fetch("/api/enderecos");
+    const data = await res.json();
+    setAddresses(data.addresses ?? []);
+    setAddressesLoading(false);
+  }
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -20,10 +38,16 @@ export default function MinhaContaPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.user) {
-          setForm({ name: data.user.name ?? "", email: data.user.email ?? "", phone: data.user.phone ?? "" });
+          setForm({
+            name: data.user.name ?? "",
+            email: data.user.email ?? "",
+            phone: data.user.phone ?? "",
+            cpf: data.user.cpf ? formatCPF(data.user.cpf) : "",
+          });
         }
       })
       .finally(() => setLoading(false));
+    loadAddresses();
   }, [status]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -32,20 +56,81 @@ export default function MinhaContaPage() {
     setMessage(null);
     setError(null);
 
+    if (form.cpf && !isValidCPF(form.cpf)) {
+      setError("CPF inválido. Confira os números digitados.");
+      setSaving(false);
+      return;
+    }
+
     const res = await fetch("/api/conta", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: form.name, phone: form.phone }),
+      body: JSON.stringify({ name: form.name, phone: form.phone, cpf: form.cpf || undefined }),
     });
 
     setSaving(false);
 
     if (!res.ok) {
-      setError("Não foi possível salvar seus dados.");
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Não foi possível salvar seus dados.");
       return;
     }
 
     setMessage("Dados atualizados com sucesso!");
+  }
+
+  function addressToFormValues(a: UserAddress): AddressFormValues {
+    return {
+      label: a.label ?? "",
+      street: a.street,
+      number: a.number,
+      complement: a.complement ?? "",
+      neighborhood: a.neighborhood,
+      city: a.city,
+      state: a.state,
+      zip: a.zip,
+      isDefault: a.is_default,
+    };
+  }
+
+  async function handleCreateAddress(values: AddressFormValues) {
+    const res = await fetch("/api/enderecos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...values, label: values.label || undefined, complement: values.complement || undefined }),
+    });
+    if (!res.ok) throw new Error("Não foi possível salvar o endereço.");
+    setShowAddressForm(false);
+    await loadAddresses();
+  }
+
+  async function handleUpdateAddress(id: string, values: AddressFormValues) {
+    const res = await fetch(`/api/enderecos/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...values, label: values.label || undefined, complement: values.complement || undefined }),
+    });
+    if (!res.ok) throw new Error("Não foi possível atualizar o endereço.");
+    setEditingAddress(null);
+    await loadAddresses();
+  }
+
+  async function handleSetDefault(a: UserAddress) {
+    await fetch(`/api/enderecos/${a.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...addressToFormValues(a), isDefault: true }),
+    });
+    await loadAddresses();
+  }
+
+  async function handleDeleteAddress(a: UserAddress) {
+    const ok = await confirm(
+      `Tem certeza que deseja excluir o endereço "${a.label || a.street}"? Essa ação não pode ser desfeita.`
+    );
+    if (!ok) return;
+    await fetch(`/api/enderecos/${a.id}`, { method: "DELETE" });
+    await loadAddresses();
   }
 
   if (status === "loading") return null;
@@ -63,58 +148,158 @@ export default function MinhaContaPage() {
 
   return (
     <div
-      className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12"
+      className="min-h-[calc(100vh-4rem)] px-4 py-12"
       style={{ background: "linear-gradient(160deg, #eaf2ff 0%, #ffffff 55%)" }}
     >
-      <div className="card w-full max-w-sm p-8">
-        <h1 className="font-display mb-1 text-center text-2xl text-slate-900">Meus dados</h1>
-        <p className="mb-6 text-center text-sm text-slate-500">Atualize suas informações de contato</p>
+      <div className="mx-auto grid max-w-3xl gap-6 md:grid-cols-2">
+        <div className="card h-fit p-8">
+          <h1 className="font-display mb-1 text-2xl text-slate-900">Meus dados</h1>
+          <p className="mb-6 text-sm text-slate-500">Atualize suas informações de contato</p>
 
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <Loader />
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader />
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="relative">
+                <User className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  className="input pl-10"
+                  placeholder="Nome completo"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                />
+              </div>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input className="input bg-slate-50 pl-10 text-slate-400" value={form.email} disabled />
+              </div>
+              <div className="relative">
+                <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  className="input pl-10"
+                  placeholder="Telefone / WhatsApp"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                />
+              </div>
+              <div className="relative">
+                <CreditCard className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  className="input pl-10"
+                  placeholder="CPF"
+                  maxLength={14}
+                  value={form.cpf}
+                  onChange={(e) => setForm({ ...form, cpf: formatCPF(e.target.value) })}
+                />
+              </div>
+
+              {message && <p className="text-sm font-medium text-green-600">{message}</p>}
+              {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+
+              <button type="submit" className="btn-primary w-full" disabled={saving}>
+                {saving ? <Loader size={18} color="#fff" /> : "Salvar"}
+              </button>
+            </form>
+          )}
+
+          <p className="mt-6 text-center text-sm text-slate-500">
+            <Link href="/pedidos" className="font-bold text-brand hover:underline">
+              Ver meus pedidos
+            </Link>
+          </p>
+        </div>
+
+        <div className="card h-fit p-8">
+          <div className="mb-1 flex items-center justify-between">
+            <h2 className="font-display flex items-center gap-2 text-xl text-slate-900">
+              <MapPin size={20} className="text-brand" /> Meus endereços
+            </h2>
+            {!showAddressForm && !editingAddress && (
+              <button
+                className="btn-secondary px-3 py-1.5 text-xs"
+                onClick={() => setShowAddressForm(true)}
+              >
+                <Plus size={14} /> Novo
+              </button>
+            )}
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="relative">
-              <User className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                className="input pl-10"
-                placeholder="Nome completo"
-                required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+          <p className="mb-4 text-sm text-slate-500">Usados pra preencher o endereço no checkout</p>
+
+          {showAddressForm && (
+            <div className="mb-4 rounded-xl bg-blue-50/60 p-4">
+              <AddressForm
+                onSubmit={handleCreateAddress}
+                onCancel={() => setShowAddressForm(false)}
+                submitLabel="Adicionar endereço"
               />
             </div>
-            <div className="relative">
-              <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input className="input bg-slate-50 pl-10 text-slate-400" value={form.email} disabled />
-            </div>
-            <div className="relative">
-              <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                className="input pl-10"
-                placeholder="Telefone / WhatsApp"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+          )}
+
+          {editingAddress && (
+            <div className="mb-4 rounded-xl bg-blue-50/60 p-4">
+              <AddressForm
+                initial={addressToFormValues(editingAddress)}
+                onSubmit={(values) => handleUpdateAddress(editingAddress.id, values)}
+                onCancel={() => setEditingAddress(null)}
+                submitLabel="Salvar alterações"
               />
             </div>
+          )}
 
-            {message && <p className="text-sm font-medium text-green-600">{message}</p>}
-            {error && <p className="text-sm font-medium text-red-600">{error}</p>}
-
-            <button type="submit" className="btn-primary w-full" disabled={saving}>
-              {saving ? <Loader size={18} color="#fff" /> : "Salvar"}
-            </button>
-          </form>
-        )}
-
-        <p className="mt-6 text-center text-sm text-slate-500">
-          <Link href="/pedidos" className="font-bold text-brand hover:underline">
-            Ver meus pedidos
-          </Link>
-        </p>
+          {addressesLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader />
+            </div>
+          ) : addresses.length === 0 && !showAddressForm ? (
+            <p className="text-sm text-slate-500">Você ainda não tem nenhum endereço cadastrado.</p>
+          ) : (
+            <div className="space-y-2">
+              {addresses.map((a) => (
+                <div key={a.id} className="rounded-xl border border-blue-100 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="flex items-center gap-1.5 font-bold text-slate-800">
+                        {a.label || "Endereço"}
+                        {a.is_default && (
+                          <span className="flex items-center gap-0.5 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-brand">
+                            <Star size={10} fill="currentColor" /> Padrão
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        {a.street}, {a.number}
+                        {a.complement ? ` - ${a.complement}` : ""} - {a.neighborhood} - {a.city}/{a.state} -{" "}
+                        {a.zip}
+                      </p>
+                    </div>
+                    <button
+                      className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-brand"
+                      onClick={() => setEditingAddress(a)}
+                      aria-label="Editar endereço"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                  </div>
+                  <div className="mt-2 flex gap-3 text-xs font-bold">
+                    {!a.is_default && (
+                      <button className="text-brand hover:underline" onClick={() => handleSetDefault(a)}>
+                        Tornar padrão
+                      </button>
+                    )}
+                    <button className="text-red-600 hover:underline" onClick={() => handleDeleteAddress(a)}>
+                      Excluir
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+      {dialog}
     </div>
   );
 }
