@@ -17,6 +17,19 @@ const config: Config = {
           "sans-serif",
         ],
       },
+      // Site inteiro em Lato Black: toda utilidade de peso de fonte
+      // (font-medium, font-bold etc.) resolve pro mesmo peso 900.
+      fontWeight: {
+        thin: "900",
+        extralight: "900",
+        light: "900",
+        normal: "900",
+        medium: "900",
+        semibold: "900",
+        bold: "900",
+        extrabold: "900",
+        black: "900",
+      },
       colors: {
         brand: {
           DEFAULT: "#1d4ed8",
