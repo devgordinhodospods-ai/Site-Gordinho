@@ -42,7 +42,7 @@ export function Footer({ settings }: { settings: SiteSettings }) {
   return (
     <footer className="mt-16 bg-slate-950 text-slate-300">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-3">
-        <div className="flex items-center gap-3 sm:items-start">
+        <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-center sm:text-left">
           {image ? (
             <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border border-slate-700">
               <Image src={image} alt={settings.store_name} fill className="object-cover" />
