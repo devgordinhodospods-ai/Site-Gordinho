@@ -7,7 +7,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const { data, error } = await db
     .from("products")
     .select(
-      "id, name, slug, description, price_cents, compare_at_price_cents, images, stock, active, category_id, categories(id, name, slug)"
+      "id, name, slug, description, price_cents, compare_at_price_cents, images, stock, active, category_id, categories(id, name, slug), product_flavors(id, name, stock, image_url, position)"
     )
     .eq("slug", slug)
     .eq("active", true)

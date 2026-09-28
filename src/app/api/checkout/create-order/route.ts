@@ -8,7 +8,13 @@ import { createPaymentPreference } from "@/lib/mercadopago";
 
 const schema = z.object({
   items: z
-    .array(z.object({ productId: z.string().uuid(), quantity: z.number().int().positive() }))
+    .array(
+      z.object({
+        productId: z.string().uuid(),
+        quantity: z.number().int().positive(),
+        flavorId: z.string().uuid().optional(),
+      })
+    )
     .min(1),
   zoneId: z.string().uuid(),
   address: z.object({
@@ -82,7 +88,11 @@ export async function POST(req: Request) {
     p_shipping_fee_cents: shippingBreakdown.totalCents,
     p_service_fee_cents: serviceFeeCents,
     p_shipping_breakdown: shippingBreakdown,
-    p_items: items.map((i) => ({ product_id: i.productId, quantity: i.quantity })),
+    p_items: items.map((i) => ({
+      product_id: i.productId,
+      quantity: i.quantity,
+      flavor_id: i.flavorId ?? null,
+    })),
   });
 
   if (rpcError || !orderId) {
@@ -101,7 +111,7 @@ export async function POST(req: Request) {
     const preference = await createPaymentPreference({
       orderId,
       items: (orderItems ?? []).map((i) => ({
-        title: i.product_name,
+        title: i.flavor_name ? `${i.product_name} (${i.flavor_name})` : i.product_name,
         quantity: i.quantity,
         unitPriceCents: i.unit_price_cents,
       })),

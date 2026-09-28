@@ -5,11 +5,14 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { centsToBRL } from "@/lib/money";
 import { useCartStore } from "@/store/cart";
-import type { Product } from "@/lib/types";
+import type { ProductWithFlavors } from "@/lib/types";
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product }: { product: ProductWithFlavors }) {
   const image = product.images?.[0];
-  const outOfStock = product.stock <= 0;
+  const flavors = product.product_flavors ?? [];
+  const hasFlavors = flavors.length > 0;
+  const totalStock = hasFlavors ? flavors.reduce((sum, f) => sum + f.stock, 0) : product.stock;
+  const outOfStock = totalStock <= 0;
   const addItem = useCartStore((s) => s.addItem);
 
   const hasDiscount =
@@ -69,7 +72,7 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
         <div className="mt-0.5 flex items-center justify-between">
           <span className="font-display text-lg text-brand">{centsToBRL(product.price_cents)}</span>
-          {!outOfStock && (
+          {!outOfStock && !hasFlavors && (
             <button
               onClick={handleQuickAdd}
               className="flex h-8 w-8 items-center justify-center rounded-lg text-white shadow-brand transition-transform hover:scale-110"
@@ -79,6 +82,9 @@ export function ProductCard({ product }: { product: Product }) {
             >
               <Plus size={16} />
             </button>
+          )}
+          {!outOfStock && hasFlavors && (
+            <span className="text-xs font-bold text-slate-400">Ver sabores</span>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/loja/ProductCard";
-import type { Product } from "@/lib/types";
+import type { ProductWithFlavors } from "@/lib/types";
 
 export function ProductRow({
   title,
@@ -8,7 +8,7 @@ export function ProductRow({
   seeMoreHref,
 }: {
   title: string;
-  products: Product[];
+  products: ProductWithFlavors[];
   seeMoreHref?: string;
 }) {
   if (products.length === 0) return null;

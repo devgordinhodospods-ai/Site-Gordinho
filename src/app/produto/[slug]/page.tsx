@@ -3,13 +3,13 @@ import { notFound } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { centsToBRL } from "@/lib/money";
 import { AddToCartButton } from "@/components/loja/AddToCartButton";
-import type { Product } from "@/lib/types";
+import type { ProductWithFullFlavors } from "@/lib/types";
 
-async function getProduct(slug: string): Promise<Product | null> {
+async function getProduct(slug: string): Promise<ProductWithFullFlavors | null> {
   const db = getSupabaseAdmin();
   const { data } = await db
     .from("products")
-    .select("*")
+    .select("*, product_flavors(id, product_id, name, stock, image_url, position)")
     .eq("slug", slug)
     .eq("active", true)
     .maybeSingle();
@@ -22,6 +22,8 @@ export default async function ProdutoPage({ params }: { params: Promise<{ slug: 
   if (!product) notFound();
 
   const image = product.images?.[0];
+  const flavors = (product.product_flavors ?? []).slice().sort((a, b) => a.position - b.position);
+  const totalStock = flavors.length > 0 ? flavors.reduce((sum, f) => sum + f.stock, 0) : product.stock;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -35,17 +37,19 @@ export default async function ProdutoPage({ params }: { params: Promise<{ slug: 
         </div>
 
         <div>
-          <h1 className="text-2xl font-bold">{product.name}</h1>
-          <p className="mt-2 text-2xl font-bold text-slate-900">{centsToBRL(product.price_cents)}</p>
+          <h1 className="font-display text-2xl text-slate-900">{product.name}</h1>
+          <p className="font-display mt-2 text-2xl text-brand">{centsToBRL(product.price_cents)}</p>
           {product.description && (
             <p className="mt-4 whitespace-pre-line text-slate-600">{product.description}</p>
           )}
-          <p className="mt-2 text-sm text-slate-500">
-            {product.stock > 0 ? `${product.stock} em estoque` : "Sem estoque no momento"}
-          </p>
+          {flavors.length === 0 && (
+            <p className="mt-2 text-sm text-slate-500">
+              {totalStock > 0 ? `${totalStock} em estoque` : "Sem estoque no momento"}
+            </p>
+          )}
 
           <div className="mt-6">
-            <AddToCartButton product={product} />
+            <AddToCartButton product={product} flavors={flavors} />
           </div>
         </div>
       </div>

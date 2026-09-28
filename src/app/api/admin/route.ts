@@ -13,7 +13,10 @@ const READ_ACTIONS = new Set([
   "listOrders",
   "getOrder",
   "getSettings",
+  "getDashboardStats",
 ]);
+
+const PAID_LIKE_STATUSES = new Set(["paid", "confirmed", "preparing", "shipped", "delivered"]);
 
 const PRODUCT_FIELDS = [
   "name",
@@ -21,11 +24,14 @@ const PRODUCT_FIELDS = [
   "description",
   "price_cents",
   "compare_at_price_cents",
+  "cost_cents",
   "images",
   "category_id",
   "stock",
   "active",
 ] as const;
+
+const FLAVOR_FIELDS = ["name", "stock", "image_url", "position"] as const;
 
 const CATEGORY_FIELDS = ["name", "slug", "image_url", "position", "active"] as const;
 
@@ -83,7 +89,7 @@ export async function POST(req: Request) {
       case "listProducts": {
         const { data, error } = await db
           .from("products")
-          .select("*, categories(id, name)")
+          .select("*, categories(id, name), product_flavors(id, name, stock, image_url, position)")
           .order("created_at", { ascending: false });
         if (error) throw error;
         return NextResponse.json({ products: data });
@@ -91,19 +97,49 @@ export async function POST(req: Request) {
 
       case "saveProduct": {
         const fields = pick(body.fields ?? {}, PRODUCT_FIELDS);
-        if (body.id) {
-          const { data, error } = await db
+        let productId: string = body.id;
+
+        if (productId) {
+          const { error } = await db
             .from("products")
             .update({ ...fields, updated_at: new Date().toISOString() })
-            .eq("id", body.id)
-            .select()
-            .single();
+            .eq("id", productId);
           if (error) throw error;
-          return NextResponse.json({ product: data });
+        } else {
+          const { data, error } = await db.from("products").insert(fields).select("id").single();
+          if (error) throw error;
+          productId = data.id;
         }
-        const { data, error } = await db.from("products").insert(fields).select().single();
-        if (error) throw error;
-        return NextResponse.json({ product: data });
+
+        // Sabores: a lista enviada pelo painel é sempre a lista completa
+        // atual, então substitui tudo (apaga o que sumiu, grava o resto).
+        if (Array.isArray(body.flavors)) {
+          const { error: delError } = await db
+            .from("product_flavors")
+            .delete()
+            .eq("product_id", productId);
+          if (delError) throw delError;
+
+          const flavorRows = body.flavors.map((f: Record<string, unknown>, index: number) => ({
+            ...pick(f, FLAVOR_FIELDS),
+            position: index,
+            product_id: productId,
+          }));
+
+          if (flavorRows.length > 0) {
+            const { error: insError } = await db.from("product_flavors").insert(flavorRows);
+            if (insError) throw insError;
+          }
+        }
+
+        const { data: product, error: fetchError } = await db
+          .from("products")
+          .select("*, categories(id, name), product_flavors(id, name, stock, image_url, position)")
+          .eq("id", productId)
+          .single();
+        if (fetchError) throw fetchError;
+
+        return NextResponse.json({ product });
       }
 
       case "deleteProduct": {
@@ -170,6 +206,105 @@ export async function POST(req: Request) {
         const { error } = await db.from("shipping_zones").delete().eq("id", body.id);
         if (error) throw error;
         return NextResponse.json({ ok: true });
+      }
+
+      // ---------------- dashboard de monitoramento ----------------
+      case "getDashboardStats": {
+        const { data: orders, error: ordersError } = await db
+          .from("orders")
+          .select("id, status, total_cents, created_at");
+        if (ordersError) throw ordersError;
+
+        const { data: items, error: itemsError } = await db
+          .from("order_items")
+          .select("order_id, product_id, product_name, quantity, unit_price_cents, unit_cost_cents");
+        if (itemsError) throw itemsError;
+
+        const orderById = new Map((orders ?? []).map((o) => [o.id, o]));
+
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfWeek = new Date(startOfDay);
+        startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        let totalVendidoCents = 0;
+        let lucroTotalCents = 0;
+        let pedidosPagos = 0;
+        let pedidosPendentes = 0;
+        let pedidosCancelados = 0;
+
+        const periodStats = {
+          today: { vendasCents: 0, lucroCents: 0 },
+          week: { vendasCents: 0, lucroCents: 0 },
+          month: { vendasCents: 0, lucroCents: 0 },
+        };
+
+        for (const o of orders ?? []) {
+          const createdAt = new Date(o.created_at);
+          if (PAID_LIKE_STATUSES.has(o.status)) {
+            totalVendidoCents += o.total_cents;
+            pedidosPagos += 1;
+            if (createdAt >= startOfDay) periodStats.today.vendasCents += o.total_cents;
+            if (createdAt >= startOfWeek) periodStats.week.vendasCents += o.total_cents;
+            if (createdAt >= startOfMonth) periodStats.month.vendasCents += o.total_cents;
+          } else if (o.status === "awaiting_payment") {
+            pedidosPendentes += 1;
+          } else if (o.status === "cancelled") {
+            pedidosCancelados += 1;
+          }
+        }
+
+        type ProductAgg = { name: string; quantity: number; receitaCents: number; lucroCents: number };
+        const productAgg = new Map<string, ProductAgg>();
+
+        for (const item of items ?? []) {
+          const order = orderById.get(item.order_id);
+          if (!order || !PAID_LIKE_STATUSES.has(order.status)) continue;
+
+          const cost = item.unit_cost_cents ?? 0;
+          const itemLucro = (item.unit_price_cents - cost) * item.quantity;
+          const itemReceita = item.unit_price_cents * item.quantity;
+          lucroTotalCents += itemLucro;
+
+          const createdAt = new Date(order.created_at);
+          if (createdAt >= startOfDay) periodStats.today.lucroCents += itemLucro;
+          if (createdAt >= startOfWeek) periodStats.week.lucroCents += itemLucro;
+          if (createdAt >= startOfMonth) periodStats.month.lucroCents += itemLucro;
+
+          const key = item.product_id ?? item.product_name;
+          const existing = productAgg.get(key) ?? {
+            name: item.product_name,
+            quantity: 0,
+            receitaCents: 0,
+            lucroCents: 0,
+          };
+          existing.quantity += item.quantity;
+          existing.receitaCents += itemReceita;
+          existing.lucroCents += itemLucro;
+          productAgg.set(key, existing);
+        }
+
+        const topProducts = Array.from(productAgg.values())
+          .sort((a, b) => b.receitaCents - a.receitaCents)
+          .slice(0, 10)
+          .map((p) => ({
+            ...p,
+            margemPercent: p.receitaCents > 0 ? (p.lucroCents / p.receitaCents) * 100 : 0,
+          }));
+
+        return NextResponse.json({
+          totalVendidoCents,
+          lucroTotalCents,
+          margemPercent: totalVendidoCents > 0 ? (lucroTotalCents / totalVendidoCents) * 100 : 0,
+          totalPedidos: (orders ?? []).length,
+          pedidosPagos,
+          pedidosPendentes,
+          pedidosCancelados,
+          ticketMedioCents: pedidosPagos > 0 ? Math.round(totalVendidoCents / pedidosPagos) : 0,
+          periodStats,
+          topProducts,
+        });
       }
 
       // ---------------- pedidos ----------------

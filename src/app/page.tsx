@@ -6,24 +6,24 @@ import { ProductCard } from "@/components/loja/ProductCard";
 import { CategoryGrid } from "@/components/loja/CategoryGrid";
 import { ProductRow } from "@/components/loja/ProductRow";
 import { TrustTicker } from "@/components/layout/TrustTicker";
-import type { Category, Product } from "@/lib/types";
+import type { Category, ProductWithFlavors } from "@/lib/types";
 
-async function getFeaturedProducts(): Promise<Product[]> {
+async function getFeaturedProducts(): Promise<ProductWithFlavors[]> {
   const db = getSupabaseAdmin();
   const { data } = await db
     .from("products")
-    .select("*")
+    .select("*, product_flavors(id, stock)")
     .eq("active", true)
     .order("created_at", { ascending: false })
     .limit(8);
   return data ?? [];
 }
 
-async function getProductsByCategory(categoryId: string): Promise<Product[]> {
+async function getProductsByCategory(categoryId: string): Promise<ProductWithFlavors[]> {
   const db = getSupabaseAdmin();
   const { data } = await db
     .from("products")
-    .select("*")
+    .select("*, product_flavors(id, stock)")
     .eq("active", true)
     .eq("category_id", categoryId)
     .order("created_at", { ascending: false })

@@ -9,7 +9,9 @@ export async function GET(req: Request) {
   const db = getSupabaseAdmin();
   let query = db
     .from("products")
-    .select("id, name, slug, description, price_cents, compare_at_price_cents, images, stock, category_id, active")
+    .select(
+      "id, name, slug, description, price_cents, compare_at_price_cents, images, stock, category_id, active, product_flavors(id, stock)"
+    )
     .eq("active", true)
     .order("created_at", { ascending: false });
 

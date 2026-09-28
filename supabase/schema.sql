@@ -53,6 +53,7 @@ create table if not exists products (
   description text,
   price_cents int not null check (price_cents >= 0),
   compare_at_price_cents int,
+  cost_cents int,
   images text[] not null default '{}',
   category_id uuid references categories(id) on delete set null,
   stock int not null default 0 check (stock >= 0),
@@ -68,6 +69,30 @@ alter table products enable row level security;
 drop policy if exists "products_public_read" on products;
 create policy "products_public_read" on products
   for select using (active = true);
+
+-- ----------------------------------------------------------------------------
+-- product_flavors: variações opcionais de um produto (sabor, cor, etc), cada
+-- uma com seu próprio estoque. Quando um produto tem sabores cadastrados, o
+-- cliente escolhe um sabor na página do produto e o estoque descontado na
+-- compra é o do sabor, não o do produto em si.
+-- ----------------------------------------------------------------------------
+create table if not exists product_flavors (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references products(id) on delete cascade,
+  name text not null,
+  stock int not null default 0 check (stock >= 0),
+  image_url text,
+  position int not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists product_flavors_product_idx on product_flavors(product_id);
+
+alter table product_flavors enable row level security;
+
+drop policy if exists "product_flavors_public_read" on product_flavors;
+create policy "product_flavors_public_read" on product_flavors
+  for select using (true);
 
 -- ----------------------------------------------------------------------------
 -- shipping_zones: regiões de entrega com preço base configurável pelo lojista
@@ -142,7 +167,10 @@ create table if not exists order_items (
   order_id uuid not null references orders(id) on delete cascade,
   product_id uuid references products(id) on delete set null,
   product_name text not null,
+  flavor_id uuid references product_flavors(id) on delete set null,
+  flavor_name text,
   unit_price_cents int not null,
+  unit_cost_cents int,
   quantity int not null check (quantity > 0)
 );
 
@@ -177,11 +205,18 @@ declare
   v_subtotal int := 0;
   v_item jsonb;
   v_product record;
+  v_flavor record;
   v_qty int;
+  v_flavor_id uuid;
+  v_flavor_name text;
 begin
-  for v_item in select * from jsonb_array_elements(p_items) order by (value->>'product_id')
+  -- 1ª passada: trava produtos e sabores envolvidos (em ordem estável, pra
+  -- evitar deadlock), valida estoque e calcula o subtotal. Nada é gravado
+  -- ainda nesta passada.
+  for v_item in select * from jsonb_array_elements(p_items) order by (value->>'product_id'), (value->>'flavor_id')
   loop
     v_qty := (v_item->>'quantity')::int;
+    v_flavor_id := nullif(v_item->>'flavor_id', '')::uuid;
 
     select id, price_cents, stock, name, active
       into v_product
@@ -193,8 +228,23 @@ begin
       raise exception 'Produto indisponível: %', (v_item->>'product_id');
     end if;
 
-    if v_product.stock < v_qty then
-      raise exception 'Estoque insuficiente para "%": restam % unidade(s)', v_product.name, v_product.stock;
+    if v_flavor_id is not null then
+      select id, stock, name into v_flavor
+        from product_flavors
+        where id = v_flavor_id and product_id = v_product.id
+        for update;
+
+      if not found then
+        raise exception 'Sabor indisponível para o produto "%"', v_product.name;
+      end if;
+
+      if v_flavor.stock < v_qty then
+        raise exception 'Estoque insuficiente para "% (%)": restam % unidade(s)', v_product.name, v_flavor.name, v_flavor.stock;
+      end if;
+    else
+      if v_product.stock < v_qty then
+        raise exception 'Estoque insuficiente para "%": restam % unidade(s)', v_product.name, v_product.stock;
+      end if;
     end if;
 
     v_subtotal := v_subtotal + (v_product.price_cents * v_qty);
@@ -213,18 +263,32 @@ begin
     p_shipping_breakdown
   ) returning id into v_order_id;
 
+  -- 2ª passada: já validado, agora grava os itens e desconta o estoque
+  -- (do sabor, se houver, senão do produto).
   for v_item in select * from jsonb_array_elements(p_items)
   loop
     v_qty := (v_item->>'quantity')::int;
+    v_flavor_id := nullif(v_item->>'flavor_id', '')::uuid;
 
-    select id, price_cents, name into v_product
+    select id, price_cents, cost_cents, name into v_product
       from products where id = (v_item->>'product_id')::uuid;
 
-    insert into order_items (order_id, product_id, product_name, unit_price_cents, quantity)
-    values (v_order_id, v_product.id, v_product.name, v_product.price_cents, v_qty);
+    v_flavor_name := null;
+    if v_flavor_id is not null then
+      select name into v_flavor_name from product_flavors where id = v_flavor_id;
+      update product_flavors set stock = stock - v_qty where id = v_flavor_id;
+    else
+      update products set stock = stock - v_qty, updated_at = now() where id = v_product.id;
+    end if;
 
-    update products set stock = stock - v_qty, updated_at = now()
-      where id = v_product.id;
+    insert into order_items (
+      order_id, product_id, product_name, flavor_id, flavor_name,
+      unit_price_cents, unit_cost_cents, quantity
+    )
+    values (
+      v_order_id, v_product.id, v_product.name, v_flavor_id, v_flavor_name,
+      v_product.price_cents, v_product.cost_cents, v_qty
+    );
   end loop;
 
   return v_order_id;
@@ -260,9 +324,11 @@ begin
     raise exception 'Pedido já enviado/entregue, não pode ser cancelado automaticamente';
   end if;
 
-  for v_item in select product_id, quantity from order_items where order_id = p_order_id
+  for v_item in select product_id, flavor_id, quantity from order_items where order_id = p_order_id
   loop
-    if v_item.product_id is not null then
+    if v_item.flavor_id is not null then
+      update product_flavors set stock = stock + v_item.quantity where id = v_item.flavor_id;
+    elsif v_item.product_id is not null then
       update products set stock = stock + v_item.quantity where id = v_item.product_id;
     end if;
   end loop;
