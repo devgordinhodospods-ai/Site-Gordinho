@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Image from "next/image";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSiteSettings } from "@/lib/settings";
 import { getActiveCategories } from "@/lib/categories";
@@ -48,23 +48,18 @@ export default async function HomePage() {
 
   return (
     <div>
-      <section
-        className="py-20 text-center text-white"
-        style={{ background: "linear-gradient(160deg, #1d4ed8 0%, #0f2f8f 100%)" }}
-      >
-        <h1 className="font-display text-3xl sm:text-4xl">
-          {settings.hero_title ?? settings.store_name}
-        </h1>
-        <p className="mx-auto mt-3 max-w-xl text-blue-100">
-          {settings.hero_subtitle ?? "Confira nossos produtos e faça seu pedido com entrega rápida."}
-        </p>
-        <Link
-          href="/produtos"
-          className="btn-secondary mt-6 inline-flex border-white bg-white text-brand hover:border-white hover:bg-blue-50"
-        >
-          Ver produtos
-        </Link>
-      </section>
+      {settings.hero_image_url && (
+        <section className="relative aspect-[21/9] w-full bg-black sm:aspect-[3/1]">
+          <Image
+            src={settings.hero_image_url}
+            alt={settings.store_name}
+            fill
+            priority
+            className="object-contain"
+            sizes="100vw"
+          />
+        </section>
+      )}
 
       <TrustTicker />
 

@@ -52,6 +52,13 @@ export const useCartStore = create<CartState>()(
         get().items.reduce((sum, i) => sum + i.priceCents * i.quantity, 0),
       totalQuantity: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
     }),
-    { name: "cart-storage" }
+    {
+      name: "cart-storage-guest",
+      // A chave de armazenamento é trocada em tempo real por conta logada
+      // (ver CartAccountSync) — sem isso, o carrinho de um cliente aparecia
+      // pro próximo que logasse no mesmo navegador. skipHydration evita
+      // carregar o carrinho errado antes de saber quem está logado.
+      skipHydration: true,
+    }
   )
 );

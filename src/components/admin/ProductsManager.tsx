@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Eye, EyeOff } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { supabase } from "@/lib/supabase";
 import { brlToCents, centsToBRL } from "@/lib/money";
@@ -180,6 +180,11 @@ export function ProductsManager() {
     await load();
   }
 
+  async function toggleActive(p: ProductWithFullFlavors) {
+    await adminApi("saveProduct", { id: p.id, fields: { active: !p.active } });
+    await load();
+  }
+
   function totalStock(p: ProductWithFullFlavors) {
     const flavors = p.product_flavors ?? [];
     return flavors.length > 0 ? flavors.reduce((sum: number, f: ProductFlavor) => sum + f.stock, 0) : p.stock;
@@ -286,15 +291,6 @@ export function ProductsManager() {
             ))}
           </select>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.active}
-            onChange={(e) => setForm({ ...form, active: e.target.checked })}
-          />
-          Ativo (visível na loja)
-          <HelpTip text="Se desmarcar, o produto some da loja pros clientes mas continua salvo aqui no painel — útil pra pausar a venda de algo sem excluir." />
-        </label>
         <div className="md:col-span-2">
           <label className="mb-1 block text-xs font-bold text-slate-500">
             Descrição
@@ -413,6 +409,14 @@ export function ProductsManager() {
             <div className="flex gap-2">
               <button className="btn-secondary" onClick={() => edit(p)}>
                 Editar
+              </button>
+              <button
+                className="btn-secondary"
+                onClick={() => toggleActive(p)}
+                aria-label={p.active ? "Tirar do ar" : "Colocar no ar"}
+                title={p.active ? "Tirar do ar" : "Colocar no ar"}
+              >
+                {p.active ? <Eye size={16} /> : <EyeOff size={16} />}
               </button>
               <button className="btn-secondary text-red-600" onClick={() => handleDelete(p.id, p.name)}>
                 Excluir
