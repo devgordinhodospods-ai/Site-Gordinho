@@ -236,79 +236,10 @@ export default function MinhaContaPage() {
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
               </div>
-              <div>
-                <div className="relative">
-                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input className="input bg-slate-50 pl-10 text-slate-400" value={form.email} disabled />
-                </div>
-                {emailStep === "idle" && (
-                  <button
-                    type="button"
-                    className="mt-1 text-xs font-bold text-brand hover:underline"
-                    onClick={() => setEmailStep("enterEmail")}
-                  >
-                    Trocar e-mail
-                  </button>
-                )}
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input className="input bg-slate-50 pl-10 text-slate-400" value={form.email} disabled />
               </div>
-
-              {emailStep === "enterEmail" && (
-                <div className="rounded-xl bg-blue-50/60 p-3">
-                  <form onSubmit={handleRequestEmailChange} className="space-y-2">
-                    <label className="block text-xs font-bold text-slate-600">Novo e-mail</label>
-                    <input
-                      className="input"
-                      type="email"
-                      placeholder="novo@email.com"
-                      required
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                    />
-                    {emailChangeError && <p className="text-sm font-medium text-red-600">{emailChangeError}</p>}
-                    <div className="flex gap-2">
-                      <button type="submit" className="btn-primary flex-1 py-2 text-sm" disabled={emailChangeSaving}>
-                        {emailChangeSaving ? <Loader size={16} color="#fff" /> : "Enviar código"}
-                      </button>
-                      <button type="button" className="btn-secondary py-2 text-sm" onClick={cancelEmailChange}>
-                        Cancelar
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {emailStep === "enterCode" && (
-                <div className="rounded-xl bg-blue-50/60 p-3">
-                  {emailChangeDone ? (
-                    <p className="text-sm font-medium text-green-600">
-                      E-mail alterado! Você será desconectado pra entrar de novo com o novo e-mail...
-                    </p>
-                  ) : (
-                    <form onSubmit={handleConfirmEmailChange} className="space-y-2">
-                      <label className="flex items-center gap-1 text-xs font-bold text-slate-600">
-                        <KeyRound size={12} /> Código enviado para {newEmail}
-                      </label>
-                      <input
-                        className="input text-center tracking-[0.3em]"
-                        placeholder="000000"
-                        maxLength={6}
-                        required
-                        value={emailCode}
-                        onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, ""))}
-                      />
-                      {emailChangeError && <p className="text-sm font-medium text-red-600">{emailChangeError}</p>}
-                      <div className="flex gap-2">
-                        <button type="submit" className="btn-primary flex-1 py-2 text-sm" disabled={emailChangeSaving}>
-                          {emailChangeSaving ? <Loader size={16} color="#fff" /> : "Confirmar código"}
-                        </button>
-                        <button type="button" className="btn-secondary py-2 text-sm" onClick={cancelEmailChange}>
-                          Cancelar
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </div>
-              )}
 
               <div className="relative">
                 <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -337,6 +268,74 @@ export default function MinhaContaPage() {
                 {saving ? <Loader size={18} color="#fff" /> : "Salvar"}
               </button>
             </form>
+          )}
+
+          {!loading && emailStep === "idle" && (
+            <button
+              type="button"
+              className="mt-3 text-xs font-bold text-brand hover:underline"
+              onClick={() => setEmailStep("enterEmail")}
+            >
+              Trocar e-mail
+            </button>
+          )}
+
+          {emailStep === "enterEmail" && (
+            <div className="mt-3 rounded-xl bg-blue-50/60 p-3">
+              <form onSubmit={handleRequestEmailChange} className="space-y-2">
+                <label className="block text-xs font-bold text-slate-600">Novo e-mail</label>
+                <input
+                  className="input"
+                  type="email"
+                  placeholder="novo@email.com"
+                  required
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                />
+                {emailChangeError && <p className="text-sm font-medium text-red-600">{emailChangeError}</p>}
+                <div className="flex gap-2">
+                  <button type="submit" className="btn-primary flex-1 py-2 text-sm" disabled={emailChangeSaving}>
+                    {emailChangeSaving ? <Loader size={16} color="#fff" /> : "Enviar código"}
+                  </button>
+                  <button type="button" className="btn-secondary py-2 text-sm" onClick={cancelEmailChange}>
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {emailStep === "enterCode" && (
+            <div className="mt-3 rounded-xl bg-blue-50/60 p-3">
+              {emailChangeDone ? (
+                <p className="text-sm font-medium text-green-600">
+                  E-mail alterado! Você será desconectado pra entrar de novo com o novo e-mail...
+                </p>
+              ) : (
+                <form onSubmit={handleConfirmEmailChange} className="space-y-2">
+                  <label className="flex items-center gap-1 text-xs font-bold text-slate-600">
+                    <KeyRound size={12} /> Código enviado para {newEmail}
+                  </label>
+                  <input
+                    className="input text-center tracking-[0.3em]"
+                    placeholder="000000"
+                    maxLength={6}
+                    required
+                    value={emailCode}
+                    onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, ""))}
+                  />
+                  {emailChangeError && <p className="text-sm font-medium text-red-600">{emailChangeError}</p>}
+                  <div className="flex gap-2">
+                    <button type="submit" className="btn-primary flex-1 py-2 text-sm" disabled={emailChangeSaving}>
+                      {emailChangeSaving ? <Loader size={16} color="#fff" /> : "Confirmar código"}
+                    </button>
+                    <button type="button" className="btn-secondary py-2 text-sm" onClick={cancelEmailChange}>
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           )}
 
           <p className="mt-6 text-center text-sm text-slate-500">
