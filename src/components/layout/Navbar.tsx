@@ -7,18 +7,9 @@ import { useSession } from "next-auth/react";
 import { ShoppingCart, User, LayoutDashboard, Search, LayoutGrid } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { useEffect, useState } from "react";
-import type { Category } from "@/lib/types";
 import { UserMenu } from "@/components/layout/UserMenu";
 
-export function Navbar({
-  storeName,
-  logoUrl,
-  categories,
-}: {
-  storeName: string;
-  logoUrl: string | null;
-  categories: Category[];
-}) {
+export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: string | null }) {
   const router = useRouter();
   const { data: session } = useSession();
   const totalQuantity = useCartStore((s) => s.totalQuantity());
@@ -74,9 +65,10 @@ export function Navbar({
           {session?.user?.isAdmin && (
             <Link
               href="/admin"
-              className="hidden items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-blue-50 hover:text-brand md:flex"
+              className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-blue-50 hover:text-brand"
+              aria-label="Painel"
             >
-              <LayoutDashboard size={16} /> Painel
+              <LayoutDashboard size={16} /> <span className="hidden sm:inline">Painel</span>
             </Link>
           )}
 
@@ -106,30 +98,6 @@ export function Navbar({
           )}
         </div>
       </div>
-
-      {categories.length > 0 && (
-        <div className="border-t border-blue-50">
-          <div className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto px-4 py-2 text-sm font-bold text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/produtos?categoria=${cat.slug}`}
-                className="shrink-0 whitespace-nowrap transition-colors hover:text-brand"
-              >
-                {cat.name}
-              </Link>
-            ))}
-            {session?.user?.isAdmin && (
-              <Link
-                href="/admin"
-                className="flex shrink-0 items-center gap-1 whitespace-nowrap transition-colors hover:text-brand md:hidden"
-              >
-                <LayoutDashboard size={15} /> Painel
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
     </header>
   );
 }
