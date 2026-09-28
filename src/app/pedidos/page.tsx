@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { centsToBRL } from "@/lib/money";
 import { LoaderPage } from "@/components/ui/Loader";
+import { PeriodFilter, isWithinPeriod, type Period } from "@/components/ui/PeriodFilter";
 import type { Order } from "@/lib/types";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -31,6 +32,7 @@ export default function PedidosPage() {
   const { data: session, status } = useSession();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<Period>("30d");
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -39,6 +41,8 @@ export default function PedidosPage() {
       .then((data) => setOrders(data.orders ?? []))
       .finally(() => setLoading(false));
   }, [status]);
+
+  const visibleOrders = orders.filter((o) => isWithinPeriod(o.created_at, period));
 
   if (status === "loading") return null;
 
@@ -55,7 +59,10 @@ export default function PedidosPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="font-display mb-6 text-2xl text-slate-900">Meus pedidos</h1>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="font-display text-2xl text-slate-900">Meus pedidos</h1>
+        {orders.length > 0 && <PeriodFilter value={period} onChange={setPeriod} />}
+      </div>
 
       {loading ? (
         <LoaderPage label="Carregando pedidos..." />
@@ -66,9 +73,16 @@ export default function PedidosPage() {
             Ver produtos
           </Link>
         </div>
+      ) : visibleOrders.length === 0 ? (
+        <div className="card p-10 text-center">
+          <p className="text-slate-600">Nenhum pedido nesse período.</p>
+          <button type="button" className="btn-secondary mt-4" onClick={() => setPeriod("all")}>
+            Ver todos os pedidos
+          </button>
+        </div>
       ) : (
         <div className="space-y-3">
-          {orders.map((order) => (
+          {visibleOrders.map((order) => (
             <Link
               key={order.id}
               href={`/pedidos/${order.id}`}
