@@ -57,8 +57,9 @@ na navbar e no rodapé do site.
    - **Mercado Pago**: pegue o `Access Token` de produção em
      [mercadopago.com.br/developers/panel/app](https://www.mercadopago.com.br/developers/panel/app)
      (conta do próprio cliente, já que ele mesmo paga as taxas do Mercado Pago).
-   - **Resend**: crie uma conta em [resend.com](https://resend.com) e gere uma API key para o envio
-     dos e-mails de pedido.
+   - **E-mails (SMTP)**: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` e `SMTP_PASS` — pode ser o mesmo
+     Gmail + senha de app usado no SMTP do Supabase. Enviam o Pix do pedido, a confirmação de
+     pagamento e as mudanças de status.
 
 2. Instale as dependências e rode localmente:
 

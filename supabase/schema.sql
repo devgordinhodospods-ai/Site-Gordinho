@@ -194,6 +194,9 @@ create table if not exists orders (
   payment_id text,
   payment_status text,
   shipping_breakdown jsonb,
+  pix_qr_code text,
+  payment_url text,
+  payment_expires_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -203,6 +206,8 @@ create index if not exists orders_status_idx on orders(status);
 create index if not exists orders_payment_id_idx on orders(payment_id);
 create index if not exists orders_customer_email_idx on orders(customer_email);
 create index if not exists orders_created_at_idx on orders(created_at desc);
+create index if not exists orders_awaiting_expires_idx
+  on orders(payment_expires_at) where status = 'awaiting_payment';
 
 alter table orders enable row level security;
 -- Sem policy pública: leitura/escrita só via service_role (rota valida dono do pedido ou admin).

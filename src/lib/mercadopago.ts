@@ -1,5 +1,4 @@
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
-import { PAYMENT_WINDOW_MS } from "@/lib/orders";
 
 function getClient(): MercadoPagoConfig {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
@@ -36,6 +35,7 @@ export async function createPaymentPreference(params: {
   failureUrl: string;
   pendingUrl: string;
   notificationUrl: string;
+  expiresAt: Date;
 }) {
   const client = getClient();
   const preference = new Preference(client);
@@ -76,12 +76,50 @@ export async function createPaymentPreference(params: {
       // pedido abandonado é cancelado (ver releaseAbandonedOrders).
       expires: true,
       expiration_date_from: toMercadoPagoDate(new Date()),
-      expiration_date_to: toMercadoPagoDate(new Date(Date.now() + PAYMENT_WINDOW_MS)),
-      date_of_expiration: toMercadoPagoDate(new Date(Date.now() + PAYMENT_WINDOW_MS)),
+      expiration_date_to: toMercadoPagoDate(params.expiresAt),
+      date_of_expiration: toMercadoPagoDate(params.expiresAt),
     },
   });
 
   return result;
+}
+
+/**
+ * Cria um pagamento Pix direto (sem sair do site): devolve o "copia e
+ * cola" pro QR code e o link da página de pagamento do Mercado Pago.
+ */
+export async function createPixPayment(params: {
+  orderId: string;
+  amountCents: number;
+  description: string;
+  payer: { email: string; firstName?: string; lastName?: string; cpf?: string | null };
+  notificationUrl: string;
+  expiresAt: Date;
+}) {
+  const payment = new Payment(getClient());
+  const cpf = params.payer.cpf?.replace(/\D/g, "");
+  const result = await payment.create({
+    body: {
+      transaction_amount: params.amountCents / 100,
+      description: params.description,
+      payment_method_id: "pix",
+      external_reference: params.orderId,
+      notification_url: params.notificationUrl,
+      date_of_expiration: toMercadoPagoDate(params.expiresAt),
+      payer: {
+        email: params.payer.email,
+        first_name: params.payer.firstName,
+        last_name: params.payer.lastName,
+        identification: cpf?.length === 11 ? { type: "CPF", number: cpf } : undefined,
+      },
+    },
+    // Mesmo pedido nunca gera dois Pix, nem se a requisição for repetida.
+    requestOptions: { idempotencyKey: `pix-${params.orderId}` },
+  });
+
+  const data = result.point_of_interaction?.transaction_data;
+  if (!result.id || !data?.qr_code) throw new Error("Mercado Pago não devolveu o QR code do Pix.");
+  return { id: String(result.id), qrCode: data.qr_code, ticketUrl: data.ticket_url ?? null };
 }
 
 export async function getPayment(paymentId: string | number) {

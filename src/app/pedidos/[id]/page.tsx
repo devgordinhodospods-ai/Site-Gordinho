@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, Clock, MapPin, XCircle } from "lucide-react";
 import { centsToBRL } from "@/lib/money";
 import { LoaderPage } from "@/components/ui/Loader";
+import { PixPaymentPanel } from "@/components/loja/PixPaymentPanel";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 
 const STEPS: { status: OrderStatus; label: string }[] = [
@@ -55,6 +56,19 @@ function PedidoDetalheContent() {
       .finally(() => setLoading(false));
   }, [params.id]);
 
+  // Enquanto aguarda o Pix, confere a cada 5 s se o pagamento já caiu.
+  const awaiting = order?.status === "awaiting_payment";
+  useEffect(() => {
+    if (!awaiting) return;
+    const id = setInterval(() => {
+      fetch(`/api/pedidos/${params.id}`)
+        .then((res) => res.json())
+        .then((data) => data.order && setOrder(data.order))
+        .catch(() => null);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [awaiting, params.id]);
+
   if (loading) return <LoaderPage label="Carregando pedido..." />;
   if (!order) {
     return (
@@ -91,6 +105,15 @@ function PedidoDetalheContent() {
       {paymentStatus === "failure" && (
         <div className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">
           O pagamento não foi concluído. Você pode montar o carrinho de novo e tentar outra vez.
+        </div>
+      )}
+
+      {order.status === "awaiting_payment" && (order.pix_qr_code || order.payment_url) && (
+        <PixPaymentPanel order={order} />
+      )}
+      {order.status === "paid" && order.payment_status === "approved" && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-green-50 p-4 text-sm text-green-800">
+          <CheckCircle2 size={18} /> Pagamento aprovado! Já estamos cuidando do seu pedido.
         </div>
       )}
 
@@ -147,7 +170,7 @@ function PedidoDetalheContent() {
             <span>{centsToBRL(order.service_fee_cents)}</span>
           </div>
           <div className="flex justify-between pt-1 text-base text-slate-900">
-            <span>Total pago no site</span>
+            <span>{order.status === "awaiting_payment" ? "Total a pagar" : "Total pago no site"}</span>
             <span className="text-brand">{centsToBRL(order.total_cents)}</span>
           </div>
         </div>

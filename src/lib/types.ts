@@ -89,6 +89,9 @@ export type Order = {
   payment_provider: string;
   payment_id: string | null;
   payment_status: string | null;
+  pix_qr_code: string | null;
+  payment_url: string | null;
+  payment_expires_at: string | null;
   created_at: string;
   updated_at: string;
 };

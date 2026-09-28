@@ -5,8 +5,9 @@ import { getSession } from "@/lib/auth";
 import { computeServiceFee } from "@/lib/money";
 import { estimateFreight } from "@/lib/geo";
 import { getSiteSettings } from "@/lib/settings";
-import { createPaymentPreference } from "@/lib/mercadopago";
-import { releaseAbandonedOrders } from "@/lib/orders";
+import { createPaymentPreference, createPixPayment } from "@/lib/mercadopago";
+import { PAYMENT_WINDOW_MS, releaseAbandonedOrders } from "@/lib/orders";
+import { sendPixPendingEmail } from "@/lib/email";
 
 const schema = z.object({
   items: z
@@ -108,38 +109,78 @@ export async function POST(req: Request) {
   const { data: orderItems } = await db.from("order_items").select("*").eq("order_id", orderId);
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  const expiresAt = new Date(Date.now() + PAYMENT_WINDOW_MS);
+  const notificationUrl = `${appUrl}/api/mercadopago/webhook`;
 
+  let payment: { id: string; qrCode: string | null; url: string | null; status: string };
   try {
-    const preference = await createPaymentPreference({
+    // Pix direto: QR code e copia e cola aparecem no próprio pedido.
+    const { data: customer } = await db
+      .from("site_users")
+      .select("name, cpf")
+      .eq("email", session.user.email.toLowerCase())
+      .maybeSingle();
+    const [firstName, ...rest] = (customer?.name ?? session.user.name ?? "Cliente").trim().split(/\s+/);
+    const pix = await createPixPayment({
       orderId,
-      items: (orderItems ?? []).map((i) => ({
-        title: i.flavor_name ? `${i.product_name} (${i.flavor_name})` : i.product_name,
-        quantity: i.quantity,
-        unitPriceCents: i.unit_price_cents,
-      })),
-      serviceFeeCents: order?.service_fee_cents ?? 0,
-      payerEmail: session.user.email,
-      successUrl: `${appUrl}/pedidos/${orderId}?status=success`,
-      failureUrl: `${appUrl}/pedidos/${orderId}?status=failure`,
-      pendingUrl: `${appUrl}/pedidos/${orderId}?status=pending`,
-      notificationUrl: `${appUrl}/api/mercadopago/webhook`,
+      amountCents: order?.total_cents ?? 0,
+      description: `Pedido #${orderId.slice(0, 8).toUpperCase()} - ${settings.store_name}`,
+      payer: { email: session.user.email, firstName, lastName: rest.join(" ") || undefined, cpf: customer?.cpf },
+      notificationUrl,
+      expiresAt,
     });
-
-    await db
-      .from("orders")
-      .update({ payment_id: preference.id, payment_status: "pending" })
-      .eq("id", orderId);
-
-    return NextResponse.json({ orderId, initPoint: preference.init_point });
-  } catch (err) {
-    // Sem link de pagamento o pedido não tem como ser pago: cancela e
-    // devolve o estoque, pro cliente poder tentar de novo sem duplicar.
-    await db.rpc("cancel_order", { p_order_id: orderId });
+    payment = { id: pix.id, qrCode: pix.qrCode, url: pix.ticketUrl, status: "pending" };
+  } catch (pixErr) {
     // eslint-disable-next-line no-console
-    console.error("[create-order] Mercado Pago:", err instanceof Error ? err.message : err);
-    return NextResponse.json(
-      { error: "Não foi possível gerar o pagamento agora. Tente novamente em instantes." },
-      { status: 502 }
-    );
+    console.error("[create-order] Pix:", pixErr instanceof Error ? pixErr.message : pixErr);
+    try {
+      // Plano B: link do Checkout Pro (Pix/cartão na página do Mercado Pago).
+      const preference = await createPaymentPreference({
+        orderId,
+        items: (orderItems ?? []).map((i) => ({
+          title: i.flavor_name ? `${i.product_name} (${i.flavor_name})` : i.product_name,
+          quantity: i.quantity,
+          unitPriceCents: i.unit_price_cents,
+        })),
+        serviceFeeCents: order?.service_fee_cents ?? 0,
+        payerEmail: session.user.email,
+        successUrl: `${appUrl}/pedidos/${orderId}?status=success`,
+        failureUrl: `${appUrl}/pedidos/${orderId}?status=failure`,
+        pendingUrl: `${appUrl}/pedidos/${orderId}?status=pending`,
+        notificationUrl,
+        expiresAt,
+      });
+      if (!preference.id || !preference.init_point) throw new Error("Preferência sem link de pagamento.");
+      payment = { id: preference.id, qrCode: null, url: preference.init_point, status: "pending" };
+    } catch (err) {
+      // Sem Pix nem link o pedido não tem como ser pago: cancela e devolve
+      // o estoque, pro cliente poder tentar de novo sem duplicar.
+      await db.rpc("cancel_order", { p_order_id: orderId });
+      // eslint-disable-next-line no-console
+      console.error("[create-order] Mercado Pago:", err instanceof Error ? err.message : err);
+      return NextResponse.json(
+        { error: "Não foi possível gerar o pagamento agora. Tente novamente em instantes." },
+        { status: 502 }
+      );
+    }
   }
+
+  const { data: updated } = await db
+    .from("orders")
+    .update({
+      payment_id: payment.id,
+      payment_status: payment.status,
+      pix_qr_code: payment.qrCode,
+      payment_url: payment.url,
+      payment_expires_at: expiresAt.toISOString(),
+    })
+    .eq("id", orderId)
+    .select("*")
+    .single();
+
+  if (updated) {
+    await sendPixPendingEmail({ order: updated, items: orderItems ?? [], settings });
+  }
+
+  return NextResponse.json({ orderId });
 }

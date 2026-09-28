@@ -45,6 +45,7 @@ export default function CheckoutPage() {
   const [freight, setFreight] = useState<FreightEstimate | null>(null);
   const [loadingFreight, setLoadingFreight] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -124,6 +125,8 @@ export default function CheckoutPage() {
     );
   }
 
+  if (redirecting) return <LoaderPage label="Abrindo o Pix do seu pedido..." />;
+
   if (items.length === 0) {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center">
@@ -183,8 +186,9 @@ export default function CheckoutPage() {
         return;
       }
 
+      setRedirecting(true);
       clearCart();
-      window.location.href = data.initPoint;
+      router.push(`/pedidos/${data.orderId}`);
     } catch {
       setError("Erro de conexão. Tente novamente.");
       setSubmitting(false);
@@ -351,10 +355,10 @@ export default function CheckoutPage() {
           {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
           <button type="submit" className="btn-primary mt-5 w-full py-3" disabled={submitting || loadingAccount || freight?.status === "out_of_range"}>
-            {submitting ? <Loader size={18} color="#fff" /> : "Ir para o pagamento"}
+            {submitting ? <Loader size={18} color="#fff" /> : "Finalizar e pagar com Pix"}
           </button>
           <p className="mt-3 flex items-center justify-center gap-1 text-xs text-slate-400">
-            <Lock size={12} /> Pagamento seguro via Mercado Pago (Pix ou cartão)
+            <Lock size={12} /> Pagamento seguro via Pix (Mercado Pago)
           </p>
         </aside>
       </form>
