@@ -66,9 +66,9 @@ export function OrdersManager() {
       </div>
 
       {loading ? (
-        <p className="text-neutral-500">Carregando...</p>
+        <p className="text-slate-500">Carregando...</p>
       ) : orders.length === 0 ? (
-        <p className="text-neutral-500">Nenhum pedido encontrado.</p>
+        <p className="text-slate-500">Nenhum pedido encontrado.</p>
       ) : (
         <div className="space-y-3">
           {orders.map((order) => (
@@ -78,14 +78,14 @@ export function OrdersManager() {
                   <p className="font-medium">
                     #{order.id.slice(0, 8)} · {order.customer_name}
                   </p>
-                  <p className="text-sm text-neutral-500">
+                  <p className="text-sm text-slate-500">
                     {order.customer_email} · {new Date(order.created_at).toLocaleString("pt-BR")}
                   </p>
                 </div>
                 <span className="font-bold">{centsToBRL(order.total_cents)}</span>
               </div>
 
-              <ul className="mt-2 text-sm text-neutral-600">
+              <ul className="mt-2 text-sm text-slate-600">
                 {order.order_items.map((item) => (
                   <li key={item.id}>
                     {item.quantity}x {item.product_name}

@@ -9,7 +9,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <Link href={`/produto/${product.slug}`} className="card group overflow-hidden">
-      <div className="relative aspect-square bg-neutral-100">
+      <div className="relative aspect-square bg-slate-100">
         {image ? (
           <Image
             src={image}
@@ -19,10 +19,10 @@ export function ProductCard({ product }: { product: Product }) {
             sizes="(max-width: 768px) 50vw, 25vw"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-neutral-400">Sem imagem</div>
+          <div className="flex h-full items-center justify-center text-slate-400">Sem imagem</div>
         )}
         {outOfStock && (
-          <span className="absolute left-2 top-2 rounded bg-neutral-900 px-2 py-1 text-xs font-semibold text-white">
+          <span className="absolute left-2 top-2 rounded bg-slate-900 px-2 py-1 text-xs font-semibold text-white">
             Esgotado
           </span>
         )}
@@ -32,7 +32,7 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="mt-1 flex items-baseline gap-2">
           <span className="font-bold">{centsToBRL(product.price_cents)}</span>
           {product.compare_at_price_cents && product.compare_at_price_cents > product.price_cents && (
-            <span className="text-xs text-neutral-400 line-through">
+            <span className="text-xs text-slate-400 line-through">
               {centsToBRL(product.compare_at_price_cents)}
             </span>
           )}

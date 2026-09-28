@@ -14,15 +14,15 @@ export default async function AdminHomePage() {
       <h1 className="mb-6 text-2xl font-bold">Visão geral</h1>
       <div className="grid grid-cols-3 gap-4">
         <div className="card p-4">
-          <p className="text-sm text-neutral-500">Produtos cadastrados</p>
+          <p className="text-sm text-slate-500">Produtos cadastrados</p>
           <p className="text-2xl font-bold">{productCount ?? 0}</p>
         </div>
         <div className="card p-4">
-          <p className="text-sm text-neutral-500">Pedidos pagos (a confirmar)</p>
+          <p className="text-sm text-slate-500">Pedidos pagos (a confirmar)</p>
           <p className="text-2xl font-bold">{pendingOrders ?? 0}</p>
         </div>
         <div className="card p-4">
-          <p className="text-sm text-neutral-500">Total de pedidos</p>
+          <p className="text-sm text-slate-500">Total de pedidos</p>
           <p className="text-2xl font-bold">{totalOrders ?? 0}</p>
         </div>
       </div>

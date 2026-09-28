@@ -207,7 +207,7 @@ export function ProductsManager() {
               e.target.value = "";
             }}
           />
-          {uploading && <span className="ml-2 text-sm text-neutral-500">Enviando...</span>}
+          {uploading && <span className="ml-2 text-sm text-slate-500">Enviando...</span>}
         </div>
 
         {error && <p className="text-sm text-red-600 md:col-span-2">{error}</p>}
@@ -228,14 +228,14 @@ export function ProductsManager() {
         {products.map((p) => (
           <div key={p.id} className="card flex items-center justify-between p-3">
             <div className="flex items-center gap-3">
-              <div className="relative h-12 w-12 overflow-hidden rounded bg-neutral-100">
+              <div className="relative h-12 w-12 overflow-hidden rounded bg-slate-100">
                 {p.images?.[0] && <Image src={p.images[0]} alt="" fill className="object-cover" />}
               </div>
               <div>
                 <p className="font-medium">
-                  {p.name} {!p.active && <span className="text-xs text-neutral-400">(inativo)</span>}
+                  {p.name} {!p.active && <span className="text-xs text-slate-400">(inativo)</span>}
                 </p>
-                <p className="text-sm text-neutral-500">
+                <p className="text-sm text-slate-500">
                   {centsToBRL(p.price_cents)} · estoque: {p.stock}
                 </p>
               </div>

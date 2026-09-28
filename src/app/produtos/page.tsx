@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ProductCard } from "@/components/loja/ProductCard";
+import { LoaderPage } from "@/components/ui/Loader";
 import type { Product } from "@/lib/types";
 
 export default function ProdutosPage() {
@@ -27,7 +28,7 @@ export default function ProdutosPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">Produtos</h1>
+        <h1 className="font-display text-2xl text-slate-900">Produtos</h1>
         <input
           className="input max-w-xs"
           placeholder="Buscar produto..."
@@ -37,9 +38,9 @@ export default function ProdutosPage() {
       </div>
 
       {loading ? (
-        <p className="text-neutral-500">Carregando...</p>
+        <LoaderPage label="Carregando produtos..." />
       ) : products.length === 0 ? (
-        <p className="text-neutral-500">Nenhum produto encontrado.</p>
+        <p className="text-slate-500">Nenhum produto encontrado.</p>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
           {products.map((p) => (

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { centsToBRL } from "@/lib/money";
+import { LoaderPage } from "@/components/ui/Loader";
 import type { Order } from "@/lib/types";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -44,27 +45,27 @@ export default function PedidosPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold">Meus pedidos</h1>
+      <h1 className="font-display mb-6 text-2xl text-slate-900">Meus pedidos</h1>
 
       {loading ? (
-        <p className="text-neutral-500">Carregando...</p>
+        <LoaderPage label="Carregando pedidos..." />
       ) : orders.length === 0 ? (
-        <p className="text-neutral-500">Você ainda não fez nenhum pedido.</p>
+        <p className="text-slate-500">Você ainda não fez nenhum pedido.</p>
       ) : (
         <div className="space-y-3">
           {orders.map((order) => (
             <Link
               key={order.id}
               href={`/pedidos/${order.id}`}
-              className="card flex items-center justify-between p-4"
+              className="card flex items-center justify-between p-4 transition-transform hover:-translate-y-0.5"
             >
               <div>
-                <p className="font-medium">Pedido #{order.id.slice(0, 8)}</p>
-                <p className="text-sm text-neutral-500">
+                <p className="font-bold text-slate-900">Pedido #{order.id.slice(0, 8)}</p>
+                <p className="text-sm text-slate-500">
                   {new Date(order.created_at).toLocaleDateString("pt-BR")} · {STATUS_LABELS[order.status]}
                 </p>
               </div>
-              <span className="font-bold">{centsToBRL(order.total_cents)}</span>
+              <span className="font-display text-brand">{centsToBRL(order.total_cents)}</span>
             </Link>
           ))}
         </div>

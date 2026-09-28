@@ -51,7 +51,7 @@ function PedidoDetalheContent() {
       )}
 
       <h1 className="text-2xl font-bold">Pedido #{order.id.slice(0, 8)}</h1>
-      <p className="mt-1 text-neutral-500">Status: {STATUS_LABELS[order.status] ?? order.status}</p>
+      <p className="mt-1 text-slate-500">Status: {STATUS_LABELS[order.status] ?? order.status}</p>
 
       <div className="card mt-6 divide-y">
         {order.order_items.map((item) => (

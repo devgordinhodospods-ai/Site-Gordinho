@@ -88,7 +88,7 @@ export function SettingsManager() {
   return (
     <div>
       <h1 className="mb-2 text-2xl font-bold">Configurações da loja</h1>
-      <p className="mb-6 text-sm text-neutral-500">
+      <p className="mb-6 text-sm text-slate-500">
         Troque o nome e a logo da loja sempre que precisar — eles aparecem automaticamente na navbar e
         no rodapé do site.
       </p>
@@ -186,7 +186,7 @@ export function SettingsManager() {
             </button>
           </div>
           {settings.origin_lat != null && (
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="mt-1 text-xs text-slate-500">
               Coordenadas: {settings.origin_lat.toFixed(5)}, {settings.origin_lng?.toFixed(5)}
             </p>
           )}

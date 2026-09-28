@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cart";
 import { centsToBRL } from "@/lib/money";
+import { Loader } from "@/components/ui/Loader";
 
 type Zone = { id: string; name: string };
 type ShippingBreakdown = {
@@ -79,7 +80,7 @@ export default function CheckoutPage() {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <h1 className="text-xl font-bold">Faça login para continuar</h1>
-        <p className="mt-2 text-neutral-500">Você precisa ter uma conta para finalizar o pedido.</p>
+        <p className="mt-2 text-slate-500">Você precisa ter uma conta para finalizar o pedido.</p>
         <Link href="/login?callbackUrl=/checkout" className="btn-primary mt-4 inline-flex">
           Entrar
         </Link>
@@ -253,7 +254,7 @@ export default function CheckoutPage() {
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
             <button type="submit" className="btn-primary mt-4 w-full" disabled={submitting}>
-              {submitting ? "Processando..." : "Pagar com Mercado Pago"}
+              {submitting ? <Loader size={18} color="#fff" /> : "Pagar com Mercado Pago"}
             </button>
           </div>
         </div>

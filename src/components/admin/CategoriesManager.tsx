@@ -75,7 +75,7 @@ export function CategoriesManager() {
         {categories.map((c) => (
           <div key={c.id} className="card flex items-center justify-between p-3">
             <span>
-              {c.name} {!c.active && <span className="text-xs text-neutral-400">(oculta)</span>}
+              {c.name} {!c.active && <span className="text-xs text-slate-400">(oculta)</span>}
             </span>
             <div className="flex gap-2">
               <button className="btn-secondary" onClick={() => toggleActive(c)}>
