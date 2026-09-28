@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageCircle, MapPin, CreditCard } from "lucide-react";
+import { MessageCircle, MapPin, CreditCard, Trash2 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { centsToBRL } from "@/lib/money";
 import { HelpTip } from "@/components/ui/HelpTip";
@@ -85,6 +85,34 @@ export function OrdersManager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
+  async function deleteOrder(order: OrderWithItems) {
+    setActionError(null);
+    const inProgress = !["awaiting_payment", "cancelled", "delivered"].includes(order.status);
+    if (inProgress) {
+      setActionError(
+        `O pedido #${order.id.slice(0, 8).toUpperCase()} está em andamento. Mude o status pra "Cancelado" antes de excluir — assim o estoque volta.`
+      );
+      return;
+    }
+    const message =
+      order.status === "awaiting_payment"
+        ? "O pedido ainda não foi pago: ele será cancelado (os itens voltam pro estoque) e apagado."
+        : order.status === "delivered"
+          ? "O pedido some da lista e deixa de contar no Monitoramento (vendas e lucro)."
+          : "O pedido some da lista de vez.";
+    const ok = await confirm(message, {
+      title: `Excluir o pedido #${order.id.slice(0, 8).toUpperCase()}?`,
+      confirmLabel: "Excluir pedido",
+    });
+    if (!ok) return;
+    try {
+      await adminApi("deleteOrder", { id: order.id });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Não foi possível excluir o pedido.");
+    }
+    await load();
+  }
+
   async function updateStatus(id: string, status: OrderStatus) {
     if (
       status === "cancelled" &&
@@ -148,9 +176,19 @@ export function OrdersManager() {
             <div key={order.id} className="card p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <p className="font-display text-brand">Pedido #{order.id.slice(0, 8).toUpperCase()}</p>
-                <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_PILL[order.status]}`}>
-                  {STATUS_LABELS[order.status]}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_PILL[order.status]}`}>
+                    {STATUS_LABELS[order.status]}
+                  </span>
+                  <button
+                    type="button"
+                    className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                    onClick={() => deleteOrder(order)}
+                    aria-label="Excluir pedido"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
 
               {order.status === "cancelled" && order.payment_status === "approved" && (

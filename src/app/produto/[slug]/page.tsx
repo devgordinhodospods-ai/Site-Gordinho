@@ -57,12 +57,12 @@ export default async function ProdutoPage({ params }: { params: Promise<{ slug: 
         </Link>
         <ChevronRight size={14} />
         {product.categories ? (
-          <Link href={`/produtos?categoria=${product.categories.slug}`} className="hover:text-brand">
+          <Link href={`/?categoria=${product.categories.slug}#produtos`} className="hover:text-brand">
             {product.categories.name}
           </Link>
         ) : (
-          <Link href="/produtos" className="hover:text-brand">
-            Catálogo
+          <Link href="/#produtos" className="hover:text-brand">
+            Produtos
           </Link>
         )}
         <ChevronRight size={14} />

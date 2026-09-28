@@ -19,9 +19,8 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    const params = new URLSearchParams();
-    if (search) params.set("busca", search);
-    router.push(`/produtos?${params.toString()}`);
+    const q = search.trim();
+    router.push(q ? `/?busca=${encodeURIComponent(q)}#produtos` : "/#produtos");
   }
 
   return (

@@ -16,6 +16,8 @@ const READ_ACTIONS = new Set([
   "getOrder",
   "getSettings",
   "getDashboardStats",
+  "listUsers",
+  "getUserDetails",
 ]);
 
 const PAID_LIKE_STATUSES = new Set(["paid", "confirmed", "preparing", "shipped", "delivered"]);
@@ -361,6 +363,58 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ order });
+      }
+
+      case "deleteOrder": {
+        const { data: current } = await db.from("orders").select("status").eq("id", body.id).maybeSingle();
+        if (!current) return NextResponse.json({ error: "Pedido não encontrado." }, { status: 404 });
+
+        if (current.status === "awaiting_payment") {
+          // Devolve o estoque reservado antes de apagar.
+          const { error: cancelError } = await db.rpc("cancel_order", { p_order_id: body.id });
+          if (cancelError) throw cancelError;
+        } else if (!["cancelled", "delivered"].includes(current.status)) {
+          return NextResponse.json(
+            { error: "Esse pedido está em andamento. Cancele ele antes de excluir (o estoque volta no cancelamento)." },
+            { status: 400 }
+          );
+        }
+
+        const { error } = await db.from("orders").delete().eq("id", body.id);
+        if (error) throw error;
+        return NextResponse.json({ ok: true });
+      }
+
+      // ---------------- usuários ----------------
+      case "listUsers": {
+        const { data, error } = await db
+          .from("site_users")
+          .select("id, name, email, auth_provider, created_at")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        return NextResponse.json({ users: data });
+      }
+
+      case "getUserDetails": {
+        const { data: user, error } = await db
+          .from("site_users")
+          .select("id, name, email, phone, cpf, auth_provider, created_at")
+          .eq("id", body.id)
+          .maybeSingle();
+        if (error) throw error;
+        if (!user) return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
+
+        const orderFields = "id, status, total_cents, created_at";
+        const [{ data: addresses }, { data: byUser }, { data: byEmail }] = await Promise.all([
+          db.from("user_addresses").select("*").eq("user_id", user.id).order("is_default", { ascending: false }),
+          db.from("orders").select(orderFields).eq("user_id", user.id),
+          db.from("orders").select(orderFields).eq("customer_email", user.email),
+        ]);
+        const orders = [...new Map([...(byUser ?? []), ...(byEmail ?? [])].map((o) => [o.id, o])).values()].sort(
+          (a, b) => b.created_at.localeCompare(a.created_at)
+        );
+
+        return NextResponse.json({ user, addresses: addresses ?? [], orders });
       }
 
       // ---------------- configurações da loja ----------------

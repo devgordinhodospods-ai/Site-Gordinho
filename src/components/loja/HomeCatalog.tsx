@@ -11,10 +11,7 @@ type Sort = "recent" | "price-asc" | "price-desc" | "discount";
 const CAROUSEL_THRESHOLD = 8;
 
 function normalize(text: string) {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
+  return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
 function inStock(p: ProductWithFlavors) {
@@ -25,12 +22,19 @@ function inStock(p: ProductWithFlavors) {
 export function HomeCatalog({
   categories,
   products,
+  initialQuery = "",
+  initialCategorySlug = "",
 }: {
   categories: Category[];
   products: ProductWithFlavors[];
+  initialQuery?: string;
+  initialCategorySlug?: string;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(
+    categories.find((c) => c.slug === initialCategorySlug)?.id ?? null,
+  );
+  const [query, setQuery] = useState(initialQuery);
+  const [showAll, setShowAll] = useState(false);
   const [sort, setSort] = useState<Sort>("recent");
 
   const countByCategory = useMemo(() => {
@@ -46,7 +50,7 @@ export function HomeCatalog({
   const visible = useMemo(() => {
     const q = normalize(query.trim());
     const filtered = products.filter(
-      (p) => (!selected || p.category_id === selected.id) && (!q || normalize(p.name).includes(q))
+      (p) => (!selected || p.category_id === selected.id) && (!q || normalize(p.name).includes(q)),
     );
     const discount = (p: ProductWithFlavors) =>
       p.compare_at_price_cents && p.compare_at_price_cents > p.price_cents
@@ -64,13 +68,27 @@ export function HomeCatalog({
 
   // Com muitos produtos, a vitrine sem filtro vira fileiras em carrossel
   // (Novidades + uma por categoria) em vez de uma grade enorme.
-  const useCarousels = !hasFilters && products.length > CAROUSEL_THRESHOLD;
+  const useCarousels = !hasFilters && !showAll && products.length > CAROUSEL_THRESHOLD;
   const categoryIds = new Set(categories.map((c) => c.id));
   const uncategorized = visible.filter((p) => !p.category_id || !categoryIds.has(p.category_id));
 
   function clearFilters() {
     setSelectedId(null);
     setQuery("");
+    setShowAll(false);
+  }
+
+  // Ao começar a digitar, a busca vale pro catálogo inteiro (antes ela
+  // ficava presa na categoria selecionada e dava "0 produtos").
+  function handleQueryChange(value: string) {
+    if (!query.trim() && value.trim()) setSelectedId(null);
+    setQuery(value);
+  }
+
+  function selectCategory(id: string | null) {
+    setSelectedId(id);
+    setShowAll(false);
+    document.getElementById("produtos")?.scrollIntoView({ behavior: "smooth" });
   }
 
   const chipClass = (active: boolean) =>
@@ -93,7 +111,11 @@ export function HomeCatalog({
           <div>
             <p className="text-xs uppercase tracking-widest text-brand">Nossa loja</p>
             <h2 className="font-display text-2xl text-slate-900 sm:text-3xl">
-              {selected ? selected.name : "Todos os produtos"}
+              {query.trim()
+                ? `Resultados para “${query.trim()}”`
+                : selected
+                  ? selected.name
+                  : "Todos os produtos"}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
               {visible.length} {visible.length === 1 ? "produto encontrado" : "produtos encontrados"}
@@ -110,7 +132,7 @@ export function HomeCatalog({
                 className="input pl-10 pr-9"
                 placeholder="O que você está procurando?"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => handleQueryChange(e.target.value)}
               />
               {query && (
                 <button
@@ -149,13 +171,25 @@ export function HomeCatalog({
 
         {categories.length > 0 && (
           <div className="-mx-5 mt-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:-mx-6 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <button type="button" className={chipClass(!selected)} onClick={() => setSelectedId(null)}>
+            <button
+              type="button"
+              className={chipClass(!selected)}
+              onClick={() => {
+                setSelectedId(null);
+                setShowAll(false);
+              }}
+            >
               Todos <span className={countClass(!selected)}>{products.length}</span>
             </button>
             {categories.map((cat) => {
               const active = selected?.id === cat.id;
               return (
-                <button key={cat.id} type="button" className={chipClass(active)} onClick={() => setSelectedId(cat.id)}>
+                <button
+                  key={cat.id}
+                  type="button"
+                  className={chipClass(active)}
+                  onClick={() => setSelectedId(cat.id)}
+                >
                   {cat.name} <span className={countClass(active)}>{countByCategory.get(cat.id) ?? 0}</span>
                 </button>
               );
@@ -170,7 +204,9 @@ export function HomeCatalog({
             <Search size={24} />
           </div>
           <p className="text-slate-700">
-            {products.length === 0 ? "Nenhum produto cadastrado ainda." : "Nenhum produto encontrado com esses filtros."}
+            {products.length === 0
+              ? "Nenhum produto cadastrado ainda."
+              : "Nenhum produto encontrado com esses filtros."}
           </p>
           {hasFilters && (
             <button type="button" className="btn-secondary mt-4" onClick={clearFilters}>
@@ -180,7 +216,14 @@ export function HomeCatalog({
         </div>
       ) : useCarousels ? (
         <div>
-          <ProductCarousel title="Novidades" products={visible.slice(0, 12)} seeAllHref="/produtos" />
+          <ProductCarousel
+            title="Novidades"
+            products={visible.slice(0, 12)}
+            onSeeAll={() => {
+              setShowAll(true);
+              document.getElementById("produtos")?.scrollIntoView({ behavior: "smooth" });
+            }}
+          />
           {categories.map((cat) => {
             const rowProducts = visible.filter((p) => p.category_id === cat.id);
             return rowProducts.length > 0 ? (
@@ -188,7 +231,7 @@ export function HomeCatalog({
                 key={cat.id}
                 title={cat.name}
                 products={rowProducts}
-                seeAllHref={`/produtos?categoria=${cat.slug}`}
+                onSeeAll={() => selectCategory(cat.id)}
               />
             ) : null;
           })}

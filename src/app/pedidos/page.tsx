@@ -69,7 +69,7 @@ export default function PedidosPage() {
       ) : orders.length === 0 ? (
         <div className="card p-10 text-center">
           <p className="text-slate-600">Você ainda não fez nenhum pedido.</p>
-          <Link href="/produtos" className="btn-primary mt-4">
+          <Link href="/#produtos" className="btn-primary mt-4">
             Ver produtos
           </Link>
         </div>

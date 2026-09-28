@@ -18,7 +18,12 @@ async function getActiveProducts(): Promise<ProductWithFlavors[]> {
   return data ?? [];
 }
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ busca?: string; categoria?: string }>;
+}) {
+  const { busca = "", categoria = "" } = await searchParams;
   await releaseAbandonedOrders();
   const [settings, products, categories] = await Promise.all([
     getSiteSettings(),
@@ -43,7 +48,14 @@ export default async function HomePage() {
 
       <TrustTicker />
 
-      <HomeCatalog categories={categories} products={products} />
+      {/* key: busca/categoria novas pela URL (ex.: busca do topo) recriam o filtro */}
+      <HomeCatalog
+        key={`${busca}|${categoria}`}
+        categories={categories}
+        products={products}
+        initialQuery={busca}
+        initialCategorySlug={categoria}
+      />
     </div>
   );
 }
