@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { getSupabaseAuthClient } from "@/lib/supabaseAuth";
+import { verifyEmailCode } from "@/lib/supabaseAuth";
 
 const schema = z.object({
   email: z.string().trim().email(),
@@ -24,12 +24,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Cadastro não encontrado. Comece de novo." }, { status: 404 });
   }
 
-  const { error: verifyError } = await getSupabaseAuthClient().auth.verifyOtp({
-    email,
-    token: parsed.data.code,
-    type: "email",
-  });
-  if (verifyError) {
+  if (!(await verifyEmailCode(email, parsed.data.code))) {
     return NextResponse.json({ error: "Código inválido ou expirado." }, { status: 400 });
   }
 

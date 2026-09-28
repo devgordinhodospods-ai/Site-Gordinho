@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { getSupabaseAuthClient } from "@/lib/supabaseAuth";
+import { sendEmailCode } from "@/lib/supabaseAuth";
 
 const schema = z.object({
   name: z.string().trim().min(2, "Informe seu nome."),
@@ -50,23 +50,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Não foi possível iniciar o cadastro." }, { status: 500 });
   }
 
-  const { error: otpError } = await getSupabaseAuthClient().auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: true },
-  });
-  if (otpError) {
-    // eslint-disable-next-line no-console
-    console.error("[cadastro] envio do código:", otpError.status, otpError.message);
-    const rateLimited = otpError.status === 429 || /rate limit|seconds/i.test(otpError.message);
-    return NextResponse.json(
-      {
-        error: rateLimited
-          ? "Muitos pedidos de código seguidos. Espere um minuto e tente de novo."
-          : "Não foi possível enviar o código de verificação agora. Tente novamente em instantes.",
-      },
-      { status: rateLimited ? 429 : 502 }
-    );
-  }
+  const sent = await sendEmailCode(email);
+  if (!sent.ok) return NextResponse.json({ error: sent.error }, { status: sent.status });
 
   return NextResponse.json({ ok: true });
 }

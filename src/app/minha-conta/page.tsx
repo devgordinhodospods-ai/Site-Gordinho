@@ -319,7 +319,9 @@ export default function MinhaContaPage() {
                   <input
                     className="input text-center tracking-[0.3em]"
                     placeholder="000000"
-                    maxLength={6}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={10}
                     required
                     value={emailCode}
                     onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, ""))}
