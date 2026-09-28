@@ -128,12 +128,12 @@ export async function sendEmailChangeCode(params: {
   customerName: string;
   code: string;
   settings: SiteSettings;
-}) {
+}): Promise<{ sent: boolean; error?: string }> {
   const resend = getResend();
   if (!resend) {
     // eslint-disable-next-line no-console
     console.warn("RESEND_API_KEY não configurado — código de troca de e-mail não enviado.");
-    return;
+    return { sent: false, error: "Envio de e-mail não configurado (RESEND_API_KEY ausente)." };
   }
 
   const { toEmail, customerName, code, settings } = params;
@@ -154,10 +154,18 @@ export async function sendEmailChangeCode(params: {
     </p>
   `;
 
-  await resend.emails.send({
+  const { error } = await resend.emails.send({
     from,
     to: toEmail,
     subject: `${code} é o seu código de confirmação - ${settings.store_name}`,
     html: renderEmailLayout({ storeName: settings.store_name, logoUrl: settings.store_logo_url, bodyHtml }),
   });
+
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.error("[sendEmailChangeCode] Resend error:", error.message);
+    return { sent: false, error: error.message };
+  }
+
+  return { sent: true };
 }
