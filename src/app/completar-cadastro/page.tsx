@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CreditCard } from "lucide-react";
+import { CreditCard, Phone } from "lucide-react";
 import { AddressForm, type AddressFormValues } from "@/components/account/AddressForm";
 import { LoaderPage } from "@/components/ui/Loader";
 import { formatCPF, isValidCPF } from "@/lib/cpf";
@@ -17,6 +17,7 @@ function CompletarCadastroContent() {
   const [checking, setChecking] = useState(true);
   const [name, setName] = useState("");
   const [cpf, setCpf] = useState("");
+  const [phone, setPhone] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -33,6 +34,7 @@ function CompletarCadastroContent() {
           return;
         }
         setName(data.user?.name ?? "");
+        setPhone(data.user?.phone ?? "");
         setChecking(false);
       })
       .catch(() => setChecking(false));
@@ -42,11 +44,14 @@ function CompletarCadastroContent() {
     if (!isValidCPF(cpf)) {
       throw new Error("CPF inválido. Confira os números digitados.");
     }
+    if (phone.replace(/\D/g, "").length < 10) {
+      throw new Error("Informe um telefone/WhatsApp com DDD pra entrega.");
+    }
 
     const contaRes = await fetch("/api/conta", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, cpf }),
+      body: JSON.stringify({ name, cpf, phone }),
     });
     if (!contaRes.ok) {
       const data = await contaRes.json().catch(() => ({}));
@@ -87,7 +92,7 @@ function CompletarCadastroContent() {
       <div className="card w-full max-w-md p-8">
         <h1 className="font-display mb-1 text-center text-2xl text-slate-900">Só mais um passo</h1>
         <p className="mb-6 text-center text-sm text-slate-500">
-          Precisamos do seu CPF e endereço pra processar seus pedidos e a entrega
+          Precisamos do seu CPF, WhatsApp e endereço pra processar seus pedidos e a entrega
         </p>
 
         <div className="mb-4">
@@ -103,6 +108,21 @@ function CompletarCadastroContent() {
               value={cpf}
               maxLength={14}
               onChange={(e) => setCpf(formatCPF(e.target.value))}
+            />
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="mb-1 block text-xs font-bold text-slate-500">Telefone / WhatsApp</label>
+          <div className="relative">
+            <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              className="input pl-10"
+              placeholder="(11) 99999-9999"
+              inputMode="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
             />
           </div>
         </div>

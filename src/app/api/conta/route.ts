@@ -62,8 +62,10 @@ export async function PUT(req: Request) {
     .from("site_users")
     .update({
       name: parsed.data.name,
-      phone: parsed.data.phone ?? null,
-      cpf: parsed.data.cpf ? parsed.data.cpf.replace(/\D/g, "") : null,
+      // Campo não enviado = não mexe (antes, quem não mandava o telefone
+      // tinha ele apagado, ex.: a tela de completar cadastro).
+      ...(parsed.data.phone !== undefined ? { phone: parsed.data.phone || null } : {}),
+      ...(parsed.data.cpf !== undefined ? { cpf: parsed.data.cpf ? parsed.data.cpf.replace(/\D/g, "") : null } : {}),
     })
     .eq("email", session.user.email.toLowerCase());
 

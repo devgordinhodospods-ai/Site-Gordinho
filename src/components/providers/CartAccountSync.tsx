@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { useCartStore } from "@/store/cart";
+import { GUEST_CART_KEY, readStoredCart, useCartStore } from "@/store/cart";
 
 /**
- * Troca a chave de armazenamento do carrinho conforme a conta logada, pra
- * cada cliente ter o próprio carrinho no mesmo navegador (sem isso, o
- * carrinho ficava "vazando" de uma conta pra outra via localStorage).
+ * Cada conta tem o próprio carrinho no navegador. Quando um visitante monta
+ * o carrinho e faz login (caminho normal: carrinho → checkout → login), os
+ * itens do visitante são somados ao carrinho da conta em vez de sumirem.
  */
 export function CartAccountSync() {
   const { data: session, status } = useSession();
@@ -16,12 +16,22 @@ export function CartAccountSync() {
   useEffect(() => {
     if (status === "loading") return;
 
-    const key = session?.user?.id ? `cart-storage-${session.user.id}` : "cart-storage-guest";
+    const userId = session?.user?.id;
+    const key = userId ? `cart-storage-${userId}` : GUEST_CART_KEY;
     if (lastKey.current === key) return;
     lastKey.current = key;
 
+    const guestItems = userId ? readStoredCart(GUEST_CART_KEY) : [];
+
     useCartStore.persist.setOptions({ name: key });
-    useCartStore.persist.rehydrate();
+    Promise.resolve(useCartStore.persist.rehydrate()).then(() => {
+      if (guestItems.length > 0) {
+        const { addItem } = useCartStore.getState();
+        guestItems.forEach((item) => addItem(item));
+        localStorage.removeItem(GUEST_CART_KEY);
+      }
+      useCartStore.setState({ hydrated: true });
+    });
   }, [session?.user?.id, status]);
 
   return null;

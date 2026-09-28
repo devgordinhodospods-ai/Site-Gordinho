@@ -1,27 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { ShoppingBag, Trash2 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { centsToBRL } from "@/lib/money";
+import { LoaderPage } from "@/components/ui/Loader";
+import { QuantityStepper } from "@/components/ui/QuantityStepper";
 
 export default function CarrinhoPage() {
-  const [mounted, setMounted] = useState(false);
+  const hydrated = useCartStore((s) => s.hydrated);
   const items = useCartStore((s) => s.items);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
   const subtotal = useCartStore((s) => s.subtotalCents());
+  const totalQuantity = useCartStore((s) => s.totalQuantity());
 
-  useEffect(() => setMounted(true), []);
-
-  if (!mounted) return null;
+  if (!hydrated) return <LoaderPage label="Carregando carrinho..." />;
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-        <h1 className="text-xl font-bold">Seu carrinho está vazio</h1>
-        <Link href="/produtos" className="btn-primary mt-4 inline-flex">
+      <div className="mx-auto max-w-md px-4 py-20 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-brand">
+          <ShoppingBag size={28} />
+        </div>
+        <h1 className="font-display text-xl text-slate-900">Seu carrinho está vazio</h1>
+        <p className="mt-1 text-sm text-slate-500">Que tal dar uma olhada no catálogo?</p>
+        <Link href="/produtos" className="btn-primary mt-6">
           Ver produtos
         </Link>
       </div>
@@ -29,54 +34,70 @@ export default function CarrinhoPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold">Seu carrinho</h1>
+    <div className="mx-auto max-w-6xl px-4 py-8">
+      <h1 className="font-display mb-6 text-2xl text-slate-900">
+        Seu carrinho <span className="text-base text-slate-400">({totalQuantity} {totalQuantity === 1 ? "item" : "itens"})</span>
+      </h1>
 
-      <div className="space-y-4">
-        {items.map((item) => (
-          <div key={`${item.productId}-${item.flavorId ?? ""}`} className="card flex items-center gap-4 p-3">
-            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-slate-100">
-              {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
-            </div>
-            <div className="flex-1">
-              <p className="font-medium">{item.name}</p>
-              {item.flavorName && <p className="text-xs text-slate-400">Sabor: {item.flavorName}</p>}
-              <p className="text-sm text-slate-500">{centsToBRL(item.priceCents)}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                className="btn-secondary h-8 w-8 p-0"
-                onClick={() => setQuantity(item.productId, item.quantity - 1, item.flavorId)}
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
+        <div className="card divide-y divide-blue-50">
+          {items.map((item) => (
+            <div key={`${item.productId}-${item.flavorId ?? ""}`} className="flex gap-3 p-4 sm:gap-4">
+              <Link
+                href={`/produto/${item.slug}`}
+                className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100"
               >
-                -
-              </button>
-              <span className="w-6 text-center">{item.quantity}</span>
-              <button
-                className="btn-secondary h-8 w-8 p-0"
-                onClick={() => setQuantity(item.productId, item.quantity + 1, item.flavorId)}
-              >
-                +
-              </button>
-            </div>
-            <button
-              className="text-sm text-red-600 hover:underline"
-              onClick={() => removeItem(item.productId, item.flavorId)}
-            >
-              Remover
-            </button>
-          </div>
-        ))}
-      </div>
+                {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" sizes="80px" />}
+              </Link>
 
-      <div className="card mt-6 p-4">
-        <div className="flex items-center justify-between text-lg font-bold">
-          <span>Subtotal</span>
-          <span>{centsToBRL(subtotal)}</span>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link href={`/produto/${item.slug}`} className="line-clamp-2 text-slate-900 hover:text-brand">
+                      {item.name}
+                    </Link>
+                    {item.flavorName && <p className="text-xs text-slate-500">Sabor: {item.flavorName}</p>}
+                    <p className="text-sm text-slate-500">{centsToBRL(item.priceCents)} cada</p>
+                  </div>
+                  <button
+                    className="shrink-0 rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                    onClick={() => removeItem(item.productId, item.flavorId)}
+                    aria-label="Remover do carrinho"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
+                <div className="mt-auto flex items-center justify-between pt-2">
+                  <QuantityStepper
+                    size="sm"
+                    value={item.quantity}
+                    max={item.stock}
+                    onChange={(q) => setQuantity(item.productId, q, item.flavorId)}
+                  />
+                  <span className="text-brand">{centsToBRL(item.priceCents * item.quantity)}</span>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-        <p className="mt-1 text-sm text-slate-500">Frete e taxa de serviço calculados no checkout.</p>
-        <Link href="/checkout" className="btn-primary mt-4 flex w-full">
-          Ir para o checkout
-        </Link>
+
+        <div className="card p-5 lg:sticky lg:top-24">
+          <h2 className="font-display mb-4 text-lg text-slate-900">Resumo</h2>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-600">Subtotal</span>
+            <span className="text-lg text-slate-900">{centsToBRL(subtotal)}</span>
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            A taxa de serviço é calculada no checkout. O frete é pago direto ao entregador na hora da entrega.
+          </p>
+          <Link href="/checkout" className="btn-primary mt-5 w-full">
+            Finalizar compra
+          </Link>
+          <Link href="/produtos" className="mt-3 block text-center text-sm text-brand hover:underline">
+            Continuar comprando
+          </Link>
+        </div>
       </div>
     </div>
   );

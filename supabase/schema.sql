@@ -403,6 +403,6 @@ insert into site_settings (key, value) values
   ('origin_lng', 'null'),
   ('service_fee_percent', '5'),
   ('service_fee_fixed', '0'),
-  ('announcement_text', '"Compra 100% segura • Pagamento via Mercado Pago"'),
+  ('announcement_text', '"Compra 100% segura • Pagamento via Pix"'),
   ('hero_image_url', 'null')
 on conflict (key) do nothing;

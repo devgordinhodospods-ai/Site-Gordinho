@@ -5,6 +5,7 @@ import { MessageCircle, MapPin, CreditCard } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { centsToBRL } from "@/lib/money";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 
 const STATUS_FLOW: OrderStatus[] = [
@@ -61,6 +62,8 @@ export function OrdersManager() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [filter, setFilter] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   async function load() {
     setLoading(true);
@@ -77,7 +80,21 @@ export function OrdersManager() {
   }, [filter]);
 
   async function updateStatus(id: string, status: OrderStatus) {
-    await adminApi("updateOrderStatus", { id, status });
+    if (
+      status === "cancelled" &&
+      !(await confirm(
+        "Os itens voltam pro estoque e o pedido não poderá ser reaberto depois.",
+        { title: "Cancelar este pedido?", confirmLabel: "Cancelar pedido" }
+      ))
+    ) {
+      return;
+    }
+    setActionError(null);
+    try {
+      await adminApi("updateOrderStatus", { id, status });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Não foi possível alterar o status.");
+    }
     await load();
   }
 
@@ -95,6 +112,8 @@ export function OrdersManager() {
         </select>
       </div>
 
+      {actionError && <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{actionError}</p>}
+
       {loading ? (
         <p className="text-slate-500">Carregando...</p>
       ) : orders.length === 0 ? (
@@ -109,6 +128,13 @@ export function OrdersManager() {
                   {STATUS_LABELS[order.status]}
                 </span>
               </div>
+
+              {order.status === "cancelled" && order.payment_status === "approved" && (
+                <p className="mt-2 rounded-lg bg-red-50 p-2 text-sm text-red-700">
+                  Atenção: o Mercado Pago aprovou um pagamento deste pedido depois que ele foi cancelado. Confira no
+                  Mercado Pago e faça o estorno ou fale com o cliente.
+                </p>
+              )}
 
               <div className="mt-2 grid gap-1 text-sm text-slate-700 sm:grid-cols-2">
                 <p>
@@ -164,27 +190,34 @@ export function OrdersManager() {
                 ))}
               </ul>
 
+              {order.status === "cancelled" ? (
+                <p className="mt-3 text-sm text-slate-500">
+                  Pedido cancelado — os itens já voltaram pro estoque e ele não pode ser reaberto.
+                </p>
+              ) : (
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="text-sm font-bold text-slate-700">
-                  Alterar status:
-                  <HelpTip text="Muda a etapa do pedido — o cliente recebe um e-mail avisando da mudança. Escolher 'Cancelado' devolve o estoque automaticamente." />
-                </span>
-                <select
-                  className="input w-56"
-                  value={order.status}
-                  onChange={(e) => updateStatus(order.id, e.target.value as OrderStatus)}
-                >
-                  {STATUS_FLOW.map((s) => (
-                    <option key={s} value={s}>
-                      {STATUS_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <span className="text-sm font-bold text-slate-700">
+                    Alterar status:
+                    <HelpTip text="Muda a etapa do pedido — o cliente recebe um e-mail avisando da mudança. Escolher 'Cancelado' devolve o estoque automaticamente." />
+                  </span>
+                  <select
+                    className="input w-56"
+                    value={order.status}
+                    onChange={(e) => updateStatus(order.id, e.target.value as OrderStatus)}
+                  >
+                    {STATUS_FLOW.map((s) => (
+                      <option key={s} value={s}>
+                        {STATUS_LABELS[s]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
+      {dialog}
     </div>
   );
 }

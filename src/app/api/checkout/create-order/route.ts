@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { computeDynamicShippingFee, computeServiceFee } from "@/lib/shipping";
 import { getSiteSettings } from "@/lib/settings";
 import { createPaymentPreference } from "@/lib/mercadopago";
+import { releaseAbandonedOrders } from "@/lib/orders";
 
 const schema = z.object({
   items: z
@@ -26,7 +27,9 @@ const schema = z.object({
     state: z.string().min(2),
     zip: z.string().min(5),
   }),
-  customerPhone: z.string().optional(),
+  customerPhone: z.string().refine((v) => v.replace(/\D/g, "").length >= 10, {
+    message: "Informe um telefone/WhatsApp com DDD.",
+  }),
 });
 
 export async function POST(req: Request) {
@@ -38,11 +41,16 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Dados de checkout inválidos", issues: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Dados de checkout inválidos" },
+      { status: 400 }
+    );
   }
 
   const { items, zoneId, address, customerPhone } = parsed.data;
   const db = getSupabaseAdmin();
+
+  await releaseAbandonedOrders();
 
   const { data: zone } = await db
     .from("shipping_zones")
@@ -67,10 +75,10 @@ export async function POST(req: Request) {
     .select("id, price_cents")
     .in("id", items.map((i) => i.productId));
 
-  const subtotalCents = (productsData ?? []).reduce((sum, p) => {
-    const item = items.find((i) => i.productId === p.id);
-    return sum + p.price_cents * (item?.quantity ?? 0);
-  }, 0);
+  // Soma por linha do carrinho (o mesmo produto pode vir em mais de uma
+  // linha, uma por sabor).
+  const priceById = new Map((productsData ?? []).map((p) => [p.id, p.price_cents]));
+  const subtotalCents = items.reduce((sum, i) => sum + (priceById.get(i.productId) ?? 0) * i.quantity, 0);
 
   const serviceFeeCents = computeServiceFee({
     subtotalCents,
@@ -81,7 +89,7 @@ export async function POST(req: Request) {
   const { data: orderId, error: rpcError } = await db.rpc("create_order_with_items", {
     p_customer_name: session.user.name ?? "Cliente",
     p_customer_email: session.user.email,
-    p_customer_phone: customerPhone ?? null,
+    p_customer_phone: customerPhone,
     p_user_id: session.user.id ?? null,
     p_shipping_address: address,
     p_shipping_zone_id: zone.id,
@@ -130,13 +138,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ orderId, initPoint: preference.init_point });
   } catch (err) {
+    // Sem link de pagamento o pedido não tem como ser pago: cancela e
+    // devolve o estoque, pro cliente poder tentar de novo sem duplicar.
+    await db.rpc("cancel_order", { p_order_id: orderId });
+    // eslint-disable-next-line no-console
+    console.error("[create-order] Mercado Pago:", err instanceof Error ? err.message : err);
     return NextResponse.json(
-      {
-        orderId,
-        error:
-          "Pedido criado, mas houve um erro ao gerar o link de pagamento do Mercado Pago. Verifique as credenciais.",
-        details: err instanceof Error ? err.message : String(err),
-      },
+      { error: "Não foi possível gerar o pagamento agora. Tente novamente em instantes." },
       { status: 502 }
     );
   }

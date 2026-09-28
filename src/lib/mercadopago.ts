@@ -1,4 +1,5 @@
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
+import { PAYMENT_WINDOW_MS } from "@/lib/orders";
 
 function getClient(): MercadoPagoConfig {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
@@ -6,6 +7,12 @@ function getClient(): MercadoPagoConfig {
     throw new Error("MERCADOPAGO_ACCESS_TOKEN não configurado no ambiente.");
   }
   return new MercadoPagoConfig({ accessToken });
+}
+
+/** Data no formato dos exemplos da API do Mercado Pago, no horário de Brasília. */
+function toMercadoPagoDate(date: Date) {
+  const brasilia = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+  return brasilia.toISOString().replace("Z", "-03:00");
 }
 
 export type PreferenceItemInput = {
@@ -65,6 +72,12 @@ export async function createPaymentPreference(params: {
       },
       auto_return: "approved",
       notification_url: params.notificationUrl,
+      // Link e Pix expiram junto com a reserva do estoque; depois disso o
+      // pedido abandonado é cancelado (ver releaseAbandonedOrders).
+      expires: true,
+      expiration_date_from: toMercadoPagoDate(new Date()),
+      expiration_date_to: toMercadoPagoDate(new Date(Date.now() + PAYMENT_WINDOW_MS)),
+      date_of_expiration: toMercadoPagoDate(new Date(Date.now() + PAYMENT_WINDOW_MS)),
     },
   });
 

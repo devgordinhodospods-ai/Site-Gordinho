@@ -17,6 +17,16 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelado",
 };
 
+const STATUS_PILL: Record<string, string> = {
+  awaiting_payment: "bg-amber-100 text-amber-700",
+  paid: "bg-green-100 text-green-700",
+  confirmed: "bg-blue-100 text-blue-700",
+  preparing: "bg-blue-100 text-blue-700",
+  shipped: "bg-indigo-100 text-indigo-700",
+  delivered: "bg-green-100 text-green-700",
+  cancelled: "bg-red-100 text-red-700",
+};
+
 export default function PedidosPage() {
   const { data: session, status } = useSession();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -50,22 +60,30 @@ export default function PedidosPage() {
       {loading ? (
         <LoaderPage label="Carregando pedidos..." />
       ) : orders.length === 0 ? (
-        <p className="text-slate-500">Você ainda não fez nenhum pedido.</p>
+        <div className="card p-10 text-center">
+          <p className="text-slate-600">Você ainda não fez nenhum pedido.</p>
+          <Link href="/produtos" className="btn-primary mt-4">
+            Ver produtos
+          </Link>
+        </div>
       ) : (
         <div className="space-y-3">
           {orders.map((order) => (
             <Link
               key={order.id}
               href={`/pedidos/${order.id}`}
-              className="card flex items-center justify-between p-4 transition-transform hover:-translate-y-0.5"
+              className="card flex items-center justify-between gap-3 p-4 transition-transform hover:-translate-y-0.5"
             >
-              <div>
-                <p className="font-bold text-slate-900">Pedido #{order.id.slice(0, 8)}</p>
-                <p className="text-sm text-slate-500">
-                  {new Date(order.created_at).toLocaleDateString("pt-BR")} · {STATUS_LABELS[order.status]}
-                </p>
+              <div className="min-w-0">
+                <p className="text-slate-900">Pedido #{order.id.slice(0, 8).toUpperCase()}</p>
+                <p className="text-sm text-slate-500">{new Date(order.created_at).toLocaleDateString("pt-BR")}</p>
               </div>
-              <span className="font-display text-brand">{centsToBRL(order.total_cents)}</span>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span className="text-brand">{centsToBRL(order.total_cents)}</span>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs ${STATUS_PILL[order.status]}`}>
+                  {STATUS_LABELS[order.status]}
+                </span>
+              </div>
             </Link>
           ))}
         </div>
