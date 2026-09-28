@@ -5,6 +5,7 @@ import Image from "next/image";
 import { adminApi } from "@/lib/adminApi";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
+import { FileInput } from "@/components/ui/FileInput";
 import type { SiteSettings } from "@/lib/types";
 
 export function SettingsManager() {
@@ -142,15 +143,10 @@ export function SettingsManager() {
                 <Image src={settings.store_logo_url} alt="Logo" fill className="object-cover" />
               </div>
             )}
-            <input
-              type="file"
-              accept="image/*"
+            <FileInput
+              onFileSelected={(file) => handleUpload(file, "logo")}
               disabled={uploading === "logo"}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleUpload(file, "logo");
-                e.target.value = "";
-              }}
+              label="Escolher logo"
             />
           </div>
 
@@ -161,15 +157,10 @@ export function SettingsManager() {
                 <Image src={settings.store_favicon_url} alt="Favicon" fill className="object-cover" />
               </div>
             )}
-            <input
-              type="file"
-              accept="image/*"
+            <FileInput
+              onFileSelected={(file) => handleUpload(file, "favicon")}
               disabled={uploading === "favicon"}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleUpload(file, "favicon");
-                e.target.value = "";
-              }}
+              label="Escolher favicon"
             />
           </div>
         </div>

@@ -64,6 +64,11 @@
     @apply inline-flex items-center justify-center gap-2 rounded-xl border-2 border-blue-100 bg-white px-5 py-2.5 text-sm font-bold text-brand transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:bg-blue-50 disabled:pointer-events-none disabled:opacity-50;
   }
 
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg disabled:pointer-events-none disabled:opacity-50;
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  }
+
   .btn-google {
     @apply inline-flex w-full items-center justify-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-brand hover:shadow-md;
   }

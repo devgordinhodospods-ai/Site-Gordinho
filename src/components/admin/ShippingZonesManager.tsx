@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/adminApi";
 import { brlToCents, centsToBRL } from "@/lib/money";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { ShippingZone } from "@/lib/types";
 
 const EMPTY_FORM = {
@@ -19,6 +20,7 @@ export function ShippingZonesManager() {
   const [zones, setZones] = useState<ShippingZone[]>([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   async function load() {
     const { zones } = await adminApi<{ zones: ShippingZone[] }>("listShippingZones");
@@ -63,8 +65,10 @@ export function ShippingZonesManager() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Excluir esta região de entrega?")) return;
+  async function handleDelete(id: string, name: string) {
+    if (!(await confirm(`Tem certeza que deseja excluir a região "${name}"? Essa ação não pode ser desfeita.`))) {
+      return;
+    }
     await adminApi("deleteShippingZone", { id });
     await load();
   }
@@ -150,13 +154,14 @@ export function ShippingZonesManager() {
               <button className="btn-secondary" onClick={() => edit(z)}>
                 Editar
               </button>
-              <button className="btn-secondary text-red-600" onClick={() => handleDelete(z.id)}>
+              <button className="btn-secondary text-red-600" onClick={() => handleDelete(z.id, z.name)}>
                 Excluir
               </button>
             </div>
           </div>
         ))}
       </div>
+      {dialog}
     </div>
   );
 }
