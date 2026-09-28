@@ -6,6 +6,8 @@ import { Plus, X } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { supabase } from "@/lib/supabase";
 import { brlToCents, centsToBRL } from "@/lib/money";
+import { FileInput } from "@/components/ui/FileInput";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { ProductWithFullFlavors, Category, ProductFlavor } from "@/lib/types";
 
 function slugify(text: string) {
@@ -41,6 +43,7 @@ export function ProductsManager() {
   const [uploadingFlavorIdx, setUploadingFlavorIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   async function load() {
     const [p, c] = await Promise.all([
@@ -168,8 +171,10 @@ export function ProductsManager() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Excluir este produto?")) return;
+  async function handleDelete(id: string, name: string) {
+    if (!(await confirm(`Tem certeza que deseja excluir o produto "${name}"? Essa ação não pode ser desfeita.`))) {
+      return;
+    }
     await adminApi("deleteProduct", { id });
     await load();
   }
@@ -279,17 +284,7 @@ export function ProductsManager() {
               </div>
             ))}
           </div>
-          <input
-            type="file"
-            accept="image/*"
-            disabled={uploading}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleImageUpload(file);
-              e.target.value = "";
-            }}
-          />
-          {uploading && <span className="ml-2 text-sm text-slate-500">Enviando...</span>}
+          <FileInput onFileSelected={handleImageUpload} disabled={uploading} label="Escolher imagem" />
         </div>
 
         <div className="card md:col-span-2 space-y-3 border-blue-100 bg-blue-50/40 p-4">
@@ -329,16 +324,11 @@ export function ProductsManager() {
                 value={flavor.stock}
                 onChange={(e) => updateFlavor(index, { stock: e.target.value })}
               />
-              <input
-                type="file"
-                accept="image/*"
-                className="w-40 text-xs"
+              <FileInput
+                onFileSelected={(file) => handleFlavorImageUpload(file, index)}
                 disabled={uploadingFlavorIdx === index}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFlavorImageUpload(file, index);
-                  e.target.value = "";
-                }}
+                label="Imagem"
+                className="shrink-0"
               />
               <button
                 type="button"
@@ -387,13 +377,14 @@ export function ProductsManager() {
               <button className="btn-secondary" onClick={() => edit(p)}>
                 Editar
               </button>
-              <button className="btn-secondary text-red-600" onClick={() => handleDelete(p.id)}>
+              <button className="btn-secondary text-red-600" onClick={() => handleDelete(p.id, p.name)}>
                 Excluir
               </button>
             </div>
           </div>
         ))}
       </div>
+      {dialog}
     </div>
   );
 }

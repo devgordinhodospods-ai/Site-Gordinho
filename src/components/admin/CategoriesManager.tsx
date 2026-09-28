@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { adminApi } from "@/lib/adminApi";
 import { supabase } from "@/lib/supabase";
+import { FileInput } from "@/components/ui/FileInput";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { Category } from "@/lib/types";
 
 function slugify(text: string) {
@@ -21,6 +23,7 @@ export function CategoriesManager() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, dialog } = useConfirm();
 
   async function load() {
     const { categories } = await adminApi<{ categories: Category[] }>("listCategories");
@@ -80,8 +83,10 @@ export function CategoriesManager() {
     await load();
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Excluir esta categoria?")) return;
+  async function handleDelete(id: string, name: string) {
+    if (!(await confirm(`Tem certeza que deseja excluir a categoria "${name}"? Essa ação não pode ser desfeita.`))) {
+      return;
+    }
     await adminApi("deleteCategory", { id });
     await load();
   }
@@ -112,17 +117,7 @@ export function CategoriesManager() {
               <Image src={imageUrl} alt="" fill className="object-cover" />
             </div>
           )}
-          <input
-            type="file"
-            accept="image/*"
-            disabled={uploading}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleImageUpload(file);
-              e.target.value = "";
-            }}
-          />
-          {uploading && <span className="text-sm text-slate-500">Enviando...</span>}
+          <FileInput onFileSelected={handleImageUpload} disabled={uploading} label="Escolher imagem" />
         </div>
       </form>
 
@@ -143,13 +138,14 @@ export function CategoriesManager() {
               <button className="btn-secondary" onClick={() => toggleActive(c)}>
                 {c.active ? "Ocultar" : "Mostrar"}
               </button>
-              <button className="btn-secondary text-red-600" onClick={() => handleDelete(c.id)}>
+              <button className="btn-secondary text-red-600" onClick={() => handleDelete(c.id, c.name)}>
                 Excluir
               </button>
             </div>
           </div>
         ))}
       </div>
+      {dialog}
     </div>
   );
 }
