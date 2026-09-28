@@ -38,14 +38,18 @@ export async function POST(req: Request) {
       newStatus = "paid";
     }
 
-    const shouldReleaseStock =
-      (payment.status === "rejected" || payment.status === "cancelled") &&
-      order.status === "awaiting_payment";
+    // Só "cancelled" encerra o pedido (ex.: Pix/boleto expirado). "rejected"
+    // não: no Checkout Pro o cliente pode tentar de novo com outro cartão, e
+    // cancelar aqui faria um pagamento aprovado depois cair num pedido já
+    // cancelado e com o estoque devolvido.
+    const shouldReleaseStock = payment.status === "cancelled" && order.status === "awaiting_payment";
+
+    if (payment.status === "approved" && order.status === "cancelled") {
+      // eslint-disable-next-line no-console
+      console.error(`[webhook] Pagamento aprovado para pedido já cancelado: ${orderId}`);
+    }
 
     if (shouldReleaseStock) {
-      // Pagamento recusado/cancelado: devolve o estoque reservado na criação
-      // do pedido, senão ele fica preso pra sempre até um admin cancelar
-      // manualmente.
       const { error: cancelError } = await db.rpc("cancel_order", { p_order_id: orderId });
       if (cancelError) throw cancelError;
       newStatus = "cancelled";

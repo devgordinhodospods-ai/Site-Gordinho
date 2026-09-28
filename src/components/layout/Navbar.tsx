@@ -4,19 +4,18 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ShoppingCart, User, LayoutDashboard, Search, LayoutGrid } from "lucide-react";
+import { ShoppingCart, User, LayoutDashboard, Search } from "lucide-react";
 import { useCartStore } from "@/store/cart";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { SmoothTopLink } from "@/components/ui/SmoothTopLink";
 
 export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: string | null }) {
   const router = useRouter();
   const { data: session } = useSession();
   const totalQuantity = useCartStore((s) => s.totalQuantity());
-  const [mounted, setMounted] = useState(false);
+  const cartHydrated = useCartStore((s) => s.hydrated);
   const [search, setSearch] = useState("");
-
-  useEffect(() => setMounted(true), []);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -28,7 +27,7 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
   return (
     <header className="sticky top-0 z-40 border-b border-blue-100 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3 md:flex-nowrap md:gap-6">
-        <Link href="/" className="font-display flex shrink-0 items-center gap-2 text-lg text-brand">
+        <SmoothTopLink href="/" className="font-display flex shrink-0 items-center gap-2 text-lg text-brand">
           {logoUrl ? (
             <Image src={logoUrl} alt={storeName} width={36} height={36} className="rounded" />
           ) : (
@@ -40,7 +39,7 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
             </span>
           )}
           <span>{storeName}</span>
-        </Link>
+        </SmoothTopLink>
 
         <form onSubmit={handleSearch} className="order-3 w-full md:order-none md:max-w-md md:flex-1">
           <div className="relative">
@@ -55,13 +54,6 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
         </form>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <Link
-            href="/produtos"
-            className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-blue-50 hover:text-brand"
-          >
-            <LayoutGrid size={16} /> <span className="hidden sm:inline">Todas categorias</span>
-          </Link>
-
           {session?.user?.isAdmin && (
             <Link
               href="/admin"
@@ -78,7 +70,7 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
             aria-label="Carrinho"
           >
             <ShoppingCart size={22} />
-            {mounted && totalQuantity > 0 && (
+            {cartHydrated && totalQuantity > 0 && (
               <span className="font-display absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-xs text-white shadow-brand">
                 {totalQuantity}
               </span>

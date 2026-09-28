@@ -107,7 +107,10 @@ begin
     p_user_id, p_customer_name, p_customer_email, p_customer_phone,
     p_shipping_address, p_shipping_zone_id, 'awaiting_payment',
     v_subtotal, p_shipping_fee_cents, p_service_fee_cents,
-    v_subtotal + p_shipping_fee_cents + p_service_fee_cents,
+    -- total = só o que é cobrado no site; o frete é pago ao entregador
+    -- (mesma regra de migracao-frete-pago-na-entrega.sql — mantido igual
+    -- aqui pra ordem de execução das migrações não importar).
+    v_subtotal + p_service_fee_cents,
     p_shipping_breakdown
   ) returning id into v_order_id;
 

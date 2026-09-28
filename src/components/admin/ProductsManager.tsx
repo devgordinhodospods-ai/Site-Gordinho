@@ -20,7 +20,7 @@ function slugify(text: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-type FlavorForm = { name: string; stock: string; image_url: string | null };
+type FlavorForm = { id?: string; name: string; stock: string; image_url: string | null };
 
 const EMPTY_FORM = {
   id: "",
@@ -74,7 +74,7 @@ export function ProductsManager() {
       flavors: (product.product_flavors ?? [])
         .slice()
         .sort((a, b) => a.position - b.position)
-        .map((f) => ({ name: f.name, stock: f.stock.toString(), image_url: f.image_url })),
+        .map((f) => ({ id: f.id, name: f.name, stock: f.stock.toString(), image_url: f.image_url })),
     });
   }
 
@@ -161,7 +161,7 @@ export function ProductsManager() {
         },
         flavors: form.flavors
           .filter((fl) => fl.name.trim())
-          .map((fl) => ({ name: fl.name.trim(), stock: Number(fl.stock) || 0, image_url: fl.image_url })),
+          .map((fl) => ({ id: fl.id, name: fl.name.trim(), stock: Number(fl.stock) || 0, image_url: fl.image_url })),
       });
       resetForm();
       await load();
@@ -391,17 +391,30 @@ export function ProductsManager() {
 
       <div className="space-y-2">
         {products.map((p) => (
-          <div key={p.id} className="card flex flex-wrap items-center justify-between gap-2 p-3">
-            <div className="flex items-center gap-3">
-              <div className="relative h-12 w-12 overflow-hidden rounded bg-slate-100">
+          <div
+            key={p.id}
+            className={`card flex flex-wrap items-center justify-between gap-2 p-3 ${p.active ? "" : "bg-slate-50"}`}
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <div className={`relative h-12 w-12 shrink-0 overflow-hidden rounded bg-slate-100 ${p.active ? "" : "opacity-50"}`}>
                 {p.images?.[0] && <Image src={p.images[0]} alt="" fill className="object-cover" />}
               </div>
-              <div>
-                <p className="font-medium">
-                  {p.name} {!p.active && <span className="text-xs text-slate-400">(inativo)</span>}
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className={p.active ? "text-slate-900" : "text-slate-500"}>{p.name}</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs ${
+                      p.active ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    {p.active ? "No ar" : "Fora do ar"}
+                  </span>
                 </p>
                 <p className="text-sm text-slate-500">
-                  {centsToBRL(p.price_cents)} · estoque: {totalStock(p)}
+                  {centsToBRL(p.price_cents)} ·{" "}
+                  <span className={totalStock(p) <= 0 ? "text-red-600" : ""}>
+                    {totalStock(p) <= 0 ? "sem estoque" : `estoque: ${totalStock(p)}`}
+                  </span>
                   {(p.product_flavors?.length ?? 0) > 0 && ` (${p.product_flavors!.length} sabores)`}
                 </p>
               </div>
@@ -410,13 +423,9 @@ export function ProductsManager() {
               <button className="btn-secondary" onClick={() => edit(p)}>
                 Editar
               </button>
-              <button
-                className="btn-secondary"
-                onClick={() => toggleActive(p)}
-                aria-label={p.active ? "Tirar do ar" : "Colocar no ar"}
-                title={p.active ? "Tirar do ar" : "Colocar no ar"}
-              >
-                {p.active ? <Eye size={16} /> : <EyeOff size={16} />}
+              <button className="btn-secondary" onClick={() => toggleActive(p)}>
+                {p.active ? <EyeOff size={16} /> : <Eye size={16} />}
+                {p.active ? "Tirar do ar" : "Colocar no ar"}
               </button>
               <button className="btn-secondary text-red-600" onClick={() => handleDelete(p.id, p.name)}>
                 Excluir

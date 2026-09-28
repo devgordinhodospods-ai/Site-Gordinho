@@ -2,29 +2,11 @@
 
 import { useState } from "react";
 import { Loader } from "@/components/ui/Loader";
+import { AddressFields, EMPTY_ADDRESS_VALUES, type AddressValues } from "@/components/account/AddressFields";
 
-export type AddressFormValues = {
+export type AddressFormValues = AddressValues & {
   label: string;
-  street: string;
-  number: string;
-  complement: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  zip: string;
   isDefault: boolean;
-};
-
-const EMPTY_ADDRESS: AddressFormValues = {
-  label: "",
-  street: "",
-  number: "",
-  complement: "",
-  neighborhood: "",
-  city: "",
-  state: "",
-  zip: "",
-  isDefault: false,
 };
 
 export function AddressForm({
@@ -40,7 +22,12 @@ export function AddressForm({
   submitLabel?: string;
   showDefaultOption?: boolean;
 }) {
-  const [values, setValues] = useState<AddressFormValues>({ ...EMPTY_ADDRESS, ...initial });
+  const [values, setValues] = useState<AddressFormValues>({
+    ...EMPTY_ADDRESS_VALUES,
+    label: "",
+    isDefault: false,
+    ...initial,
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,59 +52,7 @@ export function AddressForm({
         value={values.label}
         onChange={(e) => setValues({ ...values, label: e.target.value })}
       />
-      <div className="flex gap-2">
-        <input
-          className="input flex-1"
-          placeholder="Rua"
-          required
-          value={values.street}
-          onChange={(e) => setValues({ ...values, street: e.target.value })}
-        />
-        <input
-          className="input w-24"
-          placeholder="Número"
-          required
-          value={values.number}
-          onChange={(e) => setValues({ ...values, number: e.target.value })}
-        />
-      </div>
-      <input
-        className="input"
-        placeholder="Complemento (opcional)"
-        value={values.complement}
-        onChange={(e) => setValues({ ...values, complement: e.target.value })}
-      />
-      <input
-        className="input"
-        placeholder="Bairro"
-        required
-        value={values.neighborhood}
-        onChange={(e) => setValues({ ...values, neighborhood: e.target.value })}
-      />
-      <div className="flex gap-2">
-        <input
-          className="input flex-1"
-          placeholder="Cidade"
-          required
-          value={values.city}
-          onChange={(e) => setValues({ ...values, city: e.target.value })}
-        />
-        <input
-          className="input w-20"
-          placeholder="UF"
-          required
-          maxLength={2}
-          value={values.state}
-          onChange={(e) => setValues({ ...values, state: e.target.value.toUpperCase() })}
-        />
-      </div>
-      <input
-        className="input"
-        placeholder="CEP"
-        required
-        value={values.zip}
-        onChange={(e) => setValues({ ...values, zip: e.target.value })}
-      />
+      <AddressFields value={values} onChange={(address) => setValues({ ...values, ...address })} />
 
       {showDefaultOption && (
         <label className="flex items-center gap-2 text-sm text-slate-600">
@@ -130,7 +65,7 @@ export function AddressForm({
         </label>
       )}
 
-      {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex gap-2">
         <button type="submit" className="btn-primary flex-1" disabled={saving}>

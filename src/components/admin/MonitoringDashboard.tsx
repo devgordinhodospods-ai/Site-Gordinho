@@ -22,6 +22,7 @@ type DashboardStats = {
   totalVendidoCents: number;
   lucroTotalCents: number;
   margemPercent: number;
+  itensSemCusto: number;
   totalPedidos: number;
   pedidosPagos: number;
   pedidosPendentes: number;
@@ -95,6 +96,14 @@ export function MonitoringDashboard() {
         <StatCard icon={XCircle} label="Pedidos cancelados" value={String(stats.pedidosCancelados)} sub="Status: cancelado" />
         <StatCard icon={Wallet} label="Ticket médio" value={centsToBRL(stats.ticketMedioCents)} sub="Por pedido pago" />
       </div>
+
+      {stats.itensSemCusto > 0 && (
+        <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          {stats.itensSemCusto} {stats.itensSemCusto === 1 ? "item vendido não tem" : "itens vendidos não têm"} valor
+          de custo cadastrado — pra esses, o lucro considera custo zero e fica maior do que o real. Cadastre o custo
+          em Produtos pra ter o lucro certo nas próximas vendas.
+        </p>
+      )}
 
       <div className="card mt-6 p-4">
         <h2 className="font-display mb-3 text-lg text-slate-900">Desempenho por período</h2>

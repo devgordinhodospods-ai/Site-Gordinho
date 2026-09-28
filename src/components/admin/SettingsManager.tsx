@@ -139,6 +139,15 @@ export function SettingsManager() {
             disabled={uploading === "hero"}
             label="Escolher imagem do banner"
           />
+            {settings.hero_image_url && (
+              <button
+                type="button"
+                className="mt-1 text-xs text-red-600 hover:underline"
+                onClick={() => setSettings((s) => ({ ...s, hero_image_url: null }))}
+              >
+                Remover imagem
+              </button>
+            )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
@@ -157,6 +166,15 @@ export function SettingsManager() {
               disabled={uploading === "logo"}
               label="Escolher logo"
             />
+            {settings.store_logo_url && (
+              <button
+                type="button"
+                className="mt-1 text-xs text-red-600 hover:underline"
+                onClick={() => setSettings((s) => ({ ...s, store_logo_url: null }))}
+              >
+                Remover imagem
+              </button>
+            )}
           </div>
 
           <div>
@@ -174,6 +192,15 @@ export function SettingsManager() {
               disabled={uploading === "favicon"}
               label="Escolher favicon"
             />
+            {settings.store_favicon_url && (
+              <button
+                type="button"
+                className="mt-1 text-xs text-red-600 hover:underline"
+                onClick={() => setSettings((s) => ({ ...s, store_favicon_url: null }))}
+              >
+                Remover imagem
+              </button>
+            )}
           </div>
 
           <div>
@@ -192,6 +219,15 @@ export function SettingsManager() {
               disabled={uploading === "footer"}
               label="Escolher imagem do rodapé"
             />
+            {settings.footer_image_url && (
+              <button
+                type="button"
+                className="mt-1 text-xs text-red-600 hover:underline"
+                onClick={() => setSettings((s) => ({ ...s, footer_image_url: null }))}
+              >
+                Remover imagem
+              </button>
+            )}
           </div>
         </div>
 

@@ -114,7 +114,7 @@ export function computeServiceFee(params: {
   return percentPart + params.fixedCents;
 }
 
-export type CepLookup = { city: string; neighborhood: string; state: string };
+export type CepLookup = { street: string; city: string; neighborhood: string; state: string };
 
 /**
  * Consulta o ViaCEP (API pública e gratuita, sem chave) pra descobrir
@@ -132,7 +132,12 @@ export async function lookupCep(cep: string): Promise<CepLookup | null> {
     if (!res.ok) return null;
     const data = await res.json();
     if (data?.erro) return null;
-    return { city: data.localidade ?? "", neighborhood: data.bairro ?? "", state: data.uf ?? "" };
+    return {
+      street: data.logradouro ?? "",
+      city: data.localidade ?? "",
+      neighborhood: data.bairro ?? "",
+      state: data.uf ?? "",
+    };
   } catch {
     return null;
   }

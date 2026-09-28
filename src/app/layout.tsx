@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
   return {
-    title: settings.store_name,
+    title: { default: settings.store_name, template: `%s | ${settings.store_name}` },
     description: `Loja online ${settings.store_name}`,
     icons: settings.store_favicon_url ? [{ url: settings.store_favicon_url }] : undefined,
   };

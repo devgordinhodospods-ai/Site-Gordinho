@@ -2,6 +2,7 @@ import Image from "next/image";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSiteSettings } from "@/lib/settings";
 import { getActiveCategories } from "@/lib/categories";
+import { releaseAbandonedOrders } from "@/lib/orders";
 import { HomeCatalog } from "@/components/loja/HomeCatalog";
 import { TrustTicker } from "@/components/layout/TrustTicker";
 import type { ProductWithFlavors } from "@/lib/types";
@@ -18,6 +19,7 @@ async function getActiveProducts(): Promise<ProductWithFlavors[]> {
 }
 
 export default async function HomePage() {
+  await releaseAbandonedOrders();
   const [settings, products, categories] = await Promise.all([
     getSiteSettings(),
     getActiveProducts(),

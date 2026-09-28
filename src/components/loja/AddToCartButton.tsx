@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Check, ShoppingCart } from "lucide-react";
 import { useCartStore } from "@/store/cart";
+import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import type { Product, ProductFlavor } from "@/lib/types";
 
 export function AddToCartButton({
@@ -78,30 +80,37 @@ export function AddToCartButton({
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        <button
-          className="btn-secondary h-9 w-9 p-0"
-          onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+      <div className="flex gap-3">
+        <QuantityStepper
+          value={quantity}
+          min={1}
+          max={Math.max(1, availableStock)}
           disabled={outOfStock}
-        >
-          -
-        </button>
-        <span className="w-8 text-center">{quantity}</span>
-        <button
-          className="btn-secondary h-9 w-9 p-0"
-          onClick={() => setQuantity((q) => Math.min(availableStock, q + 1))}
-          disabled={outOfStock}
-        >
-          +
+          onChange={setQuantity}
+        />
+        <button className="btn-primary flex-1" onClick={handleAdd} disabled={outOfStock}>
+          {outOfStock ? (
+            "Esgotado"
+          ) : added ? (
+            <>
+              <Check size={16} /> Adicionado!
+            </>
+          ) : (
+            <>
+              <ShoppingCart size={16} /> Adicionar ao carrinho
+            </>
+          )}
         </button>
       </div>
 
-      <button className="btn-primary" onClick={handleAdd} disabled={outOfStock}>
-        {outOfStock ? "Esgotado" : added ? "Adicionado!" : "Adicionar ao carrinho"}
-      </button>
-
       {!outOfStock && (
-        <button className="btn-secondary" onClick={() => { handleAdd(); router.push("/carrinho"); }}>
+        <button
+          className="btn-secondary"
+          onClick={() => {
+            handleAdd();
+            router.push("/carrinho");
+          }}
+        >
           Comprar agora
         </button>
       )}

@@ -5,6 +5,7 @@ import { isAdminEmail } from "@/lib/admins";
 import { sendOrderStatusUpdateEmail } from "@/lib/email";
 import { getSiteSettings } from "@/lib/settings";
 import { getErrorMessage } from "@/lib/errors";
+import { releaseAbandonedOrders } from "@/lib/orders";
 import type { OrderStatus } from "@/lib/types";
 
 const READ_ACTIONS = new Set([
@@ -84,6 +85,10 @@ export async function POST(req: Request) {
 
   const db = getSupabaseAdmin();
 
+  if (action === "listOrders" || action === "getDashboardStats" || action === "listProducts") {
+    await releaseAbandonedOrders();
+  }
+
   try {
     switch (action) {
       // ---------------- produtos ----------------
@@ -112,24 +117,34 @@ export async function POST(req: Request) {
           productId = data.id;
         }
 
-        // Sabores: a lista enviada pelo painel é sempre a lista completa
-        // atual, então substitui tudo (apaga o que sumiu, grava o resto).
+        // Sabores: a lista enviada pelo painel é a lista completa atual.
+        // Atualiza os que já existem (mantendo o id), cria os novos e apaga
+        // só os removidos. Recriar tudo mudaria os ids e quebraria carrinhos
+        // abertos e a devolução de estoque de pedidos pendentes.
         if (Array.isArray(body.flavors)) {
-          const { error: delError } = await db
+          const { data: currentFlavors, error: curError } = await db
             .from("product_flavors")
-            .delete()
+            .select("id")
             .eq("product_id", productId);
-          if (delError) throw delError;
+          if (curError) throw curError;
 
-          const flavorRows = body.flavors.map((f: Record<string, unknown>, index: number) => ({
-            ...pick(f, FLAVOR_FIELDS),
-            position: index,
-            product_id: productId,
-          }));
+          const incoming = body.flavors as Record<string, unknown>[];
+          const keepIds = new Set(
+            incoming.map((f) => f.id).filter((id): id is string => typeof id === "string")
+          );
+          const toDelete = (currentFlavors ?? []).map((f) => f.id).filter((id) => !keepIds.has(id));
+          if (toDelete.length > 0) {
+            const { error: delError } = await db.from("product_flavors").delete().in("id", toDelete);
+            if (delError) throw delError;
+          }
 
-          if (flavorRows.length > 0) {
-            const { error: insError } = await db.from("product_flavors").insert(flavorRows);
-            if (insError) throw insError;
+          for (const [index, f] of incoming.entries()) {
+            const row = { ...pick(f, FLAVOR_FIELDS), position: index, product_id: productId };
+            const { error: flavorError } =
+              typeof f.id === "string" && keepIds.has(f.id)
+                ? await db.from("product_flavors").update(row).eq("id", f.id).eq("product_id", productId)
+                : await db.from("product_flavors").insert(row);
+            if (flavorError) throw flavorError;
           }
         }
 
@@ -258,15 +273,21 @@ export async function POST(req: Request) {
 
         type ProductAgg = { name: string; quantity: number; receitaCents: number; lucroCents: number };
         const productAgg = new Map<string, ProductAgg>();
+        let receitaProdutosCents = 0;
+        let itensSemCusto = 0;
 
         for (const item of items ?? []) {
           const order = orderById.get(item.order_id);
           if (!order || !PAID_LIKE_STATUSES.has(order.status)) continue;
 
+          // Sem custo cadastrado o lucro do item fica superestimado (custo 0);
+          // o painel avisa quantos itens estão nessa situação.
+          if (item.unit_cost_cents == null) itensSemCusto += item.quantity;
           const cost = item.unit_cost_cents ?? 0;
           const itemLucro = (item.unit_price_cents - cost) * item.quantity;
           const itemReceita = item.unit_price_cents * item.quantity;
           lucroTotalCents += itemLucro;
+          receitaProdutosCents += itemReceita;
 
           const createdAt = new Date(order.created_at);
           if (createdAt >= startOfDay) periodStats.today.lucroCents += itemLucro;
@@ -297,7 +318,9 @@ export async function POST(req: Request) {
         return NextResponse.json({
           totalVendidoCents,
           lucroTotalCents,
-          margemPercent: totalVendidoCents > 0 ? (lucroTotalCents / totalVendidoCents) * 100 : 0,
+          // Margem sobre a venda de produtos (sem a taxa de serviço).
+          margemPercent: receitaProdutosCents > 0 ? (lucroTotalCents / receitaProdutosCents) * 100 : 0,
+          itensSemCusto,
           totalPedidos: (orders ?? []).length,
           pedidosPagos,
           pedidosPendentes,
@@ -343,6 +366,16 @@ export async function POST(req: Request) {
         ];
         if (!allowed.includes(status)) {
           return NextResponse.json({ error: "Status inválido." }, { status: 400 });
+        }
+
+        const { data: current } = await db.from("orders").select("status").eq("id", body.id).maybeSingle();
+        if (current?.status === "cancelled" && status !== "cancelled") {
+          // O estoque já foi devolvido no cancelamento — reabrir o pedido
+          // entregaria produto sem descontar do estoque.
+          return NextResponse.json(
+            { error: "Pedido cancelado não pode ser reaberto. Peça pro cliente fazer um novo pedido." },
+            { status: 400 }
+          );
         }
 
         if (status === "cancelled") {
