@@ -113,3 +113,57 @@ export function computeServiceFee(params: {
   const percentPart = Math.round((params.subtotalCents * params.percent) / 100);
   return percentPart + params.fixedCents;
 }
+
+export type CepLookup = { city: string; neighborhood: string; state: string };
+
+/**
+ * Consulta o ViaCEP (API pública e gratuita, sem chave) pra descobrir
+ * cidade/bairro a partir de um CEP — usado só pra dar uma estimativa rápida
+ * de frete antes do cliente preencher o endereço completo no checkout.
+ */
+export async function lookupCep(cep: string): Promise<CepLookup | null> {
+  const digits = cep.replace(/\D/g, "");
+  if (digits.length !== 8) return null;
+
+  try {
+    const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.erro) return null;
+    return { city: data.localidade ?? "", neighborhood: data.bairro ?? "", state: data.uf ?? "" };
+  } catch {
+    return null;
+  }
+}
+
+function normalize(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim();
+}
+
+/**
+ * Acha a região de entrega correspondente a uma cidade/bairro. Prioriza um
+ * match de bairro (mais específico) e cai pra match de cidade.
+ */
+export function matchShippingZone<T extends Pick<ShippingZone, "cities" | "neighborhoods">>(
+  zones: T[],
+  location: { city: string; neighborhood: string }
+): T | null {
+  const city = normalize(location.city);
+  const neighborhood = normalize(location.neighborhood);
+
+  const byNeighborhood = zones.find((z) =>
+    (z.neighborhoods ?? []).some((n) => normalize(n) === neighborhood && neighborhood !== "")
+  );
+  if (byNeighborhood) return byNeighborhood;
+
+  const byCity = zones.find((z) => (z.cities ?? []).some((c) => normalize(c) === city && city !== ""));
+  if (byCity) return byCity;
+
+  return null;
+}

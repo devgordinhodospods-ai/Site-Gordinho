@@ -185,6 +185,8 @@ create table if not exists orders (
 create index if not exists orders_user_idx on orders(user_id);
 create index if not exists orders_status_idx on orders(status);
 create index if not exists orders_payment_id_idx on orders(payment_id);
+create index if not exists orders_customer_email_idx on orders(customer_email);
+create index if not exists orders_created_at_idx on orders(created_at desc);
 
 alter table orders enable row level security;
 -- Sem policy pública: leitura/escrita só via service_role (rota valida dono do pedido ou admin).
@@ -202,6 +204,7 @@ create table if not exists order_items (
 );
 
 create index if not exists order_items_order_idx on order_items(order_id);
+create index if not exists order_items_product_idx on order_items(product_id);
 
 alter table order_items enable row level security;
 
@@ -277,6 +280,10 @@ begin
     v_subtotal := v_subtotal + (v_product.price_cents * v_qty);
   end loop;
 
+  -- total_cents é só o que é cobrado no site (produto + taxa de serviço).
+  -- O frete (shipping_fee_cents) é uma estimativa, paga em dinheiro/pix
+  -- direto pro entregador no momento da entrega — não entra na cobrança
+  -- do Mercado Pago.
   insert into orders (
     user_id, customer_name, customer_email, customer_phone,
     shipping_address, shipping_zone_id, status,
@@ -286,7 +293,7 @@ begin
     p_user_id, p_customer_name, p_customer_email, p_customer_phone,
     p_shipping_address, p_shipping_zone_id, 'awaiting_payment',
     v_subtotal, p_shipping_fee_cents, p_service_fee_cents,
-    v_subtotal + p_shipping_fee_cents + p_service_fee_cents,
+    v_subtotal + p_service_fee_cents,
     p_shipping_breakdown
   ) returning id into v_order_id;
 
@@ -387,6 +394,7 @@ insert into site_settings (key, value) values
   ('store_name', '"Minha Loja"'),
   ('store_logo_url', 'null'),
   ('store_favicon_url', 'null'),
+  ('footer_image_url', 'null'),
   ('contact_whatsapp', 'null'),
   ('contact_email', 'null'),
   ('contact_instagram', 'null'),

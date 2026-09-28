@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { brlToCents, centsToBRL } from "@/lib/money";
 import { FileInput } from "@/components/ui/FileInput";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { HelpTip } from "@/components/ui/HelpTip";
 import type { ProductWithFullFlavors, Category, ProductFlavor } from "@/lib/types";
 
 function slugify(text: string) {
@@ -196,21 +197,35 @@ export function ProductsManager() {
       <h1 className="font-display mb-6 text-2xl text-slate-900">Produtos &amp; Sabores</h1>
 
       <form onSubmit={handleSubmit} className="card mb-8 grid gap-3 p-4 md:grid-cols-2">
-        <input
-          className="input"
-          placeholder="Nome do produto"
-          required
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value, slug: form.slug || slugify(e.target.value) })}
-        />
-        <input
-          className="input"
-          placeholder="slug-do-produto"
-          value={form.slug}
-          onChange={(e) => setForm({ ...form, slug: slugify(e.target.value) })}
-        />
         <div>
-          <label className="mb-1 block text-xs font-bold text-slate-500">Preço de venda (R$)</label>
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Nome do produto
+            <HelpTip text="O nome exibido pro cliente na loja, na página do produto e no carrinho." />
+          </label>
+          <input
+            className="input"
+            required
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value, slug: form.slug || slugify(e.target.value) })}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Slug (endereço na URL)
+            <HelpTip text="Parte do link do produto (ex: /produtos/seu-slug-aqui). É gerado automaticamente a partir do nome, mas pode editar se quiser. Sem espaços ou acentos." />
+          </label>
+          <input
+            className="input"
+            placeholder="slug-do-produto"
+            value={form.slug}
+            onChange={(e) => setForm({ ...form, slug: slugify(e.target.value) })}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Preço de venda (R$)
+            <HelpTip text="O preço que o cliente vê e paga por esse produto." />
+          </label>
           <input
             className="input"
             placeholder="0,00"
@@ -223,6 +238,7 @@ export function ProductsManager() {
         <div>
           <label className="mb-1 block text-xs font-bold text-slate-500">
             Valor de fornecimento / custo (R$)
+            <HelpTip text="Quanto você pagou pra conseguir esse produto (custo do fornecedor). Usado só internamente pra calcular sua margem de lucro — o cliente nunca vê esse valor." />
           </label>
           <input
             className="input"
@@ -239,26 +255,37 @@ export function ProductsManager() {
           </p>
         )}
 
-        <input
-          className="input"
-          placeholder="Estoque (ignorado se tiver sabores)"
-          type="number"
-          min={0}
-          value={form.stock}
-          onChange={(e) => setForm({ ...form, stock: e.target.value })}
-        />
-        <select
-          className="input"
-          value={form.category_id}
-          onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-        >
-          <option value="">Sem categoria</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Estoque
+            <HelpTip text="Quantas unidades você tem disponíveis pra vender. Esse campo é ignorado se o produto tiver sabores cadastrados abaixo — nesse caso, o estoque é o de cada sabor." />
+          </label>
+          <input
+            className="input"
+            type="number"
+            min={0}
+            value={form.stock}
+            onChange={(e) => setForm({ ...form, stock: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Categoria
+            <HelpTip text="Em qual categoria esse produto aparece na loja (ex: Pods, Essências). Pode deixar sem categoria se preferir." />
+          </label>
+          <select
+            className="input"
+            value={form.category_id}
+            onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+          >
+            <option value="">Sem categoria</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -266,17 +293,26 @@ export function ProductsManager() {
             onChange={(e) => setForm({ ...form, active: e.target.checked })}
           />
           Ativo (visível na loja)
+          <HelpTip text="Se desmarcar, o produto some da loja pros clientes mas continua salvo aqui no painel — útil pra pausar a venda de algo sem excluir." />
         </label>
-        <textarea
-          className="input md:col-span-2"
-          placeholder="Descrição"
-          rows={3}
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-        />
+        <div className="md:col-span-2">
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Descrição
+            <HelpTip text="Texto que aparece na página do produto explicando detalhes pro cliente." />
+          </label>
+          <textarea
+            className="input"
+            rows={3}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+        </div>
 
         <div className="md:col-span-2">
-          <label className="mb-1 block text-sm font-bold text-slate-700">Imagem principal</label>
+          <label className="mb-1 block text-sm font-bold text-slate-700">
+            Imagem principal
+            <HelpTip text="Foto(s) do produto exibidas na loja. Pode adicionar mais de uma." />
+          </label>
           <div className="mb-2 flex flex-wrap gap-2">
             {form.images.map((url) => (
               <div key={url} className="relative h-16 w-16 overflow-hidden rounded border">
@@ -291,6 +327,7 @@ export function ProductsManager() {
           <div className="flex items-center justify-between">
             <label className="text-sm font-bold text-slate-700">
               Sabores (opcional — cada um com seu próprio estoque)
+              <HelpTip text="Use quando o produto tem variações (ex: sabores de essência, cores). Cada sabor tem seu próprio estoque, descontado separadamente a cada venda. Se não cadastrar nenhum sabor, o produto usa o campo Estoque normal acima." />
             </label>
             <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={addFlavor}>
               <Plus size={14} /> Adicionar sabor

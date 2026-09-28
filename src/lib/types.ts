@@ -2,6 +2,7 @@ export type SiteSettings = {
   store_name: string;
   store_logo_url: string | null;
   store_favicon_url: string | null;
+  footer_image_url: string | null;
   contact_whatsapp: string | null;
   contact_email: string | null;
   contact_instagram: string | null;
