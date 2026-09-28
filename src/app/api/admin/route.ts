@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admins";
 import { sendOrderStatusUpdateEmail } from "@/lib/email";
 import { getSiteSettings } from "@/lib/settings";
+import { getErrorMessage } from "@/lib/errors";
 import type { OrderStatus } from "@/lib/types";
 
 const READ_ACTIONS = new Set([
@@ -415,7 +416,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `Ação desconhecida: ${action}` }, { status: 400 });
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Erro interno no painel administrativo.";
+    const message = getErrorMessage(err, "Erro interno no painel administrativo.");
     const isRead = READ_ACTIONS.has(action);
     // eslint-disable-next-line no-console
     console.error(`[admin:${action}]`, message);

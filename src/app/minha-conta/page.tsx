@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { User, Mail, Phone, CreditCard, MapPin, Plus, Pencil, Star } from "lucide-react";
+import { User, Mail, Phone, CreditCard, MapPin, Plus, Pencil, Star, KeyRound } from "lucide-react";
 import { Loader } from "@/components/ui/Loader";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { AddressForm, type AddressFormValues } from "@/components/account/AddressForm";
@@ -17,6 +17,13 @@ export default function MinhaContaPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [emailStep, setEmailStep] = useState<"idle" | "enterEmail" | "enterCode">("idle");
+  const [newEmail, setNewEmail] = useState("");
+  const [emailCode, setEmailCode] = useState("");
+  const [emailChangeSaving, setEmailChangeSaving] = useState(false);
+  const [emailChangeError, setEmailChangeError] = useState<string | null>(null);
+  const [emailChangeDone, setEmailChangeDone] = useState(false);
 
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [addressesLoading, setAddressesLoading] = useState(true);
@@ -35,8 +42,12 @@ export default function MinhaContaPage() {
   useEffect(() => {
     if (status !== "authenticated") return;
     fetch("/api/conta")
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error ?? "Não foi possível carregar seus dados.");
+          return;
+        }
         if (data.user) {
           setForm({
             name: data.user.name ?? "",
@@ -46,6 +57,7 @@ export default function MinhaContaPage() {
           });
         }
       })
+      .catch(() => setError("Erro de conexão ao carregar seus dados."))
       .finally(() => setLoading(false));
     loadAddresses();
   }, [status]);
@@ -77,6 +89,58 @@ export default function MinhaContaPage() {
     }
 
     setMessage("Dados atualizados com sucesso!");
+  }
+
+  async function handleRequestEmailChange(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailChangeSaving(true);
+    setEmailChangeError(null);
+
+    const res = await fetch("/api/conta/email/solicitar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newEmail }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    setEmailChangeSaving(false);
+
+    if (!res.ok) {
+      setEmailChangeError(data.error ?? "Não foi possível enviar o código.");
+      return;
+    }
+
+    setEmailStep("enterCode");
+  }
+
+  async function handleConfirmEmailChange(e: React.FormEvent) {
+    e.preventDefault();
+    setEmailChangeSaving(true);
+    setEmailChangeError(null);
+
+    const res = await fetch("/api/conta/email/confirmar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: emailCode }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    setEmailChangeSaving(false);
+
+    if (!res.ok) {
+      setEmailChangeError(data.error ?? "Não foi possível confirmar o código.");
+      return;
+    }
+
+    setEmailChangeDone(true);
+    setTimeout(() => signOut({ callbackUrl: "/login" }), 2500);
+  }
+
+  function cancelEmailChange() {
+    setEmailStep("idle");
+    setNewEmail("");
+    setEmailCode("");
+    setEmailChangeError(null);
   }
 
   function addressToFormValues(a: UserAddress): AddressFormValues {
@@ -172,10 +236,80 @@ export default function MinhaContaPage() {
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
               </div>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input className="input bg-slate-50 pl-10 text-slate-400" value={form.email} disabled />
+              <div>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input className="input bg-slate-50 pl-10 text-slate-400" value={form.email} disabled />
+                </div>
+                {emailStep === "idle" && (
+                  <button
+                    type="button"
+                    className="mt-1 text-xs font-bold text-brand hover:underline"
+                    onClick={() => setEmailStep("enterEmail")}
+                  >
+                    Trocar e-mail
+                  </button>
+                )}
               </div>
+
+              {emailStep === "enterEmail" && (
+                <div className="rounded-xl bg-blue-50/60 p-3">
+                  <form onSubmit={handleRequestEmailChange} className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-600">Novo e-mail</label>
+                    <input
+                      className="input"
+                      type="email"
+                      placeholder="novo@email.com"
+                      required
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                    />
+                    {emailChangeError && <p className="text-sm font-medium text-red-600">{emailChangeError}</p>}
+                    <div className="flex gap-2">
+                      <button type="submit" className="btn-primary flex-1 py-2 text-sm" disabled={emailChangeSaving}>
+                        {emailChangeSaving ? <Loader size={16} color="#fff" /> : "Enviar código"}
+                      </button>
+                      <button type="button" className="btn-secondary py-2 text-sm" onClick={cancelEmailChange}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {emailStep === "enterCode" && (
+                <div className="rounded-xl bg-blue-50/60 p-3">
+                  {emailChangeDone ? (
+                    <p className="text-sm font-medium text-green-600">
+                      E-mail alterado! Você será desconectado pra entrar de novo com o novo e-mail...
+                    </p>
+                  ) : (
+                    <form onSubmit={handleConfirmEmailChange} className="space-y-2">
+                      <label className="flex items-center gap-1 text-xs font-bold text-slate-600">
+                        <KeyRound size={12} /> Código enviado para {newEmail}
+                      </label>
+                      <input
+                        className="input text-center tracking-[0.3em]"
+                        placeholder="000000"
+                        maxLength={6}
+                        required
+                        value={emailCode}
+                        onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, ""))}
+                      />
+                      {emailChangeError && <p className="text-sm font-medium text-red-600">{emailChangeError}</p>}
+                      <div className="flex gap-2">
+                        <button type="submit" className="btn-primary flex-1 py-2 text-sm" disabled={emailChangeSaving}>
+                          {emailChangeSaving ? <Loader size={16} color="#fff" /> : "Confirmar código"}
+                        </button>
+                        <button type="button" className="btn-secondary py-2 text-sm" onClick={cancelEmailChange}>
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+
               <div className="relative">
                 <Phone className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
