@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/auth";
 import { isValidCPF } from "@/lib/cpf";
+import { getErrorMessage } from "@/lib/errors";
 
 export async function GET() {
   const session = await getSession();
@@ -17,7 +18,15 @@ export async function GET() {
     .eq("email", session.user.email.toLowerCase())
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.error("[conta:GET]", error.message);
+    return NextResponse.json(
+      { error: getErrorMessage(error, "Erro ao buscar seus dados.") },
+      { status: 500 }
+    );
+  }
+  if (!data) {
     return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
   }
 
@@ -59,7 +68,12 @@ export async function PUT(req: Request) {
     .eq("email", session.user.email.toLowerCase());
 
   if (error) {
-    return NextResponse.json({ error: "Não foi possível salvar." }, { status: 500 });
+    // eslint-disable-next-line no-console
+    console.error("[conta:PUT]", error.message);
+    return NextResponse.json(
+      { error: getErrorMessage(error, "Não foi possível salvar.") },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ ok: true });

@@ -125,6 +125,9 @@ create table if not exists site_users (
   cpf text,
   password_hash text,
   auth_provider text not null default 'credentials',
+  pending_email text,
+  email_change_code text,
+  email_change_expires_at timestamptz,
   created_at timestamptz not null default now()
 );
 
