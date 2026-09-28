@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, MapPin } from "lucide-react";
+import { CheckCircle2, MapPin, Sparkles } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { centsToBRL } from "@/lib/money";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
@@ -9,6 +9,7 @@ import { formatCep } from "@/components/account/AddressFields";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { Loader } from "@/components/ui/Loader";
 import type { SiteSettings } from "@/lib/types";
+import type { PricingSuggestion } from "@/lib/geo";
 
 type FreightFields = Pick<
   SiteSettings,
@@ -41,6 +42,7 @@ export function FreightSettings() {
   const [baseFee, setBaseFee] = useState("");
   const [perKm, setPerKm] = useState("");
   const [locating, setLocating] = useState(false);
+  const [suggestion, setSuggestion] = useState<(PricingSuggestion & { city: string }) | null>(null);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -63,10 +65,25 @@ export function FreightSettings() {
     setError(null);
     setMessage(null);
     try {
-      const place = await adminApi<{ address: string; lat: number; lng: number }>("locateStoreCep", {
-        cep: data.origin_cep,
-      });
-      setData((d) => ({ ...d, origin_address: place.address, origin_lat: place.lat, origin_lng: place.lng }));
+      const place = await adminApi<{
+        address: string;
+        city: string;
+        lat: number;
+        lng: number;
+        suggestion: PricingSuggestion;
+      }>("locateStoreCep", { cep: data.origin_cep });
+      // Já preenche os preços com os valores típicos pro porte da cidade.
+      const s = place.suggestion;
+      setData((d) => ({
+        ...d,
+        origin_address: place.address,
+        origin_lat: place.lat,
+        origin_lng: place.lng,
+        shipping_max_km: s.maxKm,
+      }));
+      setBaseFee((s.baseFeeCents / 100).toFixed(2).replace(".", ","));
+      setPerKm((s.perKmCents / 100).toFixed(2).replace(".", ","));
+      setSuggestion({ ...s, city: place.city });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível localizar o CEP.");
     } finally {
@@ -156,6 +173,16 @@ export function FreightSettings() {
 
         <section className="card p-5">
           <h2 className="font-display mb-3 text-lg text-slate-900">2. Quanto cobrar</h2>
+          {suggestion && (
+            <p className="mb-4 flex gap-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-sm text-slate-700">
+              <Sparkles size={16} className="mt-0.5 shrink-0 text-brand" />
+              <span>
+                Preenchemos com valores típicos de entrega por moto pra {suggestion.city} ({suggestion.tier}
+                {suggestion.population ? `, ~${Math.round(suggestion.population / 1000)} mil habitantes` : ""}).
+                É um ponto de partida — ajuste conforme o que os motoboys cobram aí e clique em Salvar.
+              </span>
+            </p>
+          )}
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className="mb-1 block text-xs text-slate-500">

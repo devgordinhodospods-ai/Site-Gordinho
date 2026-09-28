@@ -1,4 +1,4 @@
-export type CepLookup = { street: string; city: string; neighborhood: string; state: string };
+export type CepLookup = { street: string; city: string; neighborhood: string; state: string; ibge: string };
 
 /**
  * Consulta o ViaCEP (API pública e gratuita, sem chave) pra preencher o
@@ -18,6 +18,7 @@ export async function lookupCep(cep: string): Promise<CepLookup | null> {
       city: data.localidade ?? "",
       neighborhood: data.bairro ?? "",
       state: data.uf ?? "",
+      ibge: data.ibge ?? "",
     };
   } catch {
     return null;

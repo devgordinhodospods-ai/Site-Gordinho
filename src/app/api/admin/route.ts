@@ -6,7 +6,7 @@ import { sendOrderStatusUpdateEmail } from "@/lib/email";
 import { getSiteSettings } from "@/lib/settings";
 import { getErrorMessage } from "@/lib/errors";
 import { releaseAbandonedOrders } from "@/lib/orders";
-import { locateCep } from "@/lib/geo";
+import { locateCep, suggestFreightPricing } from "@/lib/geo";
 import type { OrderStatus } from "@/lib/types";
 
 const READ_ACTIONS = new Set([
@@ -392,7 +392,8 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: "Não encontramos esse CEP no mapa. Confira os números." }, { status: 404 });
         }
         const address = [place.street, place.neighborhood, `${place.city}/${place.state}`].filter(Boolean).join(", ");
-        return NextResponse.json({ address, lat: place.lat, lng: place.lng });
+        const suggestion = await suggestFreightPricing(place);
+        return NextResponse.json({ address, city: place.city, lat: place.lat, lng: place.lng, suggestion });
       }
 
       // ---------------- upload de imagens ----------------

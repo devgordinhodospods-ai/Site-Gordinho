@@ -96,3 +96,53 @@ export async function estimateFreight(
   const feeCents = settings.shipping_base_fee_cents + Math.round(km * settings.shipping_per_km_cents);
   return { status: "ok", km, feeCents, city: place.city };
 }
+
+export type PricingSuggestion = {
+  tier: string;
+  population: number | null;
+  baseFeeCents: number;
+  perKmCents: number;
+  maxKm: number;
+};
+
+// Faixas de preço de entrega por moto conforme o porte da cidade — valores
+// típicos de mercado, pensados como ponto de partida pro operador ajustar.
+// Ex.: cidade de ~100 mil habitantes → corrida de 2–3 km fica entre R$ 8 e R$ 10.
+const TIERS: { upTo: number; tier: string; baseFeeCents: number; perKmCents: number; maxKm: number }[] = [
+  { upTo: 50_000, tier: "cidade pequena", baseFeeCents: 500, perKmCents: 100, maxKm: 8 },
+  { upTo: 200_000, tier: "cidade média", baseFeeCents: 600, perKmCents: 120, maxKm: 12 },
+  { upTo: 1_000_000, tier: "cidade grande", baseFeeCents: 700, perKmCents: 150, maxKm: 15 },
+  { upTo: 5_000_000, tier: "capital / metrópole", baseFeeCents: 800, perKmCents: 180, maxKm: 20 },
+  { upTo: Infinity, tier: "metrópole (SP/RJ)", baseFeeCents: 900, perKmCents: 200, maxKm: 25 },
+];
+
+/** População estimada do município pelo IBGE (API pública, sem chave). */
+async function ibgePopulation(ibgeCode: string): Promise<number | null> {
+  if (!/^\d{7}$/.test(ibgeCode)) return null;
+  try {
+    const res = await fetch(
+      `https://servicodados.ibge.gov.br/api/v3/agregados/6579/periodos/-1/variaveis/9324?localidades=N6[${ibgeCode}]`,
+      { next: { revalidate: DAY * 30 } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const serie = data?.[0]?.resultados?.[0]?.series?.[0]?.serie;
+    const value = serie ? Number(Object.values(serie)[0]) : NaN;
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function suggestFreightPricing(place: Pick<LocatedCep, "ibge">): Promise<PricingSuggestion> {
+  const population = await ibgePopulation(place.ibge);
+  // Sem dado do IBGE, usa a faixa de cidade média (o caso mais comum).
+  const tier = TIERS.find((t) => (population ?? 100_000) <= t.upTo) ?? TIERS[1];
+  return {
+    tier: tier.tier,
+    population,
+    baseFeeCents: tier.baseFeeCents,
+    perKmCents: tier.perKmCents,
+    maxKm: tier.maxKm,
+  };
+}
