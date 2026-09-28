@@ -33,7 +33,8 @@ export default function CadastroPage() {
 
     await signIn("credentials", { email: form.email, password: form.password, redirect: false });
     setLoading(false);
-    router.push("/");
+    // Depois de criar a conta, pede CPF, WhatsApp e endereço (igual ao Google).
+    router.push("/completar-cadastro?next=/");
   }
 
   return (
