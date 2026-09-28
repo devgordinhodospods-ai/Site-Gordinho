@@ -68,7 +68,25 @@ export async function POST(req: Request) {
   }
 
   const settings = await getSiteSettings();
-  await sendEmailChangeCode({ toEmail: newEmail, customerName: currentUser.name, code, settings });
+  const result = await sendEmailChangeCode({ toEmail: newEmail, customerName: currentUser.name, code, settings });
+
+  if (!result.sent) {
+    // Reverte o código pendente já que o e-mail não saiu — evita deixar o
+    // usuário numa tela de "digite o código" sem nenhum código ter chegado.
+    await db
+      .from("site_users")
+      .update({ pending_email: null, email_change_code: null, email_change_expires_at: null })
+      .eq("email", currentEmail);
+
+    return NextResponse.json(
+      {
+        error: result.error?.includes("RESEND_API_KEY")
+          ? "Envio de e-mail não está configurado na loja ainda (RESEND_API_KEY). Peça pro administrador configurar."
+          : `Não foi possível enviar o e-mail: ${result.error}`,
+      },
+      { status: 502 }
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }
