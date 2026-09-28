@@ -3,11 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
-import { ShoppingCart, User, LogOut, LayoutDashboard, Search, LayoutGrid } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { ShoppingCart, User, LayoutDashboard, Search, LayoutGrid } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { useEffect, useState } from "react";
 import type { Category } from "@/lib/types";
+import { UserMenu } from "@/components/layout/UserMenu";
 
 export function Navbar({
   storeName,
@@ -86,13 +87,7 @@ export function Navbar({
           </Link>
 
           {session?.user ? (
-            <button
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="flex items-center gap-1 rounded-lg p-2 text-sm text-slate-600 transition-colors hover:bg-blue-50 hover:text-brand"
-              title="Sair"
-            >
-              <LogOut size={18} />
-            </button>
+            <UserMenu name={session.user.name} />
           ) : (
             <Link
               href="/login"
