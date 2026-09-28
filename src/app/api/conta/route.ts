@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/auth";
+import { isValidCPF } from "@/lib/cpf";
 
 export async function GET() {
   const session = await getSession();
@@ -12,7 +13,7 @@ export async function GET() {
   const db = getSupabaseAdmin();
   const { data, error } = await db
     .from("site_users")
-    .select("name, email, phone, auth_provider")
+    .select("name, email, phone, cpf, auth_provider")
     .eq("email", session.user.email.toLowerCase())
     .maybeSingle();
 
@@ -26,6 +27,10 @@ export async function GET() {
 const schema = z.object({
   name: z.string().min(2),
   phone: z.string().optional(),
+  cpf: z
+    .string()
+    .optional()
+    .refine((v) => !v || isValidCPF(v), { message: "CPF inválido" }),
 });
 
 export async function PUT(req: Request) {
@@ -37,13 +42,20 @@ export async function PUT(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Dados inválidos" },
+      { status: 400 }
+    );
   }
 
   const db = getSupabaseAdmin();
   const { error } = await db
     .from("site_users")
-    .update({ name: parsed.data.name, phone: parsed.data.phone ?? null })
+    .update({
+      name: parsed.data.name,
+      phone: parsed.data.phone ?? null,
+      cpf: parsed.data.cpf ? parsed.data.cpf.replace(/\D/g, "") : null,
+    })
     .eq("email", session.user.email.toLowerCase());
 
   if (error) {

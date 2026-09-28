@@ -48,7 +48,12 @@ function LoginForm() {
         <h1 className="font-display mb-1 text-center text-2xl text-slate-900">Bem-vindo de volta</h1>
         <p className="mb-6 text-center text-sm text-slate-500">Entre na sua conta para continuar</p>
 
-        <button className="btn-google" onClick={() => signIn("google", { callbackUrl })}>
+        <button
+          className="btn-google"
+          onClick={() =>
+            signIn("google", { callbackUrl: `/completar-cadastro?next=${encodeURIComponent(callbackUrl)}` })
+          }
+        >
           <GoogleIcon /> Entrar com Google
         </button>
 
