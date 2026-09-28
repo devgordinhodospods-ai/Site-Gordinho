@@ -16,13 +16,13 @@ export type PreferenceItemInput = {
 
 /**
  * Cria uma preferência de pagamento no Checkout Pro do Mercado Pago.
- * O carrinho é montado igual um app de delivery: itens do pedido + linha de
- * frete + linha de taxa de serviço, cada uma como um "item" da preferência.
+ * O frete NÃO entra aqui: é uma estimativa paga em dinheiro/pix direto pro
+ * entregador no momento da entrega, então o valor cobrado no site é só o
+ * produto + a taxa de serviço da loja.
  */
 export async function createPaymentPreference(params: {
   orderId: string;
   items: PreferenceItemInput[];
-  shippingFeeCents: number;
   serviceFeeCents: number;
   payerEmail?: string;
   successUrl: string;
@@ -42,16 +42,6 @@ export async function createPaymentPreference(params: {
       currency_id: "BRL",
     })),
   ];
-
-  if (params.shippingFeeCents > 0) {
-    items.push({
-      id: "shipping-fee",
-      title: "Taxa de entrega",
-      quantity: 1,
-      unit_price: params.shippingFeeCents / 100,
-      currency_id: "BRL",
-    });
-  }
 
   if (params.serviceFeeCents > 0) {
     items.push({

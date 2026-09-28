@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admins";
 import { sendOrderStatusUpdateEmail } from "@/lib/email";
-import { getSiteSettings } from "@/lib/settings";
+import { getSiteSettings, SITE_SETTINGS_TAG } from "@/lib/settings";
+import { CATEGORIES_TAG } from "@/lib/categories";
 import { getErrorMessage } from "@/lib/errors";
 import type { OrderStatus } from "@/lib/types";
 
@@ -49,6 +51,7 @@ const SETTINGS_KEYS = [
   "store_name",
   "store_logo_url",
   "store_favicon_url",
+  "footer_image_url",
   "contact_whatsapp",
   "contact_email",
   "contact_instagram",
@@ -166,16 +169,19 @@ export async function POST(req: Request) {
             .select()
             .single();
           if (error) throw error;
+          revalidateTag(CATEGORIES_TAG);
           return NextResponse.json({ category: data });
         }
         const { data, error } = await db.from("categories").insert(fields).select().single();
         if (error) throw error;
+        revalidateTag(CATEGORIES_TAG);
         return NextResponse.json({ category: data });
       }
 
       case "deleteCategory": {
         const { error } = await db.from("categories").delete().eq("id", body.id);
         if (error) throw error;
+        revalidateTag(CATEGORIES_TAG);
         return NextResponse.json({ ok: true });
       }
 
@@ -384,6 +390,7 @@ export async function POST(req: Request) {
         }
         const { error } = await db.from("site_settings").upsert(rows, { onConflict: "key" });
         if (error) throw error;
+        revalidateTag(SITE_SETTINGS_TAG);
         return NextResponse.json({ ok: true });
       }
 

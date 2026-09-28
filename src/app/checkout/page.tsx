@@ -72,7 +72,9 @@ export default function CheckoutPage() {
 
   const serviceFeeCents = Math.round((subtotal * serviceFee.percent) / 100) + serviceFee.fixed;
   const shippingFeeCents = shipping?.totalCents ?? 0;
-  const total = subtotal + shippingFeeCents + serviceFeeCents;
+  // O frete é só uma estimativa: é pago em dinheiro/pix direto pro
+  // entregador na entrega, não entra na cobrança do Mercado Pago.
+  const total = subtotal + serviceFeeCents;
 
   if (status === "loading") return null;
 
@@ -234,26 +236,32 @@ export default function CheckoutPage() {
                 <span>{centsToBRL(subtotal)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Frete</span>
-                <span>{loadingShipping ? "calculando..." : zoneId ? centsToBRL(shippingFeeCents) : "-"}</span>
-              </div>
-              <div className="flex justify-between">
                 <span>Taxa de serviço</span>
                 <span>{centsToBRL(serviceFeeCents)}</span>
               </div>
               <div className="mt-2 flex justify-between border-t pt-2 text-base font-bold">
-                <span>Total</span>
+                <span>Total a pagar no site</span>
                 <span>{centsToBRL(total)}</span>
               </div>
             </div>
 
-            {shipping && (shipping.peakHour || shipping.raining || shipping.lateNight) && (
-              <div className="mt-3 space-y-1 text-xs text-amber-700">
-                {shipping.raining && <p>⛆ Frete com acréscimo por chuva na região da loja.</p>}
-                {shipping.peakHour && <p>⏰ Frete com acréscimo por horário de pico.</p>}
-                {shipping.lateNight && <p>🌙 Frete com acréscimo de madrugada.</p>}
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-800">
+              <div className="flex justify-between font-medium">
+                <span>Frete estimado (região selecionada)</span>
+                <span>{loadingShipping ? "calculando..." : zoneId ? centsToBRL(shippingFeeCents) : "-"}</span>
               </div>
-            )}
+              <p className="mt-1">
+                Valor aproximado, pago em dinheiro/pix <span className="font-bold">direto ao entregador</span>{" "}
+                no momento da entrega — não entra no total pago no site.
+              </p>
+              {shipping && (shipping.peakHour || shipping.raining || shipping.lateNight) && (
+                <div className="mt-2 space-y-0.5">
+                  {shipping.raining && <p>⛆ Com acréscimo por chuva na região da loja.</p>}
+                  {shipping.peakHour && <p>⏰ Com acréscimo por horário de pico.</p>}
+                  {shipping.lateNight && <p>🌙 Com acréscimo de madrugada.</p>}
+                </div>
+              )}
+            </div>
 
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 

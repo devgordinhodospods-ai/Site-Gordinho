@@ -70,18 +70,27 @@ function PedidoDetalheContent() {
           <span>{centsToBRL(order.subtotal_cents)}</span>
         </div>
         <div className="flex justify-between">
-          <span>Frete</span>
-          <span>{centsToBRL(order.shipping_fee_cents)}</span>
-        </div>
-        <div className="flex justify-between">
           <span>Taxa de serviço</span>
           <span>{centsToBRL(order.service_fee_cents)}</span>
         </div>
         <div className="flex justify-between border-t pt-2 text-base font-bold">
-          <span>Total</span>
+          <span>Total pago no site</span>
           <span>{centsToBRL(order.total_cents)}</span>
         </div>
       </div>
+
+      {order.shipping_fee_cents > 0 && (
+        <div className="card mt-4 space-y-1 border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <div className="flex justify-between font-medium">
+            <span>Frete estimado</span>
+            <span>{centsToBRL(order.shipping_fee_cents)}</span>
+          </div>
+          <p className="text-xs leading-relaxed">
+            Valor aproximado, pago em dinheiro/pix direto ao entregador no momento da entrega — não faz
+            parte do total pago no site.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

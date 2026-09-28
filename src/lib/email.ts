@@ -76,9 +76,16 @@ export async function sendOrderConfirmationEmail(params: {
         ${itemsHtml}
       </table>
       <p>Subtotal: ${centsToBRL(order.subtotal_cents)}<br/>
-      Frete: ${centsToBRL(order.shipping_fee_cents)}<br/>
       Taxa de serviço: ${centsToBRL(order.service_fee_cents)}<br/>
-      <strong>Total: ${centsToBRL(order.total_cents)}</strong></p>
+      <strong>Total pago no site: ${centsToBRL(order.total_cents)}</strong></p>
+      ${
+        order.shipping_fee_cents > 0
+          ? `<p style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;color:#92400e;">
+              <strong>Frete estimado: ${centsToBRL(order.shipping_fee_cents)}</strong><br/>
+              Valor aproximado, pago em dinheiro/pix direto ao entregador no momento da entrega.
+            </p>`
+          : ""
+      }
       <p>Você pode acompanhar o status do seu pedido na área "Meus pedidos" do site.</p>
     </div>
   `;

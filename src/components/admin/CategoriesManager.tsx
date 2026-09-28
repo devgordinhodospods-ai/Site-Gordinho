@@ -6,6 +6,7 @@ import { adminApi } from "@/lib/adminApi";
 import { supabase } from "@/lib/supabase";
 import { FileInput } from "@/components/ui/FileInput";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { HelpTip } from "@/components/ui/HelpTip";
 import type { Category } from "@/lib/types";
 
 function slugify(text: string) {
@@ -99,25 +100,36 @@ export function CategoriesManager() {
       </p>
 
       <form onSubmit={handleAdd} className="card mb-6 space-y-3 p-4">
-        <div className="flex gap-2">
-          <input
-            className="input"
-            placeholder="Nome da categoria"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <button type="submit" className="btn-primary whitespace-nowrap">
-            Adicionar
-          </button>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Nome da categoria
+            <HelpTip text="Como a categoria aparece pro cliente na loja (ex: Pods, Essências, Acessórios). Produtos são agrupados por categoria no filtro e na home." />
+          </label>
+          <div className="flex gap-2">
+            <input
+              className="input"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <button type="submit" className="btn-primary whitespace-nowrap">
+              Adicionar
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          {imageUrl && (
-            <div className="relative h-14 w-14 overflow-hidden rounded-lg border border-blue-100">
-              <Image src={imageUrl} alt="" fill className="object-cover" />
-            </div>
-          )}
-          <FileInput onFileSelected={handleImageUpload} disabled={uploading} label="Escolher imagem" />
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Imagem de capa
+            <HelpTip text="Foto que representa a categoria na vitrine “Compre por categoria” da home. Opcional." />
+          </label>
+          <div className="flex items-center gap-3">
+            {imageUrl && (
+              <div className="relative h-14 w-14 overflow-hidden rounded-lg border border-blue-100">
+                <Image src={imageUrl} alt="" fill className="object-cover" />
+              </div>
+            )}
+            <FileInput onFileSelected={handleImageUpload} disabled={uploading} label="Escolher imagem" />
+          </div>
         </div>
       </form>
 

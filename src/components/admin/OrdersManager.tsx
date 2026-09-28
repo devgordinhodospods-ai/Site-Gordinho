@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { MessageCircle, MapPin, CreditCard } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { centsToBRL } from "@/lib/money";
+import { HelpTip } from "@/components/ui/HelpTip";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 
 const STATUS_FLOW: OrderStatus[] = [
@@ -143,9 +144,15 @@ export function OrdersManager() {
                   {order.payment_status ? ` · ${order.payment_status}` : ""}
                 </p>
                 <p>
-                  <span className="font-bold">Total:</span>{" "}
+                  <span className="font-bold">Total pago no site:</span>{" "}
                   <span className="font-display text-brand">{centsToBRL(order.total_cents)}</span>
                 </p>
+                {order.shipping_fee_cents > 0 && (
+                  <p className="text-amber-700">
+                    <span className="font-bold">Frete a cobrar do cliente na entrega:</span>{" "}
+                    {centsToBRL(order.shipping_fee_cents)}
+                  </p>
+                )}
               </div>
 
               <ul className="mt-3 space-y-0.5 border-t border-blue-50 pt-2 text-sm text-slate-600">
@@ -158,7 +165,10 @@ export function OrdersManager() {
               </ul>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="text-sm font-bold text-slate-700">Alterar status:</span>
+                <span className="text-sm font-bold text-slate-700">
+                  Alterar status:
+                  <HelpTip text="Muda a etapa do pedido — o cliente recebe um e-mail avisando da mudança. Escolher 'Cancelado' devolve o estoque automaticamente." />
+                </span>
                 <select
                   className="input w-56"
                   value={order.status}

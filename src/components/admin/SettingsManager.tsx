@@ -6,11 +6,12 @@ import { adminApi } from "@/lib/adminApi";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
 import { FileInput } from "@/components/ui/FileInput";
+import { HelpTip } from "@/components/ui/HelpTip";
 import type { SiteSettings } from "@/lib/types";
 
 export function SettingsManager() {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
-  const [uploading, setUploading] = useState<"logo" | "favicon" | null>(null);
+  const [uploading, setUploading] = useState<"logo" | "favicon" | "footer" | null>(null);
   const [geocoding, setGeocoding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -31,7 +32,7 @@ export function SettingsManager() {
     load();
   }, []);
 
-  async function handleUpload(file: File, kind: "logo" | "favicon") {
+  async function handleUpload(file: File, kind: "logo" | "favicon" | "footer") {
     setUploading(kind);
     setError(null);
     try {
@@ -45,10 +46,9 @@ export function SettingsManager() {
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from("product-images").getPublicUrl(upload.path);
-      setSettings((s) => ({
-        ...s,
-        [kind === "logo" ? "store_logo_url" : "store_favicon_url"]: data.publicUrl,
-      }));
+      const field =
+        kind === "logo" ? "store_logo_url" : kind === "favicon" ? "store_favicon_url" : "footer_image_url";
+      setSettings((s) => ({ ...s, [field]: data.publicUrl }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao enviar imagem.");
     } finally {
@@ -96,7 +96,10 @@ export function SettingsManager() {
 
       <div className="card space-y-6 p-4">
         <div>
-          <label className="mb-1 block text-sm font-medium">Nome da loja</label>
+          <label className="mb-1 block text-sm font-medium">
+            Nome da loja
+            <HelpTip text="Nome exibido na navbar, no rodapé, no título da aba do navegador e nos e-mails enviados pra clientes." />
+          </label>
           <input
             className="input"
             value={settings.store_name}
@@ -105,7 +108,10 @@ export function SettingsManager() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Texto da barra de avisos (topo do site)</label>
+          <label className="mb-1 block text-sm font-medium">
+            Texto da barra de avisos (topo do site)
+            <HelpTip text="Frase fixa exibida na faixa bem no topo de todas as páginas do site, acima da navbar." />
+          </label>
           <input
             className="input"
             placeholder="Ex: Frete grátis acima de R$ 150"
@@ -116,7 +122,10 @@ export function SettingsManager() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium">Título de destaque (banner da home)</label>
+            <label className="mb-1 block text-sm font-medium">
+              Título de destaque (banner da home)
+              <HelpTip text="Título grande do banner azul na página inicial. Se deixar vazio, usa o nome da loja." />
+            </label>
             <input
               className="input"
               placeholder={settings.store_name}
@@ -125,7 +134,10 @@ export function SettingsManager() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium">Subtítulo (banner da home)</label>
+            <label className="mb-1 block text-sm font-medium">
+              Subtítulo (banner da home)
+              <HelpTip text="Texto menor logo abaixo do título do banner da home." />
+            </label>
             <input
               className="input"
               placeholder="Confira nossos produtos e faça seu pedido com entrega rápida."
@@ -135,9 +147,12 @@ export function SettingsManager() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-medium">Logo</label>
+            <label className="mb-1 block text-sm font-medium">
+              Logo
+              <HelpTip text="Aparece na navbar (topo do site) ao lado do nome da loja, e no rodapé se não tiver uma imagem própria de rodapé configurada." />
+            </label>
             {settings.store_logo_url && (
               <div className="relative mb-2 h-16 w-16 overflow-hidden rounded border">
                 <Image src={settings.store_logo_url} alt="Logo" fill className="object-cover" />
@@ -151,7 +166,10 @@ export function SettingsManager() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium">Favicon</label>
+            <label className="mb-1 block text-sm font-medium">
+              Favicon
+              <HelpTip text="Iconezinho que aparece na aba do navegador, ao lado do título da página." />
+            </label>
             {settings.store_favicon_url && (
               <div className="relative mb-2 h-8 w-8 overflow-hidden rounded border">
                 <Image src={settings.store_favicon_url} alt="Favicon" fill className="object-cover" />
@@ -163,11 +181,32 @@ export function SettingsManager() {
               label="Escolher favicon"
             />
           </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Imagem do rodapé
+              <HelpTip text="Imagem exibida no rodapé do site, ao lado do nome da loja. Se deixar em branco, o rodapé usa a mesma logo da navbar." />
+            </label>
+            <p className="mb-1 text-xs text-slate-500">Opcional — se não colocar, o rodapé usa a mesma logo acima.</p>
+            {settings.footer_image_url && (
+              <div className="relative mb-2 h-16 w-16 overflow-hidden rounded border">
+                <Image src={settings.footer_image_url} alt="Imagem do rodapé" fill className="object-cover" />
+              </div>
+            )}
+            <FileInput
+              onFileSelected={(file) => handleUpload(file, "footer")}
+              disabled={uploading === "footer"}
+              label="Escolher imagem do rodapé"
+            />
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-medium">WhatsApp</label>
+            <label className="mb-1 block text-sm font-medium">
+              WhatsApp
+              <HelpTip text="Número usado no botão de WhatsApp do rodapé e nas redes sociais. Coloque com DDD (ex: 11999998888)." />
+            </label>
             <input
               className="input"
               value={settings.contact_whatsapp ?? ""}
@@ -175,7 +214,10 @@ export function SettingsManager() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium">E-mail de contato</label>
+            <label className="mb-1 block text-sm font-medium">
+              E-mail de contato
+              <HelpTip text="E-mail de contato exibido pro cliente (rodapé/redes sociais). Não é o e-mail de login do admin." />
+            </label>
             <input
               className="input"
               value={settings.contact_email ?? ""}
@@ -183,7 +225,10 @@ export function SettingsManager() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium">Instagram</label>
+            <label className="mb-1 block text-sm font-medium">
+              Instagram
+              <HelpTip text="Seu @ do Instagram (com ou sem @). Vira um link clicável no rodapé do site." />
+            </label>
             <input
               className="input"
               value={settings.contact_instagram ?? ""}
@@ -194,7 +239,8 @@ export function SettingsManager() {
 
         <div>
           <label className="mb-1 block text-sm font-medium">
-            Endereço de origem da loja (usado para calcular frete e clima)
+            Endereço de origem da loja
+            <HelpTip text="Endereço físico da loja. Usado pra calcular a distância até cada região de entrega e verificar se está chovendo (o que aumenta o frete estimado). Clique em 'Localizar' pra converter o endereço em coordenadas." />
           </label>
           <div className="flex gap-2">
             <input
@@ -216,7 +262,10 @@ export function SettingsManager() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium">Taxa de serviço (%)</label>
+            <label className="mb-1 block text-sm font-medium">
+              Taxa de serviço (%)
+              <HelpTip text="Percentual cobrado em cima do subtotal do carrinho, como receita da plataforma (parecido com a taxa de serviço de apps de delivery). Cobrado junto com o produto no site." />
+            </label>
             <input
               className="input"
               type="number"
@@ -227,7 +276,10 @@ export function SettingsManager() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium">Taxa de serviço fixa (R$)</label>
+            <label className="mb-1 block text-sm font-medium">
+              Taxa de serviço fixa (R$)
+              <HelpTip text="Valor fixo somado à taxa de serviço em todo pedido, além do percentual acima. Pode deixar 0 se não quiser cobrar valor fixo." />
+            </label>
             <input
               className="input"
               type="number"

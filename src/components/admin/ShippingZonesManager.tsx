@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { adminApi } from "@/lib/adminApi";
 import { brlToCents, centsToBRL } from "@/lib/money";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { HelpTip } from "@/components/ui/HelpTip";
 import type { ShippingZone } from "@/lib/types";
 
 const EMPTY_FORM = {
@@ -83,41 +84,71 @@ export function ShippingZonesManager() {
       </p>
 
       <form onSubmit={handleSubmit} className="card mb-8 grid gap-3 p-4 md:grid-cols-2">
-        <input
-          className="input"
-          placeholder="Nome da região (ex: Centro)"
-          required
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-        />
-        <input
-          className="input"
-          placeholder="Taxa base (R$)"
-          required
-          inputMode="decimal"
-          value={form.base_fee}
-          onChange={(e) => setForm({ ...form, base_fee: e.target.value })}
-        />
-        <input
-          className="input"
-          placeholder="Bairros (separados por vírgula)"
-          value={form.neighborhoods}
-          onChange={(e) => setForm({ ...form, neighborhoods: e.target.value })}
-        />
-        <input
-          className="input"
-          placeholder="Distância aprox. da loja (km)"
-          required
-          inputMode="decimal"
-          value={form.km_from_origin}
-          onChange={(e) => setForm({ ...form, km_from_origin: e.target.value })}
-        />
-        <input
-          className="input md:col-span-2"
-          placeholder="Cidades (separadas por vírgula)"
-          value={form.cities}
-          onChange={(e) => setForm({ ...form, cities: e.target.value })}
-        />
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Nome da região
+            <HelpTip text="Um nome pra você identificar a região (ex: Centro, Zona Norte). Não aparece pro cliente, só organiza aqui no painel." />
+          </label>
+          <input
+            className="input"
+            placeholder="Ex: Centro"
+            required
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Taxa base (R$)
+            <HelpTip text="Valor inicial do frete pra essa região. O valor final que o cliente vê pode subir um pouco automaticamente em horário de pico ou chuva no dia." />
+          </label>
+          <input
+            className="input"
+            placeholder="0,00"
+            required
+            inputMode="decimal"
+            value={form.base_fee}
+            onChange={(e) => setForm({ ...form, base_fee: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Bairros
+            <HelpTip text="Lista de bairros dessa região, separados por vírgula. Ajuda só como referência sua — hoje a escolha do cliente na loja é pela região/cidade, não filtra automaticamente por bairro." />
+          </label>
+          <input
+            className="input"
+            placeholder="Bairro 1, Bairro 2"
+            value={form.neighborhoods}
+            onChange={(e) => setForm({ ...form, neighborhoods: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Distância aprox. da loja (km)
+            <HelpTip text="Distância dessa região até a loja. Quanto maior, mais caro tende a ficar o frete calculado automaticamente." />
+          </label>
+          <input
+            className="input"
+            placeholder="0"
+            required
+            inputMode="decimal"
+            value={form.km_from_origin}
+            onChange={(e) => setForm({ ...form, km_from_origin: e.target.value })}
+          />
+        </div>
+        <div className="md:col-span-2">
+          <label className="mb-1 block text-xs font-bold text-slate-500">
+            Cidades
+            <HelpTip text="Lista de cidades dessa região, separadas por vírgula." />
+          </label>
+          <input
+            className="input"
+            placeholder="Cidade 1, Cidade 2"
+            value={form.cities}
+            onChange={(e) => setForm({ ...form, cities: e.target.value })}
+          />
+        </div>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -125,6 +156,7 @@ export function ShippingZonesManager() {
             onChange={(e) => setForm({ ...form, active: e.target.checked })}
           />
           Ativa
+          <HelpTip text="Se desmarcar, essa região some das opções de entrega disponíveis pro cliente no checkout." />
         </label>
 
         {error && <p className="text-sm text-red-600 md:col-span-2">{error}</p>}

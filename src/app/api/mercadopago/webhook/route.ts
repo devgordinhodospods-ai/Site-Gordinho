@@ -36,8 +36,19 @@ export async function POST(req: Request) {
     let newStatus = order.status;
     if (payment.status === "approved" && order.status === "awaiting_payment") {
       newStatus = "paid";
-    } else if (payment.status === "rejected" || payment.status === "cancelled") {
-      newStatus = order.status;
+    }
+
+    const shouldReleaseStock =
+      (payment.status === "rejected" || payment.status === "cancelled") &&
+      order.status === "awaiting_payment";
+
+    if (shouldReleaseStock) {
+      // Pagamento recusado/cancelado: devolve o estoque reservado na criação
+      // do pedido, senão ele fica preso pra sempre até um admin cancelar
+      // manualmente.
+      const { error: cancelError } = await db.rpc("cancel_order", { p_order_id: orderId });
+      if (cancelError) throw cancelError;
+      newStatus = "cancelled";
     }
 
     await db

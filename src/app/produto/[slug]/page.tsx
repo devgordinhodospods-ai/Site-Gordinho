@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { centsToBRL } from "@/lib/money";
 import { AddToCartButton } from "@/components/loja/AddToCartButton";
+import { DeliveryEstimateCard } from "@/components/loja/DeliveryEstimateCard";
 import type { ProductWithFullFlavors } from "@/lib/types";
 
 async function getProduct(slug: string): Promise<ProductWithFullFlavors | null> {
@@ -50,6 +51,10 @@ export default async function ProdutoPage({ params }: { params: Promise<{ slug: 
 
           <div className="mt-6">
             <AddToCartButton product={product} flavors={flavors} />
+          </div>
+
+          <div className="mt-6">
+            <DeliveryEstimateCard />
           </div>
         </div>
       </div>

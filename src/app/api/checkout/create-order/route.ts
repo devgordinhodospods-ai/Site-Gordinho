@@ -115,7 +115,6 @@ export async function POST(req: Request) {
         quantity: i.quantity,
         unitPriceCents: i.unit_price_cents,
       })),
-      shippingFeeCents: order?.shipping_fee_cents ?? 0,
       serviceFeeCents: order?.service_fee_cents ?? 0,
       payerEmail: session.user.email,
       successUrl: `${appUrl}/pedidos/${orderId}?status=success`,
