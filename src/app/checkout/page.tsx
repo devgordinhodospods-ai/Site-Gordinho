@@ -8,18 +8,10 @@ import Image from "next/image";
 import { Lock, MapPin, Phone, ShoppingBag, Truck } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { centsToBRL } from "@/lib/money";
-import { matchShippingZone } from "@/lib/shipping";
 import { Loader, LoaderPage } from "@/components/ui/Loader";
 import { AddressFields, EMPTY_ADDRESS_VALUES, type AddressValues } from "@/components/account/AddressFields";
-import type { ShippingZone, UserAddress } from "@/lib/types";
-
-type Zone = Pick<ShippingZone, "id" | "name" | "cities" | "neighborhoods">;
-type ShippingBreakdown = {
-  totalCents: number;
-  peakHour: boolean;
-  raining: boolean;
-  lateNight: boolean;
-};
+import type { UserAddress } from "@/lib/types";
+import type { FreightEstimate } from "@/lib/geo";
 
 const NEW_ADDRESS = "new";
 
@@ -41,7 +33,6 @@ export default function CheckoutPage() {
   const subtotal = useCartStore((s) => s.subtotalCents());
   const clearCart = useCartStore((s) => s.clear);
 
-  const [zones, setZones] = useState<Zone[]>([]);
   const [serviceFee, setServiceFee] = useState({ percent: 0, fixed: 0 });
   const [addresses, setAddresses] = useState<UserAddress[]>([]);
   const [loadingAccount, setLoadingAccount] = useState(true);
@@ -51,17 +42,12 @@ export default function CheckoutPage() {
   const [saveNewAddress, setSaveNewAddress] = useState(true);
   const [phone, setPhone] = useState("");
 
-  const [zoneId, setZoneId] = useState("");
-  const [shipping, setShipping] = useState<ShippingBreakdown | null>(null);
-  const [loadingShipping, setLoadingShipping] = useState(false);
+  const [freight, setFreight] = useState<FreightEstimate | null>(null);
+  const [loadingFreight, setLoadingFreight] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/shipping/zones")
-      .then((res) => res.json())
-      .then((data) => setZones(data.zones ?? []))
-      .catch(() => null);
     fetch("/api/settings/public")
       .then((res) => res.json())
       .then((data) => setServiceFee({ percent: data.serviceFeePercent ?? 0, fixed: data.serviceFeeFixed ?? 0 }))
@@ -100,34 +86,23 @@ export default function CheckoutPage() {
     };
   }, [addresses, selectedAddressId, newAddress]);
 
-  // Detecta a região de entrega pela cidade/bairro do endereço escolhido.
-  const detectedZone = useMemo(
-    () => (address.city ? matchShippingZone(zones, address) : null),
-    [zones, address]
-  );
+  // Estimativa de frete pelo CEP do endereço escolhido (pago ao entregador).
+  const zipDigits = address.zip.replace(/\D/g, "");
   useEffect(() => {
-    if (detectedZone) setZoneId(detectedZone.id);
-  }, [detectedZone]);
-
-  useEffect(() => {
-    if (!zoneId) {
-      setShipping(null);
+    if (zipDigits.length !== 8) {
+      setFreight(null);
       return;
     }
-    setLoadingShipping(true);
-    fetch("/api/shipping/calc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ zoneId }),
-    })
+    setLoadingFreight(true);
+    fetch(`/api/frete/estimativa?cep=${zipDigits}`)
       .then((res) => res.json())
-      .then((data) => setShipping(data.breakdown ?? null))
-      .catch(() => setShipping(null))
-      .finally(() => setLoadingShipping(false));
-  }, [zoneId]);
+      .then((data) => setFreight(data.estimate ?? null))
+      .catch(() => setFreight(null))
+      .finally(() => setLoadingFreight(false));
+  }, [zipDigits]);
 
   const serviceFeeCents = Math.round((subtotal * serviceFee.percent) / 100) + serviceFee.fixed;
-  // O frete é estimado e pago direto ao entregador — não entra no total do site.
+  // O frete é pago direto ao entregador — não entra no total do site.
   const total = subtotal + serviceFeeCents;
 
   if (status === "loading" || (status === "authenticated" && !hydrated)) {
@@ -167,12 +142,13 @@ export default function CheckoutPage() {
     e.preventDefault();
     setError(null);
 
-    if (!zoneId) {
-      setError("Selecione a região de entrega.");
-      return;
-    }
     if (phone.replace(/\D/g, "").length < 10) {
       setError("Informe um telefone/WhatsApp com DDD — o entregador usa ele pra falar com você.");
+      return;
+    }
+
+    if (freight?.status === "out_of_range") {
+      setError("Ainda não entregamos nesse endereço. Escolha outro endereço de entrega.");
       return;
     }
 
@@ -195,7 +171,6 @@ export default function CheckoutPage() {
             quantity: i.quantity,
             flavorId: i.flavorId ?? undefined,
           })),
-          zoneId,
           address: { ...address, complement: address.complement || undefined },
           customerPhone: phone,
         }),
@@ -311,41 +286,29 @@ export default function CheckoutPage() {
             <StepTitle n={3} icon={Truck}>
               Entrega
             </StepTitle>
-            <label className="mb-1 block text-sm text-slate-600">Região de entrega</label>
-            <select className="input sm:max-w-xs" required value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
-              <option value="">Selecione...</option>
-              {zones.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.name}
-                </option>
-              ))}
-            </select>
-            {detectedZone && detectedZone.id === zoneId && (
-              <p className="mt-1 text-xs text-green-700">Detectada automaticamente pelo seu endereço.</p>
-            )}
-            {address.city && !detectedZone && zones.length > 0 && (
-              <p className="mt-1 text-xs text-amber-700">
-                Não identificamos sua região pelo endereço — escolha a mais próxima.
-              </p>
-            )}
-
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              <div className="flex justify-between">
-                <span>Frete estimado</span>
-                <span>{loadingShipping ? "calculando..." : zoneId && shipping ? centsToBRL(shipping.totalCents) : "—"}</span>
+            {freight?.status === "out_of_range" ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                Ainda não entregamos em {freight.city}: fica a {freight.km} km da loja e atendemos até{" "}
+                {freight.maxKm} km. Escolha outro endereço de entrega.
               </div>
-              <p className="mt-1 text-xs leading-relaxed">
-                Valor aproximado, pago em dinheiro ou Pix <strong>direto ao entregador</strong> na entrega — não
-                entra no total pago no site.
-              </p>
-              {shipping && (shipping.peakHour || shipping.raining || shipping.lateNight) && (
-                <ul className="mt-2 space-y-0.5 text-xs">
-                  {shipping.raining && <li>Com acréscimo por chuva na região da loja.</li>}
-                  {shipping.peakHour && <li>Com acréscimo por horário de pico.</li>}
-                  {shipping.lateNight && <li>Com acréscimo de madrugada.</li>}
-                </ul>
-              )}
-            </div>
+            ) : (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-800">
+                <div className="mb-1 flex justify-between text-amber-900">
+                  <span>Frete estimado (motoboy)</span>
+                  <span>
+                    {loadingFreight
+                      ? "calculando..."
+                      : freight?.status === "ok"
+                        ? centsToBRL(freight.feeCents)
+                        : zipDigits.length === 8
+                          ? "a combinar"
+                          : "—"}
+                  </span>
+                </div>
+                O frete <strong>não é cobrado no site</strong>: ele é pago em dinheiro ou Pix{" "}
+                <strong>direto ao entregador</strong> na hora da entrega.
+              </div>
+            )}
           </section>
         </div>
 
@@ -387,7 +350,7 @@ export default function CheckoutPage() {
 
           {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
-          <button type="submit" className="btn-primary mt-5 w-full py-3" disabled={submitting || loadingAccount}>
+          <button type="submit" className="btn-primary mt-5 w-full py-3" disabled={submitting || loadingAccount || freight?.status === "out_of_range"}>
             {submitting ? <Loader size={18} color="#fff" /> : "Ir para o pagamento"}
           </button>
           <p className="mt-3 flex items-center justify-center gap-1 text-xs text-slate-400">

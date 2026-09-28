@@ -23,7 +23,7 @@ export type PreferenceItemInput = {
 
 /**
  * Cria uma preferência de pagamento no Checkout Pro do Mercado Pago.
- * O frete NÃO entra aqui: é uma estimativa paga em dinheiro/pix direto pro
+ * O frete NÃO entra aqui: é pago em dinheiro/pix direto pro
  * entregador no momento da entrega, então o valor cobrado no site é só o
  * produto + a taxa de serviço da loja.
  */

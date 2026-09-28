@@ -1,9 +1,9 @@
-import { ShieldCheck, QrCode, Truck, MessageCircle } from "lucide-react";
+import { ShieldCheck, QrCode, Bike, MessageCircle } from "lucide-react";
 
 const ITEMS = [
   { icon: ShieldCheck, label: "Compra 100% segura" },
   { icon: QrCode, label: "Pagamento via Pix" },
-  { icon: Truck, label: "Frete calculado por região" },
+  { icon: Bike, label: "Entrega por motoboy" },
   { icon: MessageCircle, label: "Atendimento via WhatsApp" },
 ];
 

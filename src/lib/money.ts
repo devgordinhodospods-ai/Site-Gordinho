@@ -8,3 +8,8 @@ export function centsToBRL(cents: number): string {
 export function brlToCents(value: number): number {
   return Math.round(value * 100);
 }
+
+export function computeServiceFee(params: { subtotalCents: number; percent: number; fixedCents: number }): number {
+  const percentPart = Math.round((params.subtotalCents * params.percent) / 100);
+  return percentPart + params.fixedCents;
+}

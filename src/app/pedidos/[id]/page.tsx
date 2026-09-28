@@ -153,25 +153,23 @@ function PedidoDetalheContent() {
         </div>
       </div>
 
-      {(address || order.shipping_fee_cents > 0) && (
-        <div className="card mt-4 space-y-3 p-4 text-sm">
-          {address && (
-            <p className="flex gap-2 text-slate-700">
-              <MapPin size={16} className="mt-0.5 shrink-0 text-brand" />
-              {address}
-            </p>
-          )}
+      <div className="card mt-4 space-y-3 p-4 text-sm">
+        {address && (
+          <p className="flex gap-2 text-slate-700">
+            <MapPin size={16} className="mt-0.5 shrink-0 text-brand" />
+            {address}
+          </p>
+        )}
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800">
           {order.shipping_fee_cents > 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800">
-              <div className="flex justify-between">
-                <span>Frete estimado</span>
-                <span>{centsToBRL(order.shipping_fee_cents)}</span>
-              </div>
-              <p className="mt-1 text-xs">Pago em dinheiro ou Pix direto ao entregador na hora da entrega.</p>
+            <div className="flex justify-between">
+              <span>Frete estimado</span>
+              <span>{centsToBRL(order.shipping_fee_cents)}</span>
             </div>
           )}
+          <p className="text-xs">O frete é pago em dinheiro ou Pix direto ao entregador na hora da entrega.</p>
         </div>
-      )}
+      </div>
     </div>
   );
 }

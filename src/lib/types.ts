@@ -6,9 +6,13 @@ export type SiteSettings = {
   contact_whatsapp: string | null;
   contact_email: string | null;
   contact_instagram: string | null;
+  origin_cep: string | null;
   origin_address: string | null;
   origin_lat: number | null;
   origin_lng: number | null;
+  shipping_base_fee_cents: number;
+  shipping_per_km_cents: number;
+  shipping_max_km: number;
   service_fee_percent: number;
   service_fee_fixed: number;
   announcement_text: string | null;
@@ -58,16 +62,6 @@ export type ProductWithFullFlavors = Product & {
 
 export type ProductWithCategory = Product & {
   category?: Pick<Category, "id" | "name" | "slug"> | null;
-};
-
-export type ShippingZone = {
-  id: string;
-  name: string;
-  cities: string[];
-  neighborhoods: string[];
-  base_fee_cents: number;
-  km_from_origin: number;
-  active: boolean;
 };
 
 export type OrderStatus =

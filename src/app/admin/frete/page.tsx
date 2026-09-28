@@ -1,5 +1,5 @@
-import { ShippingZonesManager } from "@/components/admin/ShippingZonesManager";
+import { FreightSettings } from "@/components/admin/FreightSettings";
 
 export default function AdminFretePage() {
-  return <ShippingZonesManager />;
+  return <FreightSettings />;
 }

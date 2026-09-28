@@ -6,7 +6,7 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { centsToBRL } from "@/lib/money";
 import { releaseAbandonedOrders } from "@/lib/orders";
 import { AddToCartButton } from "@/components/loja/AddToCartButton";
-import { DeliveryEstimateCard } from "@/components/loja/DeliveryEstimateCard";
+import { DeliveryInfoCard } from "@/components/loja/DeliveryInfoCard";
 import { ProductGallery } from "@/components/loja/ProductGallery";
 import type { Category, ProductWithFullFlavors } from "@/lib/types";
 
@@ -105,7 +105,7 @@ export default async function ProdutoPage({ params }: { params: Promise<{ slug: 
           )}
 
           <div className="mt-8">
-            <DeliveryEstimateCard />
+            <DeliveryInfoCard />
           </div>
         </div>
       </div>

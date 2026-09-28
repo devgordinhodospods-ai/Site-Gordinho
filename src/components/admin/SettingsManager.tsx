@@ -12,7 +12,6 @@ import type { SiteSettings } from "@/lib/types";
 export function SettingsManager() {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [uploading, setUploading] = useState<"logo" | "favicon" | "footer" | "hero" | null>(null);
-  const [geocoding, setGeocoding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,22 +56,6 @@ export function SettingsManager() {
       setError(err instanceof Error ? err.message : "Erro ao enviar imagem.");
     } finally {
       setUploading(null);
-    }
-  }
-
-  async function handleGeocode() {
-    if (!settings.origin_address) return;
-    setGeocoding(true);
-    setError(null);
-    try {
-      const { lat, lng } = await adminApi<{ lat: number; lng: number }>("geocodeAddress", {
-        address: settings.origin_address,
-      });
-      setSettings((s) => ({ ...s, origin_lat: lat, origin_lng: lng }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Não foi possível localizar o endereço.");
-    } finally {
-      setGeocoding(false);
     }
   }
 
@@ -265,29 +248,6 @@ export function SettingsManager() {
               onChange={(e) => setSettings({ ...settings, contact_instagram: e.target.value })}
             />
           </div>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium">
-            Endereço de origem da loja
-            <HelpTip text="Endereço físico da loja. Usado pra calcular a distância até cada região de entrega e verificar se está chovendo (o que aumenta o frete estimado). Clique em 'Localizar' pra converter o endereço em coordenadas." />
-          </label>
-          <div className="flex gap-2">
-            <input
-              className="input"
-              placeholder="Rua, número, bairro, cidade - UF"
-              value={settings.origin_address ?? ""}
-              onChange={(e) => setSettings({ ...settings, origin_address: e.target.value })}
-            />
-            <button type="button" className="btn-secondary whitespace-nowrap" onClick={handleGeocode} disabled={geocoding}>
-              {geocoding ? "Buscando..." : "Localizar"}
-            </button>
-          </div>
-          {settings.origin_lat != null && (
-            <p className="mt-1 text-xs text-slate-500">
-              Coordenadas: {settings.origin_lat.toFixed(5)}, {settings.origin_lng?.toFixed(5)}
-            </p>
-          )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
