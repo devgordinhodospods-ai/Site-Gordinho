@@ -11,7 +11,7 @@ import type { SiteSettings } from "@/lib/types";
 
 export function SettingsManager() {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
-  const [uploading, setUploading] = useState<"logo" | "favicon" | "footer" | null>(null);
+  const [uploading, setUploading] = useState<"logo" | "favicon" | "footer" | "hero" | null>(null);
   const [geocoding, setGeocoding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export function SettingsManager() {
     load();
   }, []);
 
-  async function handleUpload(file: File, kind: "logo" | "favicon" | "footer") {
+  async function handleUpload(file: File, kind: "logo" | "favicon" | "footer" | "hero") {
     setUploading(kind);
     setError(null);
     try {
@@ -46,8 +46,12 @@ export function SettingsManager() {
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from("product-images").getPublicUrl(upload.path);
-      const field =
-        kind === "logo" ? "store_logo_url" : kind === "favicon" ? "store_favicon_url" : "footer_image_url";
+      const field = {
+        logo: "store_logo_url",
+        favicon: "store_favicon_url",
+        footer: "footer_image_url",
+        hero: "hero_image_url",
+      }[kind];
       setSettings((s) => ({ ...s, [field]: data.publicUrl }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao enviar imagem.");
@@ -120,31 +124,21 @@ export function SettingsManager() {
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium">
-              Título de destaque (banner da home)
-              <HelpTip text="Título grande do banner azul na página inicial. Se deixar vazio, usa o nome da loja." />
-            </label>
-            <input
-              className="input"
-              placeholder={settings.store_name}
-              value={settings.hero_title ?? ""}
-              onChange={(e) => setSettings({ ...settings, hero_title: e.target.value || null })}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">
-              Subtítulo (banner da home)
-              <HelpTip text="Texto menor logo abaixo do título do banner da home." />
-            </label>
-            <input
-              className="input"
-              placeholder="Confira nossos produtos e faça seu pedido com entrega rápida."
-              value={settings.hero_subtitle ?? ""}
-              onChange={(e) => setSettings({ ...settings, hero_subtitle: e.target.value || null })}
-            />
-          </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium">
+            Imagem do banner (topo da home)
+            <HelpTip text="Imagem exibida em tela cheia no banner do topo da página inicial, em fundo preto. Substitui o título/subtítulo/botão de texto que tinha antes." />
+          </label>
+          {settings.hero_image_url && (
+            <div className="relative mb-2 h-24 w-full max-w-md overflow-hidden rounded border bg-black">
+              <Image src={settings.hero_image_url} alt="Banner da home" fill className="object-contain" />
+            </div>
+          )}
+          <FileInput
+            onFileSelected={(file) => handleUpload(file, "hero")}
+            disabled={uploading === "hero"}
+            label="Escolher imagem do banner"
+          />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">

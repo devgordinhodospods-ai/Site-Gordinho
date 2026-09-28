@@ -61,8 +61,7 @@ const SETTINGS_KEYS = [
   "service_fee_percent",
   "service_fee_fixed",
   "announcement_text",
-  "hero_title",
-  "hero_subtitle",
+  "hero_image_url",
 ] as const;
 
 function pick<T extends Record<string, unknown>>(obj: T, allowed: readonly string[]) {

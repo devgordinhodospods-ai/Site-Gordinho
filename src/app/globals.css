@@ -9,6 +9,10 @@
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-white text-slate-900 antialiased;
   }
@@ -132,7 +136,10 @@
 .marquee-track {
   display: flex;
   width: max-content;
-  animation: marquee-scroll 22s linear infinite;
+  /* A faixa tem 6x mais itens por cópia (ver TrustTicker.tsx) pra nunca
+     ficar mais estreita que a tela — a duração escala junto pra manter a
+     mesma velocidade visual de antes. */
+  animation: marquee-scroll 132s linear infinite;
 }
 
 @keyframes marquee-scroll {
