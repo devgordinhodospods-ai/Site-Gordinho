@@ -61,11 +61,6 @@ export function Footer({ settings }: { settings: SiteSettings }) {
               </SmoothTopLink>
             </li>
             <li>
-              <Link href="/produtos" className="transition hover:text-white">
-                Catálogo
-              </Link>
-            </li>
-            <li>
               {contactHref ? (
                 <a href={contactHref} target="_blank" rel="noreferrer" className="transition hover:text-white">
                   Contato

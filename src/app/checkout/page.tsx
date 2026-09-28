@@ -131,7 +131,7 @@ export default function CheckoutPage() {
           <ShoppingBag size={28} />
         </div>
         <h1 className="font-display text-xl text-slate-900">Seu carrinho está vazio</h1>
-        <Link href="/produtos" className="btn-primary mt-6">
+        <Link href="/#produtos" className="btn-primary mt-6">
           Ver produtos
         </Link>
       </div>

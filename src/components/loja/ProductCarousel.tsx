@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductCard } from "@/components/loja/ProductCard";
 import type { ProductWithFlavors } from "@/lib/types";
@@ -9,11 +8,11 @@ import type { ProductWithFlavors } from "@/lib/types";
 export function ProductCarousel({
   title,
   products,
-  seeAllHref,
+  onSeeAll,
 }: {
   title: string;
   products: ProductWithFlavors[];
-  seeAllHref?: string;
+  onSeeAll?: () => void;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
@@ -46,10 +45,10 @@ export function ProductCarousel({
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="font-display text-xl text-slate-900">{title}</h3>
         <div className="flex items-center gap-2">
-          {seeAllHref && (
-            <Link href={seeAllHref} className="mr-1 text-sm text-brand hover:underline">
+          {onSeeAll && (
+            <button type="button" onClick={onSeeAll} className="mr-1 text-sm text-brand hover:underline">
               Ver todos
-            </Link>
+            </button>
           )}
           <button
             type="button"

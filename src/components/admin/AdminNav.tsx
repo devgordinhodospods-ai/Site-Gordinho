@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ExternalLink, LayoutDashboard, Package, Settings, ShoppingCart, Tags, Bike } from "lucide-react";
+import { ExternalLink, LayoutDashboard, Package, Settings, ShoppingCart, Tags, Bike, Users } from "lucide-react";
 
 const NAV = [
   { href: "/admin", label: "Monitoramento", icon: LayoutDashboard },
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingCart },
   { href: "/admin/produtos", label: "Produtos", icon: Package },
+  { href: "/admin/usuarios", label: "Usuários", icon: Users },
   { href: "/admin/categorias", label: "Categorias", icon: Tags },
   { href: "/admin/frete", label: "Frete", icon: Bike },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings },

@@ -26,7 +26,7 @@ export default function CarrinhoPage() {
         </div>
         <h1 className="font-display text-xl text-slate-900">Seu carrinho está vazio</h1>
         <p className="mt-1 text-sm text-slate-500">Que tal dar uma olhada no catálogo?</p>
-        <Link href="/produtos" className="btn-primary mt-6">
+        <Link href="/#produtos" className="btn-primary mt-6">
           Ver produtos
         </Link>
       </div>
@@ -94,7 +94,7 @@ export default function CarrinhoPage() {
           <Link href="/checkout" className="btn-primary mt-5 w-full">
             Finalizar compra
           </Link>
-          <Link href="/produtos" className="mt-3 block text-center text-sm text-brand hover:underline">
+          <Link href="/#produtos" className="mt-3 block text-center text-sm text-brand hover:underline">
             Continuar comprando
           </Link>
         </div>
