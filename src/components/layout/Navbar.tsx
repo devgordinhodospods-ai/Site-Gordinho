@@ -27,18 +27,31 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
   return (
     <header className="sticky top-0 z-40 border-b border-blue-100 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3 md:flex-nowrap md:gap-6">
-        <SmoothTopLink href="/" className="font-display flex shrink-0 items-center gap-2 text-lg text-brand">
+        <SmoothTopLink
+          href="/"
+          aria-label={storeName}
+          className="font-display flex shrink-0 items-center gap-2 text-lg text-brand"
+        >
           {logoUrl ? (
-            <Image src={logoUrl} alt={storeName} width={36} height={36} className="rounded" />
+            <Image
+              src={logoUrl}
+              alt={storeName}
+              width={160}
+              height={56}
+              priority
+              className="h-12 w-auto max-w-[160px] rounded-lg object-contain sm:h-14"
+            />
           ) : (
-            <span
-              className="font-display flex h-9 w-9 items-center justify-center rounded-lg text-white"
-              style={{ background: "linear-gradient(135deg, #2563eb, #0f2f8f)" }}
-            >
-              {storeName.charAt(0).toUpperCase()}
-            </span>
+            <>
+              <span
+                className="font-display flex h-9 w-9 items-center justify-center rounded-lg text-white"
+                style={{ background: "linear-gradient(135deg, #2563eb, #0f2f8f)" }}
+              >
+                {storeName.charAt(0).toUpperCase()}
+              </span>
+              <span>{storeName}</span>
+            </>
           )}
-          <span>{storeName}</span>
         </SmoothTopLink>
 
         <form onSubmit={handleSearch} className="order-3 w-full md:order-none md:max-w-md md:flex-1">
