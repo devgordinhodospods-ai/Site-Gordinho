@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { lookupCep } from "@/lib/shipping";
+import { lookupCep } from "@/lib/cep";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ cep: string }> }) {
   const { cep } = await params;

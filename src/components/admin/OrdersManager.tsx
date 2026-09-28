@@ -5,6 +5,7 @@ import { MessageCircle, MapPin, CreditCard } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { centsToBRL } from "@/lib/money";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { Pagination } from "@/components/ui/Pagination";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { PeriodFilter, isWithinPeriod, type Period } from "@/components/ui/PeriodFilter";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
@@ -65,6 +66,7 @@ export function OrdersManager() {
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>("30d");
+  const [page, setPage] = useState(1);
   const { confirm, dialog } = useConfirm();
 
   async function load() {
@@ -75,6 +77,8 @@ export function OrdersManager() {
     setOrders(orders);
     setLoading(false);
   }
+
+  useEffect(() => setPage(1), [period, filter]);
 
   useEffect(() => {
     load();
@@ -101,6 +105,11 @@ export function OrdersManager() {
   }
 
   const visibleOrders = orders.filter((o) => isWithinPeriod(o.created_at, period));
+
+  const PAGE_SIZE = 15;
+  const totalPages = Math.max(1, Math.ceil(visibleOrders.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = visibleOrders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div>
@@ -135,7 +144,7 @@ export function OrdersManager() {
         <p className="text-slate-500">Nenhum pedido encontrado.</p>
       ) : (
         <div className="space-y-3">
-          {visibleOrders.map((order) => (
+          {pageItems.map((order) => (
             <div key={order.id} className="card p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <p className="font-display text-brand">Pedido #{order.id.slice(0, 8).toUpperCase()}</p>
@@ -232,6 +241,7 @@ export function OrdersManager() {
           ))}
         </div>
       )}
+      <Pagination page={currentPage} totalPages={totalPages} onChange={setPage} />
       {dialog}
     </div>
   );

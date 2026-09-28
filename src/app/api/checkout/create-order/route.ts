@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/auth";
-import { computeDynamicShippingFee, computeServiceFee } from "@/lib/shipping";
+import { computeServiceFee } from "@/lib/money";
+import { estimateFreight } from "@/lib/geo";
 import { getSiteSettings } from "@/lib/settings";
 import { createPaymentPreference } from "@/lib/mercadopago";
 import { releaseAbandonedOrders } from "@/lib/orders";
@@ -17,7 +18,6 @@ const schema = z.object({
       })
     )
     .min(1),
-  zoneId: z.string().uuid(),
   address: z.object({
     street: z.string().min(1),
     number: z.string().min(1),
@@ -47,28 +47,22 @@ export async function POST(req: Request) {
     );
   }
 
-  const { items, zoneId, address, customerPhone } = parsed.data;
+  const { items, address, customerPhone } = parsed.data;
   const db = getSupabaseAdmin();
 
   await releaseAbandonedOrders();
 
-  const { data: zone } = await db
-    .from("shipping_zones")
-    .select("id, base_fee_cents, km_from_origin")
-    .eq("id", zoneId)
-    .eq("active", true)
-    .maybeSingle();
-
-  if (!zone) {
-    return NextResponse.json({ error: "Região de entrega inválida." }, { status: 400 });
-  }
-
   const settings = await getSiteSettings();
-  const shippingBreakdown = await computeDynamicShippingFee({
-    zone,
-    originLat: settings.origin_lat,
-    originLng: settings.origin_lng,
-  });
+
+  // Frete estimado pela distância (pago ao entregador, não entra no total).
+  // Calculado aqui no servidor pra não confiar no valor vindo do navegador.
+  const freight = await estimateFreight(address.zip, settings);
+  if (freight.status === "out_of_range") {
+    return NextResponse.json(
+      { error: `Ainda não entregamos nesse endereço (${freight.km} km da loja; atendemos até ${freight.maxKm} km).` },
+      { status: 400 }
+    );
+  }
 
   const { data: productsData } = await db
     .from("products")
@@ -92,10 +86,10 @@ export async function POST(req: Request) {
     p_customer_phone: customerPhone,
     p_user_id: session.user.id ?? null,
     p_shipping_address: address,
-    p_shipping_zone_id: zone.id,
-    p_shipping_fee_cents: shippingBreakdown.totalCents,
+    p_shipping_zone_id: null,
+    p_shipping_fee_cents: freight.status === "ok" ? freight.feeCents : 0,
     p_service_fee_cents: serviceFeeCents,
-    p_shipping_breakdown: shippingBreakdown,
+    p_shipping_breakdown: freight.status === "ok" ? { km: freight.km, city: freight.city } : null,
     p_items: items.map((i) => ({
       product_id: i.productId,
       quantity: i.quantity,

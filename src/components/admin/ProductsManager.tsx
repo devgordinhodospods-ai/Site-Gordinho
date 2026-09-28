@@ -9,6 +9,7 @@ import { brlToCents, centsToBRL } from "@/lib/money";
 import { FileInput } from "@/components/ui/FileInput";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { Pagination } from "@/components/ui/Pagination";
 import type { ProductWithFullFlavors, Category, ProductFlavor } from "@/lib/types";
 
 function slugify(text: string) {
@@ -47,6 +48,7 @@ export function ProductsManager() {
   const [formOpen, setFormOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "out">("all");
+  const [page, setPage] = useState(1);
   const { confirm, dialog } = useConfirm();
 
   async function load() {
@@ -57,6 +59,8 @@ export function ProductsManager() {
     setProducts(p.products);
     setCategories(c.categories);
   }
+
+  useEffect(() => setPage(1), [search, statusFilter]);
 
   useEffect(() => {
     load();
@@ -224,6 +228,11 @@ export function ProductsManager() {
     if (statusFilter === "out") return totalStock(p) <= 0;
     return true;
   });
+
+  const PAGE_SIZE = 15;
+  const totalPages = Math.max(1, Math.ceil(visibleProducts.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = visibleProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <div>
@@ -487,7 +496,7 @@ export function ProductsManager() {
       )}
 
       <div className="space-y-2">
-        {visibleProducts.map((p) => (
+        {pageItems.map((p) => (
           <div
             key={p.id}
             className={`card flex flex-wrap items-center justify-between gap-2 p-3 ${p.active ? "" : "bg-slate-50"}`}
@@ -533,6 +542,7 @@ export function ProductsManager() {
           </div>
         ))}
       </div>
+      <Pagination page={currentPage} totalPages={totalPages} onChange={setPage} />
       {dialog}
     </div>
   );

@@ -6,12 +6,12 @@ import { sendOrderStatusUpdateEmail } from "@/lib/email";
 import { getSiteSettings } from "@/lib/settings";
 import { getErrorMessage } from "@/lib/errors";
 import { releaseAbandonedOrders } from "@/lib/orders";
+import { locateCep } from "@/lib/geo";
 import type { OrderStatus } from "@/lib/types";
 
 const READ_ACTIONS = new Set([
   "listProducts",
   "listCategories",
-  "listShippingZones",
   "listOrders",
   "getOrder",
   "getSettings",
@@ -37,15 +37,6 @@ const FLAVOR_FIELDS = ["name", "stock", "image_url", "position"] as const;
 
 const CATEGORY_FIELDS = ["name", "slug", "image_url", "position", "active"] as const;
 
-const SHIPPING_ZONE_FIELDS = [
-  "name",
-  "cities",
-  "neighborhoods",
-  "base_fee_cents",
-  "km_from_origin",
-  "active",
-] as const;
-
 const SETTINGS_KEYS = [
   "store_name",
   "store_logo_url",
@@ -54,9 +45,13 @@ const SETTINGS_KEYS = [
   "contact_whatsapp",
   "contact_email",
   "contact_instagram",
+  "origin_cep",
   "origin_address",
   "origin_lat",
   "origin_lng",
+  "shipping_base_fee_cents",
+  "shipping_per_km_cents",
+  "shipping_max_km",
   "service_fee_percent",
   "service_fee_fixed",
   "announcement_text",
@@ -190,36 +185,6 @@ export async function POST(req: Request) {
 
       case "deleteCategory": {
         const { error } = await db.from("categories").delete().eq("id", body.id);
-        if (error) throw error;
-        return NextResponse.json({ ok: true });
-      }
-
-      // ---------------- regiões de entrega ----------------
-      case "listShippingZones": {
-        const { data, error } = await db.from("shipping_zones").select("*").order("name");
-        if (error) throw error;
-        return NextResponse.json({ zones: data });
-      }
-
-      case "saveShippingZone": {
-        const fields = pick(body.fields ?? {}, SHIPPING_ZONE_FIELDS);
-        if (body.id) {
-          const { data, error } = await db
-            .from("shipping_zones")
-            .update(fields)
-            .eq("id", body.id)
-            .select()
-            .single();
-          if (error) throw error;
-          return NextResponse.json({ zone: data });
-        }
-        const { data, error } = await db.from("shipping_zones").insert(fields).select().single();
-        if (error) throw error;
-        return NextResponse.json({ zone: data });
-      }
-
-      case "deleteShippingZone": {
-        const { error } = await db.from("shipping_zones").delete().eq("id", body.id);
         if (error) throw error;
         return NextResponse.json({ ok: true });
       }
@@ -420,20 +385,14 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
 
-      // ---------------- geocodificação do endereço de origem ----------------
-      case "geocodeAddress": {
-        const address: string = body.address;
-        if (!address) return NextResponse.json({ error: "address é obrigatório" }, { status: 400 });
-
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`,
-          { headers: { "User-Agent": "site-gordinho-ecommerce/1.0" } }
-        );
-        const results = await res.json();
-        if (!Array.isArray(results) || results.length === 0) {
-          return NextResponse.json({ error: "Endereço não encontrado." }, { status: 404 });
+      // ---------------- localização da loja (frete) ----------------
+      case "locateStoreCep": {
+        const place = await locateCep(String(body.cep ?? ""));
+        if (!place) {
+          return NextResponse.json({ error: "Não encontramos esse CEP no mapa. Confira os números." }, { status: 404 });
         }
-        return NextResponse.json({ lat: Number(results[0].lat), lng: Number(results[0].lon) });
+        const address = [place.street, place.neighborhood, `${place.city}/${place.state}`].filter(Boolean).join(", ");
+        return NextResponse.json({ address, lat: place.lat, lng: place.lng });
       }
 
       // ---------------- upload de imagens ----------------
