@@ -27,7 +27,7 @@ const PRODUCT_FIELDS = [
   "active",
 ] as const;
 
-const CATEGORY_FIELDS = ["name", "slug", "position", "active"] as const;
+const CATEGORY_FIELDS = ["name", "slug", "image_url", "position", "active"] as const;
 
 const SHIPPING_ZONE_FIELDS = [
   "name",
@@ -50,6 +50,9 @@ const SETTINGS_KEYS = [
   "origin_lng",
   "service_fee_percent",
   "service_fee_fixed",
+  "announcement_text",
+  "hero_title",
+  "hero_subtitle",
 ] as const;
 
 function pick<T extends Record<string, unknown>>(obj: T, allowed: readonly string[]) {

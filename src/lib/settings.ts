@@ -13,6 +13,9 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   origin_lng: null,
   service_fee_percent: 5,
   service_fee_fixed: 0,
+  announcement_text: "Compra 100% segura • Pagamento via Mercado Pago",
+  hero_title: null,
+  hero_subtitle: null,
 };
 
 /**

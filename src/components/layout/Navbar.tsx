@@ -2,28 +2,41 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { ShoppingCart, User, LogOut, LayoutDashboard } from "lucide-react";
+import { ShoppingCart, User, LogOut, LayoutDashboard, Search, LayoutGrid } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { useEffect, useState } from "react";
+import type { Category } from "@/lib/types";
 
 export function Navbar({
   storeName,
   logoUrl,
+  categories,
 }: {
   storeName: string;
   logoUrl: string | null;
+  categories: Category[];
 }) {
+  const router = useRouter();
   const { data: session } = useSession();
   const totalQuantity = useCartStore((s) => s.totalQuantity());
   const [mounted, setMounted] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => setMounted(true), []);
 
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (search) params.set("busca", search);
+    router.push(`/produtos?${params.toString()}`);
+  }
+
   return (
-    <header className="sticky top-0 z-40 border-b border-blue-100 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="font-display flex items-center gap-2 text-lg text-brand">
+    <header className="sticky top-0 z-40 border-b border-blue-100 bg-white/95 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3 md:flex-nowrap md:gap-6">
+        <Link href="/" className="font-display flex shrink-0 items-center gap-2 text-lg text-brand">
           {logoUrl ? (
             <Image src={logoUrl} alt={storeName} width={36} height={36} className="rounded" />
           ) : (
@@ -37,23 +50,28 @@ export function Navbar({
           <span>{storeName}</span>
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm font-bold text-slate-600 md:flex">
-          <Link href="/produtos" className="transition-colors hover:text-brand">
-            Produtos
-          </Link>
-          {session?.user && (
-            <Link href="/pedidos" className="transition-colors hover:text-brand">
-              Meus pedidos
-            </Link>
-          )}
+        <form onSubmit={handleSearch} className="order-3 w-full md:order-none md:max-w-md md:flex-1">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              className="input pl-10"
+              placeholder="Buscar produtos..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </form>
+
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {session?.user?.isAdmin && (
-            <Link href="/admin" className="flex items-center gap-1 transition-colors hover:text-brand">
+            <Link
+              href="/admin"
+              className="hidden items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-blue-50 hover:text-brand md:flex"
+            >
               <LayoutDashboard size={16} /> Painel
             </Link>
           )}
-        </nav>
 
-        <div className="flex items-center gap-2">
           <Link
             href="/carrinho"
             className="relative rounded-lg p-2 text-slate-600 transition-colors hover:bg-blue-50 hover:text-brand"
@@ -82,6 +100,39 @@ export function Navbar({
               title="Entrar"
             >
               <User size={20} />
+            </Link>
+          )}
+        </div>
+      </div>
+
+      <div className="border-t border-blue-50">
+        <div className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto px-4 py-2 text-sm font-bold text-slate-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <Link
+            href="/produtos"
+            className="flex shrink-0 items-center gap-1 whitespace-nowrap transition-colors hover:text-brand"
+          >
+            <LayoutGrid size={15} /> Todas categorias
+          </Link>
+          {categories.map((cat) => (
+            <Link
+              key={cat.id}
+              href={`/produtos?categoria=${cat.slug}`}
+              className="shrink-0 whitespace-nowrap transition-colors hover:text-brand"
+            >
+              {cat.name}
+            </Link>
+          ))}
+          {session?.user && (
+            <Link href="/pedidos" className="shrink-0 whitespace-nowrap transition-colors hover:text-brand">
+              Meus pedidos
+            </Link>
+          )}
+          {session?.user?.isAdmin && (
+            <Link
+              href="/admin"
+              className="flex shrink-0 items-center gap-1 whitespace-nowrap transition-colors hover:text-brand md:hidden"
+            >
+              <LayoutDashboard size={15} /> Painel
             </Link>
           )}
         </div>
