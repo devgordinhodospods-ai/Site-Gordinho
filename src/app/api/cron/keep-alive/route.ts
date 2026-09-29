@@ -10,9 +10,11 @@ export const dynamic = "force-dynamic";
  * pausar, e aproveita pra fazer uma limpeza leve.
  */
 export async function GET(req: Request) {
-  // A Vercel manda "Authorization: Bearer <CRON_SECRET>" quando a variável existe.
+  // A Vercel manda "Authorization: Bearer <CRON_SECRET>" quando a variável existe;
+  // serviços externos (ex.: cron-job.org) podem mandar ?secret=<CRON_SECRET> no link.
   const secret = process.env.CRON_SECRET;
-  if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) {
+  const fromQuery = new URL(req.url).searchParams.get("secret");
+  if (secret && req.headers.get("authorization") !== `Bearer ${secret}` && fromQuery !== secret) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
