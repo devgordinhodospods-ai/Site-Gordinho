@@ -163,7 +163,7 @@ export function SettingsManager() {
 
   const current = TABS.find((t) => t.id === tab)!;
   const status = getStoreStatus({ ...settings, closed_popup_enabled: true });
-  const previewNextOpen = status.closed ? status.nextOpen : "amanhã (segunda-feira)";
+  const previewNextOpen = status.closed ? status.nextOpen : "no próximo dia útil (segunda-feira)";
 
   return (
     <div>
@@ -358,7 +358,7 @@ export function SettingsManager() {
                 </Field>
                 <Field
                   label="Mensagem do aviso"
-                  help="Use {proximo_dia} onde quiser que apareça quando o pedido será entregue — o site preenche sozinho (ex.: amanhã (segunda-feira))."
+                  help="Use {proximo_dia} onde quiser que apareça quando o pedido será entregue — o site preenche sozinho (ex.: no próximo dia útil (segunda-feira))."
                 >
                   <textarea
                     className="input min-h-[90px]"
