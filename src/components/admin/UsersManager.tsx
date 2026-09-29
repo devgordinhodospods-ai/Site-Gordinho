@@ -37,6 +37,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 
 const PAID_LIKE: OrderStatus[] = ["paid", "confirmed", "preparing", "shipped", "delivered"];
 const PAGE_SIZE = 15;
+const DETAIL_ORDERS_PAGE_SIZE = 5;
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("pt-BR");
@@ -49,6 +50,7 @@ export function UsersManager() {
   const [page, setPage] = useState(1);
   const [details, setDetails] = useState<UserDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [ordersPage, setOrdersPage] = useState(1);
   const [actionError, setActionError] = useState<string | null>(null);
   const { confirm, dialog } = useConfirm();
 
@@ -69,6 +71,7 @@ export function UsersManager() {
 
   async function openDetails(id: string) {
     setLoadingDetails(true);
+    setOrdersPage(1);
     try {
       setDetails(await adminApi<UserDetails>("getUserDetails", { id }));
     } finally {
@@ -80,7 +83,7 @@ export function UsersManager() {
     setActionError(null);
     const ok = await confirm(
       "A conta e os endereços dela são apagados de vez e a pessoa é deslogada do site. Os pedidos que ela já fez continuam na aba Pedidos.",
-      { title: `Excluir ${user.name}?`, confirmLabel: "Excluir usuário" }
+      { title: `Excluir ${user.name}?`, confirmLabel: "Excluir usuário" },
     );
     if (!ok) return;
     try {
@@ -104,6 +107,12 @@ export function UsersManager() {
 
   const paidOrders = details?.orders.filter((o) => PAID_LIKE.includes(o.status)) ?? [];
   const totalSpent = paidOrders.reduce((sum, o) => sum + o.total_cents, 0);
+  const detailOrders = details?.orders ?? [];
+  const ordersTotalPages = Math.max(1, Math.ceil(detailOrders.length / DETAIL_ORDERS_PAGE_SIZE));
+  const ordersPageItems = detailOrders.slice(
+    (ordersPage - 1) * DETAIL_ORDERS_PAGE_SIZE,
+    ordersPage * DETAIL_ORDERS_PAGE_SIZE,
+  );
 
   return (
     <div>
@@ -252,24 +261,33 @@ export function UsersManager() {
                 )}
 
                 <h3 className="font-display mb-2 mt-5 flex items-center gap-2 text-slate-900">
-                  <ShoppingBag size={16} className="text-brand" /> Últimos pedidos
+                  <ShoppingBag size={16} className="text-brand" /> Pedidos ({details.orders.length})
                 </h3>
                 {details.orders.length === 0 ? (
                   <p className="text-sm text-slate-500">Nenhum pedido ainda.</p>
                 ) : (
-                  <ul className="divide-y divide-blue-50 text-sm">
-                    {details.orders.slice(0, 8).map((o) => (
-                      <li key={o.id} className="flex items-center justify-between py-2">
-                        <span className="text-slate-700">
-                          #{orderCode(o)} · {formatDate(o.created_at)}
-                        </span>
-                        <span className="text-right">
-                          <span className="block text-slate-900">{centsToBRL(o.total_cents)}</span>
-                          <span className="text-xs text-slate-500">{STATUS_LABELS[o.status]}</span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <>
+                    <ul className="divide-y divide-blue-50 text-sm">
+                      {ordersPageItems.map((o) => (
+                        <li key={o.id} className="flex items-center justify-between py-2">
+                          <span className="text-slate-700">
+                            #{orderCode(o)} · {formatDate(o.created_at)}
+                          </span>
+                          <span className="text-right">
+                            <span className="block text-slate-900">{centsToBRL(o.total_cents)}</span>
+                            <span className="text-xs text-slate-500">{STATUS_LABELS[o.status]}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Pagination
+                      page={ordersPage}
+                      totalPages={ordersTotalPages}
+                      onChange={setOrdersPage}
+                      scrollTarget={null}
+                      compact
+                    />
+                  </>
                 )}
               </>
             )}

@@ -277,6 +277,21 @@ export async function POST(req: Request) {
 
         const orderById = new Map(orders.map((o) => [o.id, o]));
 
+        // Período escolhido no painel (dias no horário de Brasília, "de" e "até"
+        // inclusos). Sem período = desde o começo.
+        const dayStart = (ymd: string, plusDays = 0) => {
+          const [y, m, d] = ymd.split("-").map(Number);
+          return new Date(Date.UTC(y, m - 1, d + plusDays) + BRASILIA_OFFSET_MS);
+        };
+        const validDay = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+        const rangeFrom = validDay(body.from) ? dayStart(body.from) : null;
+        const rangeTo = validDay(body.to) ? dayStart(body.to, 1) : null;
+        const inRange = (iso: string) => {
+          const t = new Date(iso);
+          return (!rangeFrom || t >= rangeFrom) && (!rangeTo || t < rangeTo);
+        };
+        const brasiliaDay = (iso: string) => new Date(new Date(iso).getTime() - BRASILIA_OFFSET_MS).toISOString().slice(0, 10);
+
         // "Hoje", "semana" e "mês" no horário de Brasília (o servidor roda em UTC).
         const { startOfDay, startOfWeek, startOfMonth } = brasiliaPeriodStarts(new Date());
         const periodsOf = (createdAt: Date) =>
@@ -303,16 +318,37 @@ export async function POST(req: Request) {
           month: { vendasCents: 0, lucroCents: 0 },
         };
 
+        // Vendas por dia dentro do período.
+        type DayAgg = { date: string; pedidos: number; vendasCents: number; lucroCents: number };
+        const byDay = new Map<string, DayAgg>();
+        const dayOf = (iso: string) => {
+          const date = brasiliaDay(iso);
+          const agg = byDay.get(date) ?? { date, pedidos: 0, vendasCents: 0, lucroCents: 0 };
+          byDay.set(date, agg);
+          return agg;
+        };
+        let totalPedidos = 0;
+
         for (const o of orders) {
-          if (PAID_LIKE_STATUSES.has(o.status)) {
-            totalVendidoCents += o.total_cents;
-            taxasServicoCents += o.service_fee_cents;
-            pedidosPagos += 1;
-            // A taxa de serviço fica com a loja: entra no lucro.
+          const paid = PAID_LIKE_STATUSES.has(o.status);
+          // "Hoje / semana / mês" sempre olham tudo; o resto respeita o período.
+          if (paid) {
             for (const key of periodsOf(new Date(o.created_at))) {
               periodStats[key].vendasCents += o.total_cents;
               periodStats[key].lucroCents += o.service_fee_cents;
             }
+          }
+          if (!inRange(o.created_at)) continue;
+          totalPedidos += 1;
+          if (paid) {
+            totalVendidoCents += o.total_cents;
+            taxasServicoCents += o.service_fee_cents;
+            pedidosPagos += 1;
+            // A taxa de serviço fica com a loja: entra no lucro.
+            const day = dayOf(o.created_at);
+            day.pedidos += 1;
+            day.vendasCents += o.total_cents;
+            day.lucroCents += o.service_fee_cents;
           } else if (o.status === "awaiting_payment") {
             pedidosPendentes += 1;
           } else if (o.status === "cancelled") {
@@ -330,15 +366,17 @@ export async function POST(req: Request) {
 
           // Sem custo cadastrado o lucro do item fica superestimado (custo 0);
           // o painel avisa quantos itens estão nessa situação.
-          if (item.unit_cost_cents == null) itensSemCusto += item.quantity;
           const cost = item.unit_cost_cents ?? 0;
           const itemLucro = (item.unit_price_cents - cost) * item.quantity;
           const itemReceita = item.unit_price_cents * item.quantity;
-          lucroProdutosCents += itemLucro;
 
           for (const key of periodsOf(new Date(order.created_at))) {
             periodStats[key].lucroCents += itemLucro;
           }
+          if (!inRange(order.created_at)) continue;
+          if (item.unit_cost_cents == null) itensSemCusto += item.quantity;
+          lucroProdutosCents += itemLucro;
+          dayOf(order.created_at).lucroCents += itemLucro;
 
           const key = item.product_id ?? item.product_name;
           const existing = productAgg.get(key) ?? {
@@ -353,9 +391,17 @@ export async function POST(req: Request) {
           productAgg.set(key, existing);
         }
 
+        // Dias sem venda também aparecem (até 1 ano), pra ver o período inteiro.
+        if (rangeFrom && rangeTo && rangeTo.getTime() - rangeFrom.getTime() <= 367 * 86400000) {
+          for (let t = rangeFrom.getTime(); t < rangeTo.getTime(); t += 86400000) {
+            const date = brasiliaDay(new Date(t).toISOString());
+            if (!byDay.has(date)) byDay.set(date, { date, pedidos: 0, vendasCents: 0, lucroCents: 0 });
+          }
+        }
+        const salesByDay = Array.from(byDay.values()).sort((a, b) => b.date.localeCompare(a.date));
+
         const topProducts = Array.from(productAgg.values())
           .sort((a, b) => b.receitaCents - a.receitaCents)
-          .slice(0, 10)
           .map((p) => ({
             ...p,
             margemPercent: p.receitaCents > 0 ? (p.lucroCents / p.receitaCents) * 100 : 0,
@@ -371,13 +417,14 @@ export async function POST(req: Request) {
           // Margem sobre tudo que entrou (produtos + taxa de serviço).
           margemPercent: totalVendidoCents > 0 ? (lucroTotalCents / totalVendidoCents) * 100 : 0,
           itensSemCusto,
-          totalPedidos: orders.length,
+          totalPedidos,
           pedidosPagos,
           pedidosPendentes,
           pedidosCancelados,
           ticketMedioCents: pedidosPagos > 0 ? Math.round(totalVendidoCents / pedidosPagos) : 0,
           periodStats,
           topProducts,
+          salesByDay,
         });
       }
 

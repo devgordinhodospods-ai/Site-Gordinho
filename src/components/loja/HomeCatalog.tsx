@@ -4,12 +4,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { ProductCard } from "@/components/loja/ProductCard";
 import { ProductCarousel } from "@/components/loja/ProductCarousel";
+import { Pagination } from "@/components/ui/Pagination";
 import { useSearchStore } from "@/store/search";
 import type { Category, ProductWithFlavors } from "@/lib/types";
 
 type Sort = "recent" | "price-asc" | "price-desc" | "discount";
 
 const CAROUSEL_THRESHOLD = 8;
+const PAGE_SIZE = 24;
 
 function normalize(text: string) {
   return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -36,6 +38,7 @@ export function HomeCatalog({
   );
   const [showAll, setShowAll] = useState(false);
   const [sort, setSort] = useState<Sort>("recent");
+  const [page, setPage] = useState(1);
   // A busca vive num store compartilhado com a barra do topo. No 1º render
   // usa a da URL (?busca=), pra não piscar "Todos os produtos".
   const storeQuery = useSearchStore((s) => s.query);
@@ -90,6 +93,13 @@ export function HomeCatalog({
     return sorted.sort((a, b) => Number(inStock(b)) - Number(inStock(a)));
   }, [products, selected, query, sort]);
 
+  // Filtro, busca ou ordem novos: volta pra 1ª página.
+  useEffect(() => setPage(1), [selectedId, query, sort, showAll]);
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageProducts = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   const hasFilters = Boolean(selected || query);
 
   // Com muitos produtos, a vitrine sem filtro vira fileiras em carrossel
@@ -130,11 +140,7 @@ export function HomeCatalog({
           <div>
             <p className="text-xs uppercase tracking-widest text-brand">Nossa loja</p>
             <h2 className="font-display text-2xl text-slate-900 sm:text-3xl">
-              {query.trim()
-                ? `Resultados para “${query.trim()}”`
-                : selected
-                  ? selected.name
-                  : "Todos os produtos"}
+              {query.trim() ? `Resultados para “${query.trim()}”` : selected ? selected.name : "Todos os produtos"}
             </h2>
             <p className="mt-1 text-sm text-slate-500">
               {visible.length} {visible.length === 1 ? "produto encontrado" : "produtos encontrados"}
@@ -203,12 +209,7 @@ export function HomeCatalog({
             {categories.map((cat) => {
               const active = selected?.id === cat.id;
               return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  className={chipClass(active)}
-                  onClick={() => setSelectedId(cat.id)}
-                >
+                <button key={cat.id} type="button" className={chipClass(active)} onClick={() => setSelectedId(cat.id)}>
                   {cat.name} <span className={countClass(active)}>{countByCategory.get(cat.id) ?? 0}</span>
                 </button>
               );
@@ -257,11 +258,14 @@ export function HomeCatalog({
           {uncategorized.length > 0 && <ProductCarousel title="Outros" products={uncategorized} />}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-          {visible.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+            {pageProducts.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+          <Pagination page={currentPage} totalPages={totalPages} onChange={setPage} scrollTarget="produtos" />
+        </>
       )}
     </section>
   );

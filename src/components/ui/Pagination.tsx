@@ -19,22 +19,29 @@ export function Pagination({
   page,
   totalPages,
   onChange,
+  scrollTarget = "top",
+  compact = false,
 }: {
   page: number;
   totalPages: number;
   onChange: (page: number) => void;
+  /** "top" rola até o topo da página; um id rola até esse elemento; null não rola. */
+  scrollTarget?: "top" | string | null;
+  /** Menos espaço em cima (listas dentro de cards). */
+  compact?: boolean;
 }) {
   if (totalPages <= 1) return null;
 
   const go = (p: number) => {
     onChange(p);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (scrollTarget === "top") window.scrollTo({ top: 0, behavior: "smooth" });
+    else if (scrollTarget) document.getElementById(scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const base = "flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-sm transition";
 
   return (
-    <nav className="mt-6 flex flex-wrap items-center justify-center gap-1" aria-label="Paginação">
+    <nav className={`${compact ? "mt-3" : "mt-6"} flex flex-wrap items-center justify-center gap-1`} aria-label="Paginação">
       <button
         type="button"
         className={`${base} text-slate-500 hover:bg-blue-50 hover:text-brand disabled:opacity-30`}

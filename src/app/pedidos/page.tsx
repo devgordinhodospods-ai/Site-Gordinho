@@ -5,9 +5,12 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { centsToBRL } from "@/lib/money";
 import { LoaderPage } from "@/components/ui/Loader";
+import { Pagination } from "@/components/ui/Pagination";
 import { PeriodFilter, isWithinPeriod, type Period } from "@/components/ui/PeriodFilter";
 import type { Order } from "@/lib/types";
 import { orderCode } from "@/lib/orderCode";
+
+const PAGE_SIZE = 10;
 
 const STATUS_LABELS: Record<string, string> = {
   awaiting_payment: "Aguardando pagamento",
@@ -34,6 +37,7 @@ export default function PedidosPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>("30d");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -43,7 +47,12 @@ export default function PedidosPage() {
       .finally(() => setLoading(false));
   }, [status]);
 
+  useEffect(() => setPage(1), [period]);
+
   const visibleOrders = orders.filter((o) => isWithinPeriod(o.created_at, period));
+  const totalPages = Math.max(1, Math.ceil(visibleOrders.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageOrders = visibleOrders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   if (status === "loading") return null;
 
@@ -82,36 +91,39 @@ export default function PedidosPage() {
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {visibleOrders.map((order) => (
-            <Link
-              key={order.id}
-              href={`/pedidos/${order.id}`}
-              className="card flex items-center justify-between gap-3 p-4 transition-transform hover:-translate-y-0.5"
-            >
-              <div className="min-w-0">
-                <p className="text-slate-900">Pedido #{orderCode(order)}</p>
-                <p className="text-sm text-slate-500">{new Date(order.created_at).toLocaleDateString("pt-BR")}</p>
-                {order.status === "shipped" && (
-                  <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-600 px-2.5 py-0.5 text-xs text-white">
-                    Recebeu? Confirmar entrega →
-                  </p>
-                )}
-                {order.status === "awaiting_payment" && (
-                  <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-0.5 text-xs text-white">
-                    Pagar agora com Pix →
-                  </p>
-                )}
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className="text-brand">{centsToBRL(order.total_cents)}</span>
-                <span className={`rounded-full px-2.5 py-0.5 text-xs ${STATUS_PILL[order.status]}`}>
-                  {STATUS_LABELS[order.status]}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <>
+          <div className="space-y-3">
+            {pageOrders.map((order) => (
+              <Link
+                key={order.id}
+                href={`/pedidos/${order.id}`}
+                className="card flex items-center justify-between gap-3 p-4 transition-transform hover:-translate-y-0.5"
+              >
+                <div className="min-w-0">
+                  <p className="text-slate-900">Pedido #{orderCode(order)}</p>
+                  <p className="text-sm text-slate-500">{new Date(order.created_at).toLocaleDateString("pt-BR")}</p>
+                  {order.status === "shipped" && (
+                    <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-600 px-2.5 py-0.5 text-xs text-white">
+                      Recebeu? Confirmar entrega →
+                    </p>
+                  )}
+                  {order.status === "awaiting_payment" && (
+                    <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-0.5 text-xs text-white">
+                      Pagar agora com Pix →
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span className="text-brand">{centsToBRL(order.total_cents)}</span>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs ${STATUS_PILL[order.status]}`}>
+                    {STATUS_LABELS[order.status]}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <Pagination page={currentPage} totalPages={totalPages} onChange={setPage} />
+        </>
       )}
     </div>
   );
