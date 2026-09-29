@@ -32,12 +32,12 @@ export function EmailTestCard() {
   }
 
   return (
-    <form onSubmit={send} className="card mt-6 space-y-3 p-4">
-      <h2 className="flex items-center gap-2 text-lg font-bold">
-        <Mail size={18} className="text-brand" /> E-mails da loja
-        <HelpTip text="Manda os dois e-mails que o cliente recebe (Pix com QR code e link de pagamento, e pagamento aprovado) usando um pedido de exemplo. O QR code do teste não é um Pix de verdade." />
-      </h2>
-      <p className="text-sm text-slate-500">Veja como chegam os e-mails de pedido pro cliente.</p>
+    <form onSubmit={send} className="space-y-3">
+      <p className="text-sm text-slate-600">
+        Manda pro e-mail abaixo os dois e-mails que o cliente recebe (Pix com QR code e link, e pagamento aprovado),
+        usando um pedido de exemplo.
+        <HelpTip text="O QR code do teste não é um Pix de verdade. Os e-mails saem pelo Gmail configurado na Vercel (SMTP)." />
+      </p>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           className="input sm:max-w-sm"

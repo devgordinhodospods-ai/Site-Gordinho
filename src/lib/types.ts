@@ -17,6 +17,13 @@ export type SiteSettings = {
   service_fee_fixed: number;
   announcement_text: string | null;
   hero_image_url: string | null;
+  closed_popup_enabled: boolean;
+  closed_days: number[];
+  open_time: string | null;
+  close_time: string | null;
+  closed_manual: boolean;
+  closed_popup_title: string;
+  closed_popup_message: string;
 };
 
 export type Category = {

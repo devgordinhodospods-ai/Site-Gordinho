@@ -32,7 +32,7 @@ export function UserMenu({ name }: { name?: string | null }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-xl border border-blue-100 bg-white py-1.5 shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-blue-100 bg-white py-1.5 shadow-lg">
           {name && (
             <p className="truncate border-b border-blue-50 px-4 py-2 text-sm font-bold text-slate-800">{name}</p>
           )}

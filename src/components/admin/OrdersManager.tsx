@@ -20,6 +20,16 @@ const STATUS_FLOW: OrderStatus[] = [
   "cancelled",
 ];
 
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  pending: "Pix aguardando pagamento",
+  approved: "pagamento aprovado",
+  expired: "Pix vencido",
+  cancelled: "pagamento cancelado",
+  rejected: "pagamento recusado",
+  in_process: "pagamento em análise",
+  refunded: "valor devolvido",
+};
+
 const STATUS_LABELS: Record<OrderStatus, string> = {
   awaiting_payment: "Aguardando pagamento",
   paid: "Pago",
@@ -229,7 +239,7 @@ export function OrdersManager() {
                 <p className="flex items-center gap-1">
                   <CreditCard size={14} className="text-slate-400" />
                   {order.payment_provider === "mercadopago" ? "Mercado Pago" : order.payment_provider}
-                  {order.payment_status ? ` · ${order.payment_status}` : ""}
+                  {order.payment_status ? ` · ${PAYMENT_STATUS_LABELS[order.payment_status] ?? order.payment_status}` : ""}
                 </p>
                 <p>
                   <span className="font-bold">Total pago no site:</span>{" "}

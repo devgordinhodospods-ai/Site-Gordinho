@@ -6,6 +6,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { getSiteSettings } from "@/lib/settings";
+import { ClosedStorePopup } from "@/components/layout/ClosedStorePopup";
 
 const lato = Lato({
   subsets: ["latin"],
@@ -42,6 +43,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Navbar storeName={settings.store_name} logoUrl={settings.store_logo_url} />
           <main className="flex-1">{children}</main>
           <Footer settings={settings} />
+          <ClosedStorePopup
+            settings={{
+              closed_popup_enabled: settings.closed_popup_enabled,
+              closed_days: settings.closed_days,
+              open_time: settings.open_time,
+              close_time: settings.close_time,
+              closed_manual: settings.closed_manual,
+              closed_popup_title: settings.closed_popup_title,
+              closed_popup_message: settings.closed_popup_message,
+            }}
+          />
         </SessionProviderWrapper>
       </body>
     </html>

@@ -20,6 +20,14 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   service_fee_fixed: 0,
   announcement_text: "Compra 100% segura • Pagamento via Pix",
   hero_image_url: null,
+  closed_popup_enabled: false,
+  closed_days: [0],
+  open_time: null,
+  close_time: null,
+  closed_manual: false,
+  closed_popup_title: "Estamos fechados agora",
+  closed_popup_message:
+    "Mas pode comprar tranquilo: seu pedido fica registrado e será entregue {proximo_dia}.",
 };
 
 /**

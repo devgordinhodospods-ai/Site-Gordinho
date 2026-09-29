@@ -1,4 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { sendOrderCancelledEmail } from "@/lib/email";
+import { getSiteSettings } from "@/lib/settings";
 
 /** Tempo que o cliente tem pra pagar depois de gerar o Pix / link de pagamento. */
 export const PAYMENT_WINDOW_MS = 30 * 60 * 1000;
@@ -28,9 +30,41 @@ export async function releaseAbandonedOrders() {
       .or(`payment_expires_at.lt.${expiredBefore},and(payment_expires_at.is.null,created_at.lt.${createdBefore})`)
       .limit(50);
     for (const order of stale ?? []) {
-      await db.rpc("cancel_order", { p_order_id: order.id });
+      await cancelExpiredOrder(order.id);
     }
   } catch {
     // limpeza é "melhor esforço": nunca deve derrubar a página
   }
+}
+
+/**
+ * Cancela um pedido cujo Pix venceu (devolve o estoque) e avisa o cliente
+ * por e-mail. Seguro de chamar em paralelo: só quem "marca" o pedido
+ * primeiro cancela e manda o e-mail, então o cliente nunca recebe dois.
+ */
+export async function cancelExpiredOrder(orderId: string) {
+  const db = getSupabaseAdmin();
+  // Conta as linhas afetadas (o PostgREST não devolve a linha quando o
+  // filtro usa a própria coluna alterada).
+  const { count } = await db
+    .from("orders")
+    .update({ payment_status: "expired", updated_at: new Date().toISOString() }, { count: "exact" })
+    .eq("id", orderId)
+    .eq("status", "awaiting_payment")
+    .or("payment_status.is.null,payment_status.neq.expired");
+  if (!count) return false;
+
+  const { error } = await db.rpc("cancel_order", { p_order_id: orderId });
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.error("[cancelExpiredOrder]", orderId, error.message);
+    return false;
+  }
+
+  const [{ data: order }, settings] = await Promise.all([
+    db.from("orders").select("*").eq("id", orderId).single(),
+    getSiteSettings(),
+  ]);
+  if (order) await sendOrderCancelledEmail({ order, settings, reason: "expired" });
+  return true;
 }

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { ShoppingCart, User, LayoutDashboard, Search } from "lucide-react";
 import { useCartStore } from "@/store/cart";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { scrollToProducts, useSearchStore } from "@/store/search";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { SmoothTopLink } from "@/components/ui/SmoothTopLink";
@@ -21,29 +21,36 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
   const search = useSearchStore((s) => s.query);
   const setSearch = useSearchStore((s) => s.setQuery);
 
-  function goToResults() {
-    const q = search.trim();
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function goToResults(value: string) {
+    const q = value.trim();
     router.push(q ? `/?busca=${encodeURIComponent(q)}#produtos` : "/#produtos");
   }
 
   // Na home a vitrine filtra ao vivo; em outra página, uma pausa na
-  // digitação já leva pra home com os resultados.
+  // digitação já leva pra home com os resultados. Só reage ao que o
+  // cliente digita — navegar pra outra página nunca dispara a busca.
   function handleChange(value: string) {
     setSearch(value);
-    if (onHome && value.trim()) scrollToProducts();
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    if (!value.trim()) return;
+    if (onHome) scrollToProducts();
+    else typingTimer.current = setTimeout(() => goToResults(value), 700);
   }
 
+  // Saiu da home (carrinho, produto, conta...): a busca fica vazia.
   useEffect(() => {
-    if (onHome || !search.trim()) return;
-    const timer = setTimeout(goToResults, 700);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, onHome]);
+    if (onHome) return;
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    setSearch("");
+  }, [onHome, pathname, setSearch]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
+    if (typingTimer.current) clearTimeout(typingTimer.current);
     if (onHome) scrollToProducts();
-    else goToResults();
+    else goToResults(search);
   }
 
   return (

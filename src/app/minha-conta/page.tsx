@@ -7,6 +7,7 @@ import { User, Mail, Phone, CreditCard, MapPin, Plus, Pencil, Star, KeyRound } f
 import { Loader } from "@/components/ui/Loader";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { AddressForm, type AddressFormValues } from "@/components/account/AddressForm";
+import { PasswordChange } from "@/components/account/PasswordChange";
 import { formatCPF, isValidCPF } from "@/lib/cpf";
 import type { UserAddress } from "@/lib/types";
 
@@ -271,13 +272,16 @@ export default function MinhaContaPage() {
           )}
 
           {!loading && emailStep === "idle" && (
-            <button
-              type="button"
-              className="mt-3 text-xs font-bold text-brand hover:underline"
-              onClick={() => setEmailStep("enterEmail")}
-            >
-              Trocar e-mail
-            </button>
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <button
+                type="button"
+                className="text-xs font-bold text-brand hover:underline"
+                onClick={() => setEmailStep("enterEmail")}
+              >
+                Trocar e-mail
+              </button>
+              <PasswordChange email={form.email} />
+            </div>
           )}
 
           {emailStep === "enterEmail" && (

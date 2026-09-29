@@ -21,6 +21,8 @@ type PeriodStat = { vendasCents: number; lucroCents: number };
 type DashboardStats = {
   totalVendidoCents: number;
   lucroTotalCents: number;
+  lucroProdutosCents: number;
+  taxasServicoCents: number;
   margemPercent: number;
   itensSemCusto: number;
   totalPedidos: number;
@@ -80,15 +82,24 @@ export function MonitoringDashboard() {
 
   return (
     <div>
-      <h1 className="font-display mb-6 text-2xl text-slate-900">Visão geral</h1>
+      <h1 className="font-display mb-1 text-2xl text-slate-900">Visão geral</h1>
+      <p className="mb-6 text-sm text-slate-500">
+        Conta só pedidos pagos. Lucro = preço de venda − custo do produto + taxa de serviço (o frete vai direto pro
+        entregador e a tarifa do Mercado Pago não entra na conta). Datas no horário de Brasília.
+      </p>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        <StatCard icon={DollarSign} label="Total vendido" value={centsToBRL(stats.totalVendidoCents)} sub="Pedidos pagos" />
+        <StatCard
+          icon={DollarSign}
+          label="Total vendido"
+          value={centsToBRL(stats.totalVendidoCents)}
+          sub="Pedidos pagos (produtos + taxa)"
+        />
         <StatCard
           icon={TrendingUp}
           label="Lucro total"
           value={centsToBRL(stats.lucroTotalCents)}
-          sub={`Margem: ${stats.margemPercent.toFixed(1)}%`}
+          sub={`Margem ${stats.margemPercent.toFixed(1)}% · produtos ${centsToBRL(stats.lucroProdutosCents)} + taxas ${centsToBRL(stats.taxasServicoCents)}`}
         />
         <StatCard icon={ShoppingBag} label="Total de pedidos" value={String(stats.totalPedidos)} sub="Todos os status" />
         <StatCard icon={CheckCircle2} label="Pedidos pagos" value={String(stats.pedidosPagos)} sub="Status: pago em diante" />

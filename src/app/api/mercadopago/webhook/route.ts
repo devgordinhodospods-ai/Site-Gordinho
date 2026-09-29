@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getPayment } from "@/lib/mercadopago";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getSiteSettings } from "@/lib/settings";
+import { cancelExpiredOrder } from "@/lib/orders";
 
 /**
  * Webhook do Mercado Pago. Configurar a notification_url do Checkout Pro
@@ -50,8 +51,8 @@ export async function POST(req: Request) {
     }
 
     if (shouldReleaseStock) {
-      const { error: cancelError } = await db.rpc("cancel_order", { p_order_id: orderId });
-      if (cancelError) throw cancelError;
+      // Pix vencido no Mercado Pago: cancela, devolve o estoque e avisa o cliente.
+      await cancelExpiredOrder(orderId);
       newStatus = "cancelled";
     }
 

@@ -215,7 +215,6 @@ const STATUS_EMAIL: Record<string, { title: string; text: string }> = {
   preparing: { title: "Pedido em preparação 📦", text: "Estamos separando seus produtos." },
   shipped: { title: "Saiu pra entrega 🛵", text: "O entregador já está a caminho. Lembre: o frete é pago direto a ele." },
   delivered: { title: "Pedido entregue 🎉", text: "Obrigado pela compra! Volte sempre." },
-  cancelled: { title: "Pedido cancelado", text: "Seu pedido foi cancelado. Se tiver dúvidas, fale com a loja." },
 };
 
 export async function sendOrderStatusUpdateEmail(params: { order: Order; settings: SiteSettings }) {
@@ -235,6 +234,69 @@ export async function sendOrderStatusUpdateEmail(params: { order: Order; setting
   await sendMail({
     to: order.customer_email,
     subject: `${info.title.replace(/\s*\p{Extended_Pictographic}/gu, "")} - Pedido #${shortId(order)} - ${settings.store_name}`,
+    html: layout(settings, body),
+    settings,
+  });
+}
+
+function whatsappLink(phone: string | null) {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  return `https://wa.me/${digits.startsWith("55") && digits.length >= 12 ? digits : `55${digits}`}`;
+}
+
+export type CancelReason = "expired" | "store_paid" | "store_unpaid";
+
+/**
+ * Pedido cancelado: prazo do Pix esgotado, ou cancelado pela loja (ex.: falta
+ * de estoque) — nesse caso avisa que a loja vai entrar em contato.
+ */
+export async function sendOrderCancelledEmail(params: { order: Order; settings: SiteSettings; reason: CancelReason }) {
+  const { order, settings, reason } = params;
+  const name = escapeHtml(order.customer_name);
+  const id = `<strong style="color:${C.title};">#${shortId(order)}</strong>`;
+
+  const texts: Record<CancelReason, { title: string; text: string; note: string }> = {
+    expired: {
+      title: "Pedido cancelado ⏱️",
+      text: `Olá, ${name}! O prazo de 30 minutos pra pagar o Pix do pedido ${id} acabou e o pagamento não foi identificado, então o pedido foi cancelado.`,
+      note: "Nenhum valor foi cobrado. Se ainda quiser os produtos, é só fazer o pedido de novo no site.",
+    },
+    store_paid: {
+      title: "Pedido cancelado",
+      text: `Olá, ${name}! Infelizmente precisamos cancelar o pedido ${id} por falta de estoque ou outro problema com os produtos.`,
+      note: "Fique tranquilo: a loja vai entrar em contato com você por e-mail ou WhatsApp pra resolver e combinar a devolução do valor pago.",
+    },
+    store_unpaid: {
+      title: "Pedido cancelado",
+      text: `Olá, ${name}! O pedido ${id} foi cancelado pela loja.`,
+      note: "Nenhum valor foi cobrado. Se tiver alguma dúvida, é só falar com a gente.",
+    },
+  };
+  const t = texts[reason];
+
+  const whatsapp = whatsappLink(settings.contact_whatsapp);
+  const contactButtons =
+    reason === "expired"
+      ? button(appUrl(), "Voltar pra loja")
+      : [
+          whatsapp ? button(whatsapp, "Falar no WhatsApp") : "",
+          settings.contact_email ? button(`mailto:${settings.contact_email}`, "Mandar e-mail", !whatsapp) : "",
+        ].join("") || button(appUrl(), "Voltar pra loja");
+
+  const body = `
+    ${heading(t.title, t.text)}
+    <div style="background:${C.box};border:1px solid ${C.line};border-radius:14px;padding:14px;text-align:center;margin:0 0 16px;">
+      <span style="font-size:13px;color:${C.muted};">Pedido</span>
+      <span style="display:block;font-size:22px;font-weight:900;letter-spacing:2px;color:${C.neon};">#${shortId(order)}</span>
+      <span style="font-size:13px;color:${C.muted};">${centsToBRL(order.total_cents)}</span>
+    </div>
+    <p style="margin:0 0 20px;background:${reason === "store_paid" ? "#1f1706" : C.box};border:1px solid ${reason === "store_paid" ? "#854d0e" : C.line};border-radius:12px;padding:12px 14px;color:${reason === "store_paid" ? "#fcd34d" : C.text};font-size:14px;text-align:center;">${t.note}</p>
+    <div style="text-align:center;">${contactButtons}</div>`;
+
+  return sendMail({
+    to: order.customer_email,
+    subject: `Pedido #${shortId(order)} cancelado - ${settings.store_name}`,
     html: layout(settings, body),
     settings,
   });

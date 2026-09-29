@@ -3,7 +3,12 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admins";
 import { randomUUID } from "crypto";
-import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail, sendPixPendingEmail } from "@/lib/email";
+import {
+  sendOrderCancelledEmail,
+  sendOrderConfirmationEmail,
+  sendOrderStatusUpdateEmail,
+  sendPixPendingEmail,
+} from "@/lib/email";
 import { getSiteSettings } from "@/lib/settings";
 import { getErrorMessage } from "@/lib/errors";
 import { releaseAbandonedOrders } from "@/lib/orders";
@@ -59,7 +64,45 @@ const SETTINGS_KEYS = [
   "service_fee_fixed",
   "announcement_text",
   "hero_image_url",
+  "closed_popup_enabled",
+  "closed_days",
+  "open_time",
+  "close_time",
+  "closed_manual",
+  "closed_popup_title",
+  "closed_popup_message",
 ] as const;
+
+const PAGE_ROWS = 1000;
+
+/** Busca todas as linhas de uma consulta, de 1000 em 1000 (limite do Supabase). */
+async function fetchAllRows<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_ROWS) {
+    const { data, error } = await page(from, from + PAGE_ROWS - 1);
+    if (error) throw error;
+    rows.push(...((data ?? []) as T[]));
+    if (!data || data.length < PAGE_ROWS) return rows;
+  }
+}
+
+const BRASILIA_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC-3, sem horário de verão desde 2019
+
+/** Início de hoje, da semana (domingo) e do mês no horário de Brasília, como instantes UTC. */
+function brasiliaPeriodStarts(now: Date) {
+  const local = new Date(now.getTime() - BRASILIA_OFFSET_MS); // "relógio" de Brasília lido em UTC
+  const toInstant = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d) + BRASILIA_OFFSET_MS);
+  const y = local.getUTCFullYear();
+  const m = local.getUTCMonth();
+  const d = local.getUTCDate();
+  return {
+    startOfDay: toInstant(y, m, d),
+    startOfWeek: toInstant(y, m, d - local.getUTCDay()),
+    startOfMonth: toInstant(y, m, 1),
+  };
+}
 
 function pick<T extends Record<string, unknown>>(obj: T, allowed: readonly string[]) {
   const out: Record<string, unknown> = {};
@@ -194,26 +237,49 @@ export async function POST(req: Request) {
 
       // ---------------- dashboard de monitoramento ----------------
       case "getDashboardStats": {
-        const { data: orders, error: ordersError } = await db
-          .from("orders")
-          .select("id, status, total_cents, created_at");
-        if (ordersError) throw ordersError;
+        // O Supabase devolve no máximo 1000 linhas por consulta: busca em páginas.
+        const orders = await fetchAllRows<{
+          id: string;
+          status: string;
+          total_cents: number;
+          service_fee_cents: number;
+          created_at: string;
+        }>((from, to) =>
+          db.from("orders").select("id, status, total_cents, service_fee_cents, created_at").order("id").range(from, to)
+        );
+        const items = await fetchAllRows<{
+          order_id: string;
+          product_id: string | null;
+          product_name: string;
+          quantity: number;
+          unit_price_cents: number;
+          unit_cost_cents: number | null;
+        }>((from, to) =>
+          db
+            .from("order_items")
+            .select("order_id, product_id, product_name, quantity, unit_price_cents, unit_cost_cents")
+            .order("id")
+            .range(from, to)
+        );
 
-        const { data: items, error: itemsError } = await db
-          .from("order_items")
-          .select("order_id, product_id, product_name, quantity, unit_price_cents, unit_cost_cents");
-        if (itemsError) throw itemsError;
+        const orderById = new Map(orders.map((o) => [o.id, o]));
 
-        const orderById = new Map((orders ?? []).map((o) => [o.id, o]));
-
-        const now = new Date();
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const startOfWeek = new Date(startOfDay);
-        startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay());
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        // "Hoje", "semana" e "mês" no horário de Brasília (o servidor roda em UTC).
+        const { startOfDay, startOfWeek, startOfMonth } = brasiliaPeriodStarts(new Date());
+        const periodsOf = (createdAt: Date) =>
+          (
+            [
+              ["today", startOfDay],
+              ["week", startOfWeek],
+              ["month", startOfMonth],
+            ] as const
+          )
+            .filter(([, start]) => createdAt >= start)
+            .map(([key]) => key);
 
         let totalVendidoCents = 0;
-        let lucroTotalCents = 0;
+        let taxasServicoCents = 0;
+        let lucroProdutosCents = 0;
         let pedidosPagos = 0;
         let pedidosPendentes = 0;
         let pedidosCancelados = 0;
@@ -224,14 +290,16 @@ export async function POST(req: Request) {
           month: { vendasCents: 0, lucroCents: 0 },
         };
 
-        for (const o of orders ?? []) {
-          const createdAt = new Date(o.created_at);
+        for (const o of orders) {
           if (PAID_LIKE_STATUSES.has(o.status)) {
             totalVendidoCents += o.total_cents;
+            taxasServicoCents += o.service_fee_cents;
             pedidosPagos += 1;
-            if (createdAt >= startOfDay) periodStats.today.vendasCents += o.total_cents;
-            if (createdAt >= startOfWeek) periodStats.week.vendasCents += o.total_cents;
-            if (createdAt >= startOfMonth) periodStats.month.vendasCents += o.total_cents;
+            // A taxa de serviço fica com a loja: entra no lucro.
+            for (const key of periodsOf(new Date(o.created_at))) {
+              periodStats[key].vendasCents += o.total_cents;
+              periodStats[key].lucroCents += o.service_fee_cents;
+            }
           } else if (o.status === "awaiting_payment") {
             pedidosPendentes += 1;
           } else if (o.status === "cancelled") {
@@ -241,10 +309,9 @@ export async function POST(req: Request) {
 
         type ProductAgg = { name: string; quantity: number; receitaCents: number; lucroCents: number };
         const productAgg = new Map<string, ProductAgg>();
-        let receitaProdutosCents = 0;
         let itensSemCusto = 0;
 
-        for (const item of items ?? []) {
+        for (const item of items) {
           const order = orderById.get(item.order_id);
           if (!order || !PAID_LIKE_STATUSES.has(order.status)) continue;
 
@@ -254,13 +321,11 @@ export async function POST(req: Request) {
           const cost = item.unit_cost_cents ?? 0;
           const itemLucro = (item.unit_price_cents - cost) * item.quantity;
           const itemReceita = item.unit_price_cents * item.quantity;
-          lucroTotalCents += itemLucro;
-          receitaProdutosCents += itemReceita;
+          lucroProdutosCents += itemLucro;
 
-          const createdAt = new Date(order.created_at);
-          if (createdAt >= startOfDay) periodStats.today.lucroCents += itemLucro;
-          if (createdAt >= startOfWeek) periodStats.week.lucroCents += itemLucro;
-          if (createdAt >= startOfMonth) periodStats.month.lucroCents += itemLucro;
+          for (const key of periodsOf(new Date(order.created_at))) {
+            periodStats[key].lucroCents += itemLucro;
+          }
 
           const key = item.product_id ?? item.product_name;
           const existing = productAgg.get(key) ?? {
@@ -283,13 +348,17 @@ export async function POST(req: Request) {
             margemPercent: p.receitaCents > 0 ? (p.lucroCents / p.receitaCents) * 100 : 0,
           }));
 
+        const lucroTotalCents = lucroProdutosCents + taxasServicoCents;
+
         return NextResponse.json({
           totalVendidoCents,
           lucroTotalCents,
-          // Margem sobre a venda de produtos (sem a taxa de serviço).
-          margemPercent: receitaProdutosCents > 0 ? (lucroTotalCents / receitaProdutosCents) * 100 : 0,
+          lucroProdutosCents,
+          taxasServicoCents,
+          // Margem sobre tudo que entrou (produtos + taxa de serviço).
+          margemPercent: totalVendidoCents > 0 ? (lucroTotalCents / totalVendidoCents) * 100 : 0,
           itensSemCusto,
-          totalPedidos: (orders ?? []).length,
+          totalPedidos: orders.length,
           pedidosPagos,
           pedidosPendentes,
           pedidosCancelados,
@@ -358,9 +427,19 @@ export async function POST(req: Request) {
         }
 
         const { data: order } = await db.from("orders").select("*").eq("id", body.id).single();
-        if (order) {
+        // Só avisa o cliente quando o status realmente mudou.
+        if (order && current && current.status !== status) {
           const settings = await getSiteSettings();
-          await sendOrderStatusUpdateEmail({ order, settings }).catch(() => null);
+          if (status === "cancelled") {
+            await sendOrderCancelledEmail({
+              order,
+              settings,
+              // Já pago: a loja vai entrar em contato pra devolver o valor.
+              reason: PAID_LIKE_STATUSES.has(current.status) ? "store_paid" : "store_unpaid",
+            }).catch(() => null);
+          } else {
+            await sendOrderStatusUpdateEmail({ order, settings }).catch(() => null);
+          }
         }
 
         return NextResponse.json({ order });
