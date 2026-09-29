@@ -98,6 +98,10 @@ export async function createPixPayment(params: {
 }) {
   const payment = new Payment(getClient());
   const cpf = params.payer.cpf?.replace(/\D/g, "");
+  // O Mercado Pago só aceita Pix com validade de no mínimo 30 minutos,
+  // contados quando o pedido chega lá. +2 min de folga pra nunca ficar
+  // abaixo disso (o site cancela o pedido pelo próprio cronômetro).
+  const pixExpiresAt = new Date(Math.max(params.expiresAt.getTime(), Date.now() + 30 * 60 * 1000) + 2 * 60 * 1000);
   const result = await payment.create({
     body: {
       transaction_amount: params.amountCents / 100,
@@ -105,7 +109,7 @@ export async function createPixPayment(params: {
       payment_method_id: "pix",
       external_reference: params.orderId,
       notification_url: params.notificationUrl,
-      date_of_expiration: toMercadoPagoDate(params.expiresAt),
+      date_of_expiration: toMercadoPagoDate(pixExpiresAt),
       payer: {
         email: params.payer.email,
         first_name: params.payer.firstName,

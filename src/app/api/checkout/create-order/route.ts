@@ -105,8 +105,22 @@ export async function POST(req: Request) {
     );
   }
 
-  const { data: order } = await db.from("orders").select("*").eq("id", orderId).single();
+  const { data: createdOrder } = await db.from("orders").select("*").eq("id", orderId).single();
   const { data: orderItems } = await db.from("order_items").select("*").eq("order_id", orderId);
+
+  // O total cobrado no site é produtos + taxa de serviço; o frete é pago ao
+  // entregador. Garante isso mesmo se a função do banco for de uma versão
+  // antiga que somava o frete.
+  let order = createdOrder;
+  if (order && order.total_cents !== order.subtotal_cents + order.service_fee_cents) {
+    const { data: fixed } = await db
+      .from("orders")
+      .update({ total_cents: order.subtotal_cents + order.service_fee_cents })
+      .eq("id", orderId)
+      .select("*")
+      .single();
+    order = fixed ?? { ...order, total_cents: order.subtotal_cents + order.service_fee_cents };
+  }
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const expiresAt = new Date(Date.now() + PAYMENT_WINDOW_MS);
