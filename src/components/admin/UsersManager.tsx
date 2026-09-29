@@ -9,12 +9,20 @@ import { Loader } from "@/components/ui/Loader";
 import { Pagination } from "@/components/ui/Pagination";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import type { OrderStatus, UserAddress } from "@/lib/types";
+import { orderCode } from "@/lib/orderCode";
 
 type UserRow = { id: string; name: string; email: string; auth_provider: string; created_at: string };
 type UserDetails = {
   user: UserRow & { phone: string | null; cpf: string | null };
   addresses: UserAddress[];
-  orders: { id: string; status: OrderStatus; total_cents: number; created_at: string }[];
+  orders: {
+    id: string;
+    status: OrderStatus;
+    total_cents: number;
+    created_at: string;
+    order_day: string | null;
+    day_number: number | null;
+  }[];
 };
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -253,7 +261,7 @@ export function UsersManager() {
                     {details.orders.slice(0, 8).map((o) => (
                       <li key={o.id} className="flex items-center justify-between py-2">
                         <span className="text-slate-700">
-                          #{o.id.slice(0, 8).toUpperCase()} · {formatDate(o.created_at)}
+                          #{orderCode(o)} · {formatDate(o.created_at)}
                         </span>
                         <span className="text-right">
                           <span className="block text-slate-900">{centsToBRL(o.total_cents)}</span>

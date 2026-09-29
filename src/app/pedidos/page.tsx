@@ -7,6 +7,7 @@ import { centsToBRL } from "@/lib/money";
 import { LoaderPage } from "@/components/ui/Loader";
 import { PeriodFilter, isWithinPeriod, type Period } from "@/components/ui/PeriodFilter";
 import type { Order } from "@/lib/types";
+import { orderCode } from "@/lib/orderCode";
 
 const STATUS_LABELS: Record<string, string> = {
   awaiting_payment: "Aguardando pagamento",
@@ -89,7 +90,7 @@ export default function PedidosPage() {
               className="card flex items-center justify-between gap-3 p-4 transition-transform hover:-translate-y-0.5"
             >
               <div className="min-w-0">
-                <p className="text-slate-900">Pedido #{order.id.slice(0, 8).toUpperCase()}</p>
+                <p className="text-slate-900">Pedido #{orderCode(order)}</p>
                 <p className="text-sm text-slate-500">{new Date(order.created_at).toLocaleDateString("pt-BR")}</p>
                 {order.status === "awaiting_payment" && (
                   <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-0.5 text-xs text-white">

@@ -8,6 +8,7 @@ import { centsToBRL } from "@/lib/money";
 import { LoaderPage } from "@/components/ui/Loader";
 import { PixPaymentPanel } from "@/components/loja/PixPaymentPanel";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
+import { orderCode } from "@/lib/orderCode";
 
 const STEPS: { status: OrderStatus; label: string }[] = [
   { status: "awaiting_payment", label: "Pedido feito" },
@@ -119,7 +120,7 @@ function PedidoDetalheContent() {
 
       <div className="card p-5 sm:p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h1 className="font-display text-2xl text-slate-900">Pedido #{order.id.slice(0, 8).toUpperCase()}</h1>
+          <h1 className="font-display text-2xl text-slate-900">Pedido #{orderCode(order)}</h1>
           <span className="text-sm text-slate-500">{new Date(order.created_at).toLocaleString("pt-BR")}</span>
         </div>
 

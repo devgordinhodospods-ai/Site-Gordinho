@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import QRCode from "qrcode";
 import { centsToBRL } from "@/lib/money";
 import type { Order, OrderItem, SiteSettings } from "@/lib/types";
+import { orderCode } from "@/lib/orderCode";
 
 /**
  * E-mails da loja (pedido recebido com o Pix, pagamento aprovado, mudança
@@ -61,7 +62,7 @@ function escapeHtml(text: string) {
 }
 
 function shortId(order: Order) {
-  return order.id.slice(0, 8).toUpperCase();
+  return orderCode(order);
 }
 
 // Paleta escura — mesma do e-mail de código do Supabase (modelo "escuro").

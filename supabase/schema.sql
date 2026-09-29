@@ -197,6 +197,8 @@ create table if not exists orders (
   pix_qr_code text,
   payment_url text,
   payment_expires_at timestamptz,
+  order_day date,
+  day_number int,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -208,6 +210,28 @@ create index if not exists orders_customer_email_idx on orders(customer_email);
 create index if not exists orders_created_at_idx on orders(created_at desc);
 create index if not exists orders_awaiting_expires_idx
   on orders(payment_expires_at) where status = 'awaiting_payment';
+
+-- Número do pedido por dia (P1-29-09...): ver migracao-numero-do-pedido.sql
+create unique index if not exists orders_day_number_uidx on orders(order_day, day_number);
+
+-- Todo pedido novo ganha o próximo número do dia. O lock por dia garante
+-- que dois pedidos no mesmo instante nunca fiquem com o mesmo número.
+create or replace function set_order_day_number() returns trigger
+language plpgsql
+set search_path = public
+as $fn$
+begin
+  new.order_day := (coalesce(new.created_at, now()) at time zone 'America/Sao_Paulo')::date;
+  perform pg_advisory_xact_lock(hashtext('order_day_number:' || new.order_day::text));
+  select coalesce(max(day_number), 0) + 1 into new.day_number from orders where order_day = new.order_day;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists orders_set_day_number on orders;
+create trigger orders_set_day_number
+  before insert on orders
+  for each row execute function set_order_day_number();
 
 alter table orders enable row level security;
 -- Sem policy pública: leitura/escrita só via service_role (rota valida dono do pedido ou admin).

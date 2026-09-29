@@ -485,7 +485,7 @@ export async function POST(req: Request) {
         if (error) throw error;
         if (!user) return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
 
-        const orderFields = "id, status, total_cents, created_at";
+        const orderFields = "id, status, total_cents, created_at, order_day, day_number";
         const [{ data: addresses }, { data: byUser }, { data: byEmail }] = await Promise.all([
           db.from("user_addresses").select("*").eq("user_id", user.id).order("is_default", { ascending: false }),
           db.from("orders").select(orderFields).eq("user_id", user.id),
@@ -541,6 +541,8 @@ export async function POST(req: Request) {
             "00020126360014br.gov.bcb.pix0114+5500000000000520400005303986540562.905802BR5915GORDINHODOSPODS6009SAO PAULO62140510TESTE0000163049F2B",
           payment_url: appUrl,
           payment_expires_at: new Date(now.getTime() + 30 * 60 * 1000).toISOString(),
+          order_day: new Date(now.getTime() - BRASILIA_OFFSET_MS).toISOString().slice(0, 10),
+          day_number: 1,
           created_at: now.toISOString(),
           updated_at: now.toISOString(),
         };

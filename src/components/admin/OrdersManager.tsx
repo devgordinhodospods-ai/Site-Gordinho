@@ -9,6 +9,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { PeriodFilter, isWithinPeriod, type Period } from "@/components/ui/PeriodFilter";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
+import { orderCode } from "@/lib/orderCode";
 
 const STATUS_FLOW: OrderStatus[] = [
   "awaiting_payment",
@@ -100,7 +101,7 @@ export function OrdersManager() {
     const inProgress = !["awaiting_payment", "cancelled", "delivered"].includes(order.status);
     if (inProgress) {
       setActionError(
-        `O pedido #${order.id.slice(0, 8).toUpperCase()} está em andamento. Mude o status pra "Cancelado" antes de excluir — assim o estoque volta.`
+        `O pedido #${orderCode(order)} está em andamento. Mude o status pra "Cancelado" antes de excluir — assim o estoque volta.`
       );
       return;
     }
@@ -111,7 +112,7 @@ export function OrdersManager() {
           ? "O pedido some da lista e deixa de contar no Monitoramento (vendas e lucro)."
           : "O pedido some da lista de vez.";
     const ok = await confirm(message, {
-      title: `Excluir o pedido #${order.id.slice(0, 8).toUpperCase()}?`,
+      title: `Excluir o pedido #${orderCode(order)}?`,
       confirmLabel: "Excluir pedido",
     });
     if (!ok) return;
@@ -185,7 +186,7 @@ export function OrdersManager() {
           {pageItems.map((order) => (
             <div key={order.id} className="card p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="font-display text-brand">Pedido #{order.id.slice(0, 8).toUpperCase()}</p>
+                <p className="font-display text-brand">Pedido #{orderCode(order)}</p>
                 <div className="flex items-center gap-2">
                   <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_PILL[order.status]}`}>
                     {STATUS_LABELS[order.status]}

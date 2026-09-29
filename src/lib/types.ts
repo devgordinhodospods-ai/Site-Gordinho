@@ -100,6 +100,8 @@ export type Order = {
   pix_qr_code: string | null;
   payment_url: string | null;
   payment_expires_at: string | null;
+  order_day: string | null;
+  day_number: number | null;
   created_at: string;
   updated_at: string;
 };

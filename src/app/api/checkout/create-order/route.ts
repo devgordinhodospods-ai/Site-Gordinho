@@ -8,6 +8,7 @@ import { getSiteSettings } from "@/lib/settings";
 import { createPixPayment, describeMercadoPagoError } from "@/lib/mercadopago";
 import { PAYMENT_WINDOW_MS, releaseAbandonedOrders } from "@/lib/orders";
 import { sendPixPendingEmail } from "@/lib/email";
+import { orderCode } from "@/lib/orderCode";
 
 const schema = z.object({
   items: z
@@ -138,7 +139,7 @@ export async function POST(req: Request) {
     const pix = await createPixPayment({
       orderId,
       amountCents: order?.total_cents ?? 0,
-      description: `Pedido #${orderId.slice(0, 8).toUpperCase()} - ${settings.store_name}`,
+      description: `Pedido #${order ? orderCode(order) : orderId.slice(0, 8).toUpperCase()} - ${settings.store_name}`,
       payer: { email: session.user.email, firstName, lastName: rest.join(" ") || undefined, cpf: customer?.cpf },
       notificationUrl,
       expiresAt,
