@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/auth";
+import { releaseAbandonedOrders } from "@/lib/orders";
 
 export async function GET() {
   const session = await getSession();
@@ -8,11 +9,18 @@ export async function GET() {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
 
+  await releaseAbandonedOrders();
+
   const db = getSupabaseAdmin();
+  const email = session.user.email.toLowerCase();
+  // Pela conta (user_id) ou pelo e-mail — assim nada some se o cliente trocar de e-mail.
+  // Valores entre aspas: o filtro do PostgREST não quebra com caracteres especiais.
+  const byEmail = `customer_email.eq."${email.replace(/"/g, "")}"`;
+  const owner = session.user.id ? `user_id.eq.${session.user.id},${byEmail}` : byEmail;
   const { data, error } = await db
     .from("orders")
     .select("*, order_items(*)")
-    .eq("customer_email", session.user.email)
+    .or(owner)
     .order("created_at", { ascending: false });
 
   if (error) {

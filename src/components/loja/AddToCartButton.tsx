@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ShoppingCart } from "lucide-react";
 import { useCartStore } from "@/store/cart";
+import { centsToBRL } from "@/lib/money";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import type { Product, ProductFlavor } from "@/lib/types";
 
@@ -22,6 +23,25 @@ export function AddToCartButton({
   const [added, setAdded] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
   const router = useRouter();
+
+  // No celular, quando o botão principal sai da tela (rolando pra ler a
+  // descrição), aparece uma barra fixa embaixo com o preço e "Adicionar".
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  useEffect(() => {
+    const actions = actionsRef.current;
+    if (!actions) return;
+    const observer = new IntersectionObserver(([entry]) =>
+      setShowStickyBar(!entry.isIntersecting && entry.boundingClientRect.top < 0)
+    );
+    observer.observe(actions);
+    // Espaço no fim da página pra barra não cobrir o rodapé (só no celular, via CSS).
+    document.body.classList.add("has-sticky-buy-bar");
+    return () => {
+      observer.disconnect();
+      document.body.classList.remove("has-sticky-buy-bar");
+    };
+  }, []);
 
   const selectedFlavor = hasFlavors ? flavors.find((f) => f.id === selectedFlavorId) : null;
   const availableStock = hasFlavors ? selectedFlavor?.stock ?? 0 : product.stock;
@@ -80,7 +100,7 @@ export function AddToCartButton({
         </div>
       )}
 
-      <div className="flex gap-3">
+      <div ref={actionsRef} className="flex gap-3">
         <QuantityStepper
           value={quantity}
           min={1}
@@ -114,6 +134,42 @@ export function AddToCartButton({
           Comprar agora
         </button>
       )}
+
+      <div
+        className={`fixed inset-x-0 bottom-0 z-30 border-t border-blue-100 bg-white/95 px-4 pt-3 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.25)] backdrop-blur transition-transform duration-300 sm:hidden ${
+          showStickyBar ? "translate-y-0" : "pointer-events-none translate-y-full"
+        }`}
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        aria-hidden={!showStickyBar}
+      >
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm text-slate-700">
+              {product.name}
+              {selectedFlavor ? ` · ${selectedFlavor.name}` : ""}
+            </p>
+            <p className="font-display text-lg leading-tight text-brand">{centsToBRL(product.price_cents)}</p>
+          </div>
+          <button
+            className="btn-primary shrink-0 px-5"
+            onClick={handleAdd}
+            disabled={outOfStock}
+            tabIndex={showStickyBar ? 0 : -1}
+          >
+            {outOfStock ? (
+              "Esgotado"
+            ) : added ? (
+              <>
+                <Check size={16} /> Adicionado!
+              </>
+            ) : (
+              <>
+                <ShoppingCart size={16} /> Adicionar
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

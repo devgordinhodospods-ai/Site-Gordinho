@@ -27,7 +27,7 @@ function toMinutes(time: string | null) {
 
 /**
  * A loja está fechada agora (horário de Brasília)? Se sim, diz quando ela
- * volta a entregar — ex.: "no próximo dia útil (segunda-feira), a partir das 10:00".
+ * volta a entregar — ex.: "no próximo dia útil, a partir das 10:00".
  */
 export function getStoreStatus(settings: StoreHoursSettings, now = new Date()): StoreStatus {
   if (!settings.closed_popup_enabled) return { closed: false };
@@ -46,7 +46,7 @@ export function getStoreStatus(settings: StoreHoursSettings, now = new Date()): 
     for (let i = 1; i <= 7; i++) {
       const day = (today + i) % 7;
       if (!closedDays.has(day)) {
-        return `no próximo dia útil (${WEEKDAYS[day]})${fromTime ? `,${fromTime}` : ""}`;
+        return `no próximo dia útil${fromTime ? `,${fromTime}` : ""}`;
       }
     }
     return "no próximo dia útil";

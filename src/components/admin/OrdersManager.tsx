@@ -242,7 +242,13 @@ export function OrdersManager() {
                   {order.payment_status ? ` · ${PAYMENT_STATUS_LABELS[order.payment_status] ?? order.payment_status}` : ""}
                 </p>
                 <p>
-                  <span className="font-bold">Total pago no site:</span>{" "}
+                  <span className="font-bold">
+                    {order.status === "awaiting_payment"
+                      ? "Total a pagar:"
+                      : order.status === "cancelled"
+                        ? "Total do pedido:"
+                        : "Total pago no site:"}
+                  </span>{" "}
                   <span className="font-display text-brand">{centsToBRL(order.total_cents)}</span>
                 </p>
                 {order.shipping_fee_cents > 0 && (

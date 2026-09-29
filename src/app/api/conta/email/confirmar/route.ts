@@ -51,5 +51,8 @@ export async function POST(req: Request) {
     );
   }
 
+  // Pedidos antigos passam pro e-mail novo (avisos de status chegam no e-mail certo).
+  await db.from("orders").update({ customer_email: user.pending_email }).eq("customer_email", currentEmail);
+
   return NextResponse.json({ ok: true, newEmail: user.pending_email });
 }

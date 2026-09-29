@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Plus, X, Eye, EyeOff, Search } from "lucide-react";
+import { Plus, X, Eye, EyeOff, Pencil, Search, Trash2 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { supabase } from "@/lib/supabase";
 import { brlToCents, centsToBRL } from "@/lib/money";
@@ -528,15 +528,26 @@ export function ProductsManager() {
               </div>
             </div>
             <div className="flex gap-2">
-              <button className="btn-secondary" onClick={() => edit(p)}>
-                Editar
+              <button className="btn-secondary flex-1 sm:flex-none" onClick={() => edit(p)}>
+                <Pencil size={16} /> Editar
               </button>
-              <button className="btn-secondary" onClick={() => toggleActive(p)}>
+              <button
+                className="btn-secondary px-3 sm:px-4"
+                onClick={() => toggleActive(p)}
+                aria-label={p.active ? "Tirar do ar" : "Colocar no ar"}
+                title={p.active ? "Tirar do ar" : "Colocar no ar"}
+              >
                 {p.active ? <EyeOff size={16} /> : <Eye size={16} />}
-                {p.active ? "Tirar do ar" : "Colocar no ar"}
+                <span className="hidden sm:inline">{p.active ? "Tirar do ar" : "Colocar no ar"}</span>
               </button>
-              <button className="btn-secondary text-red-600" onClick={() => handleDelete(p.id, p.name)}>
-                Excluir
+              <button
+                className="btn-secondary px-3 text-red-600 sm:px-4"
+                onClick={() => handleDelete(p.id, p.name)}
+                aria-label="Excluir"
+                title="Excluir"
+              >
+                <Trash2 size={16} />
+                <span className="hidden sm:inline">Excluir</span>
               </button>
             </div>
           </div>

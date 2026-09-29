@@ -91,6 +91,11 @@ export default function PedidosPage() {
               <div className="min-w-0">
                 <p className="text-slate-900">Pedido #{order.id.slice(0, 8).toUpperCase()}</p>
                 <p className="text-sm text-slate-500">{new Date(order.created_at).toLocaleDateString("pt-BR")}</p>
+                {order.status === "awaiting_payment" && (
+                  <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-0.5 text-xs text-white">
+                    Pagar agora com Pix →
+                  </p>
+                )}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
                 <span className="text-brand">{centsToBRL(order.total_cents)}</span>

@@ -142,7 +142,7 @@ export function HomeCatalog({
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="relative sm:w-72">
+            <div className="relative hidden sm:block sm:w-72">
               <Search
                 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                 size={18}
@@ -157,7 +157,7 @@ export function HomeCatalog({
                 <button
                   type="button"
                   onClick={() => setQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                   aria-label="Limpar busca"
                 >
                   <X size={14} />

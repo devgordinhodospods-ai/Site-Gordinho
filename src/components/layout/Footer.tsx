@@ -54,23 +54,23 @@ export function Footer({ settings }: { settings: SiteSettings }) {
 
         <div>
           <h3 className="font-display mb-3 text-sm uppercase tracking-wide text-white">Navegação</h3>
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-0.5 text-sm">
             <li>
-              <SmoothTopLink href="/" className="transition hover:text-white">
+              <SmoothTopLink href="/" className="inline-block py-1.5 transition hover:text-white">
                 Início
               </SmoothTopLink>
             </li>
             <li>
               {contactHref ? (
-                <a href={contactHref} target="_blank" rel="noreferrer" className="transition hover:text-white">
+                <a href={contactHref} target="_blank" rel="noreferrer" className="inline-block py-1.5 transition hover:text-white">
                   Contato
                 </a>
               ) : (
-                <span className="text-slate-500">Contato</span>
+                <span className="inline-block py-1.5 text-slate-500">Contato</span>
               )}
             </li>
             <li>
-              <Link href="/pedidos" className="transition hover:text-white">
+              <Link href="/pedidos" className="inline-block py-1.5 transition hover:text-white">
                 Meus pedidos
               </Link>
             </li>

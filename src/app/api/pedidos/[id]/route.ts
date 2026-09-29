@@ -25,7 +25,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Pedido não encontrado" }, { status: 404 });
   }
 
-  const isOwner = order.customer_email === session.user.email;
+  const isOwner =
+    order.customer_email === session.user.email.toLowerCase() ||
+    (session.user.id != null && order.user_id === session.user.id);
   if (!isOwner && !isAdminEmail(session.user.email)) {
     return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
   }

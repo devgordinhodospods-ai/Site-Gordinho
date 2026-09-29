@@ -176,3 +176,23 @@
     transform: none;
   }
 }
+
+/*
+ * No celular, campos com fonte menor que 16px fazem o iPhone dar zoom na
+ * tela ao tocar pra digitar. Fora das camadas do Tailwind pra valer sobre
+ * text-sm/text-xs dos campos.
+ */
+@media (max-width: 639.98px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Página de produto no celular: espaço pra barra fixa de "Adicionar". */
+@media (max-width: 639.98px) {
+  body.has-sticky-buy-bar {
+    padding-bottom: 76px;
+  }
+}
