@@ -17,6 +17,7 @@ export type SiteSettings = {
   service_fee_fixed: number;
   announcement_text: string | null;
   hero_image_url: string | null;
+  hero_images: string[];
   closed_popup_enabled: boolean;
   closed_days: number[];
   open_time: string | null;

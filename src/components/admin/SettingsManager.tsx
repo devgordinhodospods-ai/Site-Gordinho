@@ -2,10 +2,10 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
-import { Clock, Home, Mail, Percent, Phone, Store, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Home, Mail, Percent, Phone, Store, type LucideIcon } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { supabase } from "@/lib/supabase";
-import { DEFAULT_SETTINGS } from "@/lib/settings";
+import { DEFAULT_SETTINGS, heroImages } from "@/lib/settings";
 import { centsToBRL } from "@/lib/money";
 import { closedMessage, getStoreStatus, WEEKDAYS, WEEKDAYS_SHORT } from "@/lib/storeHours";
 import { FileInput } from "@/components/ui/FileInput";
@@ -80,6 +80,8 @@ export function SettingsManager() {
     adminApi<{ settings: { key: string; value: unknown }[] }>("getSettings").then(({ settings: rows }) => {
       const merged = { ...DEFAULT_SETTINGS } as Record<string, unknown>;
       for (const row of rows) merged[row.key] = row.value;
+      // Lojas antigas tinham uma imagem só no banner: vira o 1º item da lista.
+      merged.hero_images = heroImages(merged as SiteSettings);
       setSettings(merged as SiteSettings);
       setSaved(JSON.stringify(merged));
       setLoaded(true);
@@ -101,7 +103,11 @@ export function SettingsManager() {
         .uploadToSignedUrl(upload.path, upload.token, file);
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from("product-images").getPublicUrl(upload.path);
-      setSettings((s) => ({ ...s, [IMAGE_FIELD[kind]]: data.publicUrl }));
+      setSettings((s) =>
+        kind === "hero"
+          ? { ...s, hero_images: [...s.hero_images, data.publicUrl] }
+          : { ...s, [IMAGE_FIELD[kind]]: data.publicUrl }
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao enviar imagem.");
     } finally {
@@ -114,7 +120,8 @@ export function SettingsManager() {
     setMessage(null);
     setError(null);
     try {
-      await adminApi("saveSettings", { fields: settings });
+      // hero_image_url acompanha a 1ª imagem (compatibilidade com a versão antiga).
+      await adminApi("saveSettings", { fields: { ...settings, hero_image_url: settings.hero_images[0] ?? null } });
       setSaved(JSON.stringify(settings));
       setMessage("Configurações salvas! O site já está atualizado.");
     } catch (err) {
@@ -227,12 +234,68 @@ export function SettingsManager() {
                 onChange={(e) => set("announcement_text", e.target.value || null)}
               />
             </Field>
-            {imageField("hero", {
-              label: "Banner da vitrine",
-              help: "Imagem exibida no topo da página inicial, em fundo preto.",
-              hint: "Tamanho ideal: imagem larga (ex.: 1600 × 500 px).",
-              preview: "h-28 w-full max-w-xl bg-black",
-            })}
+            <Field
+              label="Banner da vitrine"
+              help="Imagens exibidas no topo da página inicial, em fundo preto. Com mais de uma, elas passam sozinhas a cada 7 segundos, na ordem abaixo."
+              hint="Tamanho ideal: imagem larga (ex.: 1600 × 500 px). Com várias, passam a cada 7 segundos."
+            >
+              {settings.hero_images.length > 0 && (
+                <ul className="mb-3 grid gap-3 sm:grid-cols-2">
+                  {settings.hero_images.map((url, i) => {
+                    const move = (to: number) => {
+                      const list = [...settings.hero_images];
+                      [list[i], list[to]] = [list[to], list[i]];
+                      set("hero_images", list);
+                    };
+                    return (
+                      <li key={`${url}-${i}`} className="overflow-hidden rounded-xl border border-blue-100 bg-white">
+                        <div className="relative aspect-[16/5] w-full bg-black">
+                          <Image src={url} alt={`Banner ${i + 1}`} fill className="object-contain" sizes="400px" />
+                          <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
+                            {i + 1}º
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 p-2">
+                          <button
+                            type="button"
+                            className="rounded-lg p-2 text-slate-500 hover:bg-blue-50 hover:text-brand disabled:opacity-30"
+                            onClick={() => move(i - 1)}
+                            disabled={i === 0}
+                            aria-label="Mover pra antes"
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-lg p-2 text-slate-500 hover:bg-blue-50 hover:text-brand disabled:opacity-30"
+                            onClick={() => move(i + 1)}
+                            disabled={i === settings.hero_images.length - 1}
+                            aria-label="Mover pra depois"
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="ml-auto rounded-lg px-2 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                            onClick={() => set("hero_images", settings.hero_images.filter((_, j) => j !== i))}
+                          >
+                            Remover
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <FileInput
+                onFileSelected={(file) => handleUpload(file, "hero")}
+                disabled={uploading === "hero"}
+                label={uploading === "hero" ? "Enviando..." : settings.hero_images.length ? "Adicionar outra imagem" : "Escolher imagem"}
+              />
+              {settings.hero_images.length === 0 && (
+                <p className="mt-1.5 text-xs text-slate-500">Sem imagem, o banner não aparece na home.</p>
+              )}
+            </Field>
           </div>
         )}
 

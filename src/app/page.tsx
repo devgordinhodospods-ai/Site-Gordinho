@@ -1,10 +1,11 @@
 import Image from "next/image";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { getSiteSettings } from "@/lib/settings";
+import { getSiteSettings, heroImages } from "@/lib/settings";
 import { getActiveCategories } from "@/lib/categories";
 import { releaseAbandonedOrders } from "@/lib/orders";
 import { HomeCatalog } from "@/components/loja/HomeCatalog";
 import { TrustTicker } from "@/components/layout/TrustTicker";
+import { HeroCarousel } from "@/components/loja/HeroCarousel";
 import type { ProductWithFlavors } from "@/lib/types";
 
 async function getActiveProducts(): Promise<ProductWithFlavors[]> {
@@ -33,18 +34,7 @@ export default async function HomePage({
 
   return (
     <div>
-      {settings.hero_image_url && (
-        <section className="relative h-40 w-full bg-black sm:h-56 md:h-72 lg:h-96">
-          <Image
-            src={settings.hero_image_url}
-            alt={settings.store_name}
-            fill
-            priority
-            className="object-contain"
-            sizes="100vw"
-          />
-        </section>
-      )}
+      <HeroCarousel images={heroImages(settings)} alt={settings.store_name} />
 
       <TrustTicker />
 

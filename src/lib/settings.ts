@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   service_fee_fixed: 0,
   announcement_text: "Compra 100% segura • Pagamento via Pix",
   hero_image_url: null,
+  hero_images: [],
   closed_popup_enabled: false,
   closed_days: [0],
   open_time: null,
@@ -53,4 +54,11 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   } catch {
     return DEFAULT_SETTINGS;
   }
+}
+
+/** Imagens do banner da vitrine (lista nova ou, em lojas antigas, a imagem única). */
+export function heroImages(settings: Pick<SiteSettings, "hero_images" | "hero_image_url">): string[] {
+  const list = Array.isArray(settings.hero_images) ? settings.hero_images.filter(Boolean) : [];
+  if (list.length > 0) return list;
+  return settings.hero_image_url ? [settings.hero_image_url] : [];
 }

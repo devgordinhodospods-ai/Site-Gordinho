@@ -64,6 +64,7 @@ const SETTINGS_KEYS = [
   "service_fee_fixed",
   "announcement_text",
   "hero_image_url",
+  "hero_images",
   "closed_popup_enabled",
   "closed_days",
   "open_time",
