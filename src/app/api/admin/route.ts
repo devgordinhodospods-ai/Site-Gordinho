@@ -11,7 +11,7 @@ import {
 } from "@/lib/email";
 import { getSiteSettings } from "@/lib/settings";
 import { getErrorMessage } from "@/lib/errors";
-import { releaseAbandonedOrders } from "@/lib/orders";
+import { cancelAndRestock, releaseAbandonedOrders } from "@/lib/orders";
 import { locateCep, suggestFreightPricing } from "@/lib/geo";
 import { mercadoPagoDiagnostics } from "@/lib/mercadopago";
 import { syncOrderPayment } from "@/lib/paymentSync";
@@ -439,8 +439,8 @@ export async function POST(req: Request) {
 
         let changed = false;
         if (status === "cancelled") {
-          const { error: cancelError } = await db.rpc("cancel_order", { p_order_id: body.id });
-          if (cancelError) throw cancelError;
+          // Em qualquer etapa: os itens voltam pro estoque.
+          await cancelAndRestock(body.id);
           changed = current?.status !== "cancelled";
         } else if (current && current.status !== status) {
           // Só troca se ninguém mudou antes (dois cliques seguidos não duplicam os avisos).
@@ -482,15 +482,12 @@ export async function POST(req: Request) {
         const { data: current } = await db.from("orders").select("status").eq("id", body.id).maybeSingle();
         if (!current) return NextResponse.json({ error: "Pedido não encontrado." }, { status: 404 });
 
-        if (current.status === "awaiting_payment") {
-          // Devolve o estoque reservado antes de apagar.
-          const { error: cancelError } = await db.rpc("cancel_order", { p_order_id: body.id });
-          if (cancelError) throw cancelError;
-        } else if (!["cancelled", "delivered"].includes(current.status)) {
-          return NextResponse.json(
-            { error: "Esse pedido está em andamento. Cancele ele antes de excluir (o estoque volta no cancelamento)." },
-            { status: 400 }
-          );
+        // Qualquer pedido que ainda não foi entregue devolve os itens pro estoque
+        // antes de sumir (ex.: pago e depois reembolsado). Entregue: o produto
+        // saiu de verdade, então excluir é só limpar a lista — pra devolver o
+        // estoque de um entregue, marque "Cancelado" antes.
+        if (!["cancelled", "delivered"].includes(current.status)) {
+          await cancelAndRestock(body.id);
         }
 
         const { error } = await db.from("orders").delete().eq("id", body.id);

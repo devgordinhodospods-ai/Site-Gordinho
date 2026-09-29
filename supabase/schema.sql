@@ -399,10 +399,7 @@ begin
     return;
   end if;
 
-  if v_status in ('shipped','delivered') then
-    raise exception 'Pedido já enviado/entregue, não pode ser cancelado automaticamente';
-  end if;
-
+  -- Cancela em qualquer etapa (ex.: reembolso depois da entrega) e devolve o estoque.
   for v_item in select product_id, flavor_id, quantity from order_items where order_id = p_order_id
   loop
     if v_item.flavor_id is not null then

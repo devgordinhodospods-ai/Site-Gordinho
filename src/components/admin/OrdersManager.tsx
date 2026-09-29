@@ -98,19 +98,14 @@ export function OrdersManager() {
 
   async function deleteOrder(order: OrderWithItems) {
     setActionError(null);
-    const inProgress = !["awaiting_payment", "cancelled", "delivered"].includes(order.status);
-    if (inProgress) {
-      setActionError(
-        `O pedido #${orderCode(order)} está em andamento. Mude o status pra "Cancelado" antes de excluir — assim o estoque volta.`
-      );
-      return;
-    }
     const message =
       order.status === "awaiting_payment"
         ? "O pedido ainda não foi pago: ele será cancelado (os itens voltam pro estoque) e apagado."
-        : order.status === "delivered"
-          ? "O pedido some da lista e deixa de contar no Monitoramento (vendas e lucro)."
-          : "O pedido some da lista de vez.";
+        : order.status === "cancelled"
+          ? "O pedido some da lista de vez (o estoque já tinha voltado quando ele foi cancelado)."
+          : order.status === "delivered"
+            ? 'Pedido entregue: o estoque NÃO volta — ele só some da lista e do Monitoramento. Se foi reembolso com o produto devolvido, mude o status pra "Cancelado" antes (aí os itens voltam pro estoque).'
+            : "Os itens voltam pro estoque e o pedido some da lista e do Monitoramento. Se o cliente já pagou, lembre de devolver o valor pelo Mercado Pago.";
     const ok = await confirm(message, {
       title: `Excluir o pedido #${orderCode(order)}?`,
       confirmLabel: "Excluir pedido",

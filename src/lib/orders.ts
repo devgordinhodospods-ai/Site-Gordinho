@@ -68,3 +68,32 @@ export async function cancelExpiredOrder(orderId: string) {
   if (order) await sendOrderCancelledEmail({ order, settings, reason: "expired" });
   return true;
 }
+
+/**
+ * Cancela o pedido e devolve os itens pro estoque, em qualquer etapa. Usa a
+ * função cancel_order do banco; se o banco ainda estiver com a versão antiga
+ * (que recusava pedido enviado/entregue), faz a devolução por aqui.
+ */
+export async function cancelAndRestock(orderId: string) {
+  const db = getSupabaseAdmin();
+  const { error } = await db.rpc("cancel_order", { p_order_id: orderId });
+  if (!error) return;
+  if (!/enviado|entregue/i.test(error.message)) throw error;
+
+  // Marca como cancelado primeiro: só quem conseguir essa troca devolve o estoque.
+  const { count } = await db
+    .from("orders")
+    .update({ status: "cancelled", updated_at: new Date().toISOString() }, { count: "exact" })
+    .eq("id", orderId)
+    .neq("status", "cancelled");
+  if (!count) return;
+
+  const { data: items } = await db.from("order_items").select("product_id, flavor_id, quantity").eq("order_id", orderId);
+  for (const item of items ?? []) {
+    const table = item.flavor_id ? "product_flavors" : item.product_id ? "products" : null;
+    const id = item.flavor_id ?? item.product_id;
+    if (!table || !id) continue;
+    const { data: row } = await db.from(table).select("stock").eq("id", id).maybeSingle();
+    if (row) await db.from(table).update({ stock: row.stock + item.quantity }).eq("id", id);
+  }
+}
