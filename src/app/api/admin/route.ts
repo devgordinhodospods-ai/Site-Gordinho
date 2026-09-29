@@ -18,6 +18,7 @@ import { syncOrderPayment } from "@/lib/paymentSync";
 import {
   getWhatsappStatus,
   newOrderAlertText,
+  sendNewOrderAlert,
   sendWhatsappText,
   whatsappAlertConfigured,
   whatsappQrPageUrl,
@@ -436,20 +437,25 @@ export async function POST(req: Request) {
           );
         }
 
+        let changed = false;
         if (status === "cancelled") {
           const { error: cancelError } = await db.rpc("cancel_order", { p_order_id: body.id });
           if (cancelError) throw cancelError;
-        } else {
-          const { error } = await db
+          changed = current?.status !== "cancelled";
+        } else if (current && current.status !== status) {
+          // Só troca se ninguém mudou antes (dois cliques seguidos não duplicam os avisos).
+          const { error, count } = await db
             .from("orders")
-            .update({ status, updated_at: new Date().toISOString() })
-            .eq("id", body.id);
+            .update({ status, updated_at: new Date().toISOString() }, { count: "exact" })
+            .eq("id", body.id)
+            .eq("status", current.status);
           if (error) throw error;
+          changed = Boolean(count);
         }
 
         const { data: order } = await db.from("orders").select("*").eq("id", body.id).single();
         // Só avisa o cliente quando o status realmente mudou.
-        if (order && current && current.status !== status) {
+        if (order && current && changed) {
           const settings = await getSiteSettings();
           if (status === "cancelled") {
             await sendOrderCancelledEmail({
@@ -460,6 +466,12 @@ export async function POST(req: Request) {
             }).catch(() => null);
           } else {
             await sendOrderStatusUpdateEmail({ order, settings }).catch(() => null);
+          }
+          // Confirmado na mão (ex.: pago em dinheiro): o pedido "vira venda" agora,
+          // então a loja recebe o aviso completo no WhatsApp, igual ao Pix aprovado.
+          if (current.status === "awaiting_payment" && PAID_LIKE_STATUSES.has(status)) {
+            const { data: items } = await db.from("order_items").select("*").eq("order_id", order.id);
+            await sendNewOrderAlert({ order, items: items ?? [], settings, manual: true }).catch(() => null);
           }
         }
 

@@ -88,12 +88,15 @@ function customerWhatsapp(phone: string | null) {
   return `+${full}`;
 }
 
-/** Mesmas informações do card do pedido no painel. */
-export function newOrderAlertText(order: Order, items: OrderItem[]) {
+/**
+ * Mesmas informações do card do pedido no painel. `manual`: o operador
+ * confirmou o pedido no painel (ex.: pagamento em dinheiro), não o Pix.
+ */
+export function newOrderAlertText(order: Order, items: OrderItem[], opts: { manual?: boolean } = {}) {
   const address = formatAddress(order.shipping_address);
   const phone = customerWhatsapp(order.customer_phone);
   const lines = [
-    "🛒 *Pedido novo pago!*",
+    opts.manual ? "🛒 *Pedido confirmado no painel!*" : "🛒 *Pedido novo pago!*",
     "",
     `*Pedido #${orderCode(order)}*`,
     `*Data:* ${formatDateTime(order.created_at)}`,
@@ -101,8 +104,10 @@ export function newOrderAlertText(order: Order, items: OrderItem[]) {
     `*E-mail:* ${order.customer_email}`,
     phone ? `*WhatsApp:* ${phone}` : null,
     address ? `*Endereço:* ${address}` : null,
-    "*Pagamento:* Mercado Pago · Pix aprovado ✅",
-    `*Total pago no site:* ${centsToBRL(order.total_cents)}`,
+    opts.manual
+      ? "*Pagamento:* confirmado manualmente no painel ✅"
+      : "*Pagamento:* Mercado Pago · Pix aprovado ✅",
+    `*${opts.manual ? "Total do pedido" : "Total pago no site"}:* ${centsToBRL(order.total_cents)}`,
     order.shipping_fee_cents > 0
       ? `*Frete a cobrar do cliente na entrega:* ${centsToBRL(order.shipping_fee_cents)}`
       : "*Frete:* combinar com o cliente na entrega",
@@ -129,8 +134,13 @@ async function alertStore(settings: SiteSettings, text: string) {
 }
 
 /** Avisa a loja no WhatsApp que caiu um pedido pago (nunca derruba o webhook). */
-export async function sendNewOrderAlert(params: { order: Order; items: OrderItem[]; settings: SiteSettings }) {
-  await alertStore(params.settings, newOrderAlertText(params.order, params.items));
+export async function sendNewOrderAlert(params: {
+  order: Order;
+  items: OrderItem[];
+  settings: SiteSettings;
+  manual?: boolean;
+}) {
+  await alertStore(params.settings, newOrderAlertText(params.order, params.items, { manual: params.manual }));
 }
 
 /** Pix aprovado num pedido que já estava cancelado: o dono precisa resolver. */
