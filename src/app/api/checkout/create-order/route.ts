@@ -144,6 +144,12 @@ export async function POST(req: Request) {
       notificationUrl,
       expiresAt,
     });
+    // Pix de conta de teste do Mercado Pago (token da aba "Teste"): não é pagável.
+    if (process.env.NODE_ENV === "production" && /TESTUSER/i.test(pix.qrCode)) {
+      throw new Error(
+        "Access Token de TESTE: use o Access Token da aba Produção da aplicação no Mercado Pago (MERCADOPAGO_ACCESS_TOKEN na Vercel)."
+      );
+    }
     payment = { id: pix.id, qrCode: pix.qrCode, url: pix.ticketUrl, status: "pending" };
   } catch (pixErr) {
     // A loja recebe só por Pix: sem QR code não tem como pagar. Cancela

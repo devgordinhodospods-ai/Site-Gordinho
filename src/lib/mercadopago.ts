@@ -245,7 +245,9 @@ export function describeMercadoPagoError(err: unknown): { message: string; detai
       .join(" | ") || String(err);
 
   let message: string;
-  if (/MERCADOPAGO_ACCESS_TOKEN/.test(detail)) {
+  if (/Access Token de TESTE/.test(detail)) {
+    message = "O Mercado Pago está com o Access Token de TESTE: o Pix não seria pagável. Troque pelo token da aba Produção na Vercel.";
+  } else if (/MERCADOPAGO_ACCESS_TOKEN/.test(detail)) {
     message = "O pagamento ainda não foi configurado na loja (falta o Access Token do Mercado Pago na Vercel).";
   } else if (/key enabled for QR|without key|pix key|chave pix/i.test(detail)) {
     message =
@@ -297,6 +299,12 @@ export async function mercadoPagoDiagnostics(): Promise<MercadoPagoDiagnostics> 
   } catch (err) {
     result.accountError = err instanceof Error ? err.message : String(err);
   }
+
+  // Credenciais de TESTE das aplicações novas também começam com APP_USR-,
+  // mas pertencem a uma conta de teste (TESTUSER...): o Pix gerado não existe
+  // de verdade e o banco responde "chave não encontrada".
+  const acc = result.account;
+  if (acc && /test_?user/i.test(`${acc.nickname ?? ""} ${acc.email ?? ""}`)) result.tokenType = "teste";
 
   try {
     const res = await fetch("https://api.mercadopago.com/v1/payment_methods", { headers, cache: "no-store" });

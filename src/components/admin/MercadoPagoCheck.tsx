@@ -52,7 +52,13 @@ export function MercadoPagoCheck() {
       {result && (
         <ul className="space-y-2">
           <Row ok={result.tokenType === "produção"} title={`Token de ${result.tokenType}`}>
-            {result.tokenType !== "produção" && "Use o Access Token de produção (começa com APP_USR-)."}
+            {result.tokenType !== "produção" && (
+              <>
+                Esse token é da aba <b>Teste</b>: o Pix gerado não existe de verdade (o banco diz “chave não encontrada”).
+                No painel do Mercado Pago, abra a aplicação → Credenciais → aba <b>Produção</b>, copie o Access Token de
+                lá, troque o <code>MERCADOPAGO_ACCESS_TOKEN</code> na Vercel e faça Redeploy.
+              </>
+            )}
           </Row>
           <Row ok={result.account != null} title="Conta dona do token">
             {result.account ? (
