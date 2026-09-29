@@ -382,8 +382,8 @@ export function SettingsManager() {
                 {!settings.closed_popup_enabled
                   ? "Aviso desligado: o cliente não vê nada."
                   : status.closed
-                    ? "Agora a loja está FECHADA: quem abrir o site vê esse aviso (uma vez por dia)."
-                    : "Agora a loja está aberta: o aviso não aparece."}
+                    ? "Agora a loja está FECHADA: todo mundo que abrir o site vê esse aviso."
+                    : "Agora a loja está aberta (pelos dias e horário acima): o aviso não aparece."}
               </p>
             </div>
           </div>

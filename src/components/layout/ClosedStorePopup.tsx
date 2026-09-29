@@ -47,8 +47,10 @@ export function ClosedStoreCard({
 }
 
 /**
- * Popup de "loja fechada": aparece uma vez por dia (por navegador) quando o
- * cliente abre o site num dia/horário em que a loja não funciona.
+ * Popup de "loja fechada": aparece toda vez que o cliente abre o site num
+ * dia/horário em que a loja não funciona. Depois de fechado, não volta
+ * enquanto ele navega naquela aba (sessionStorage) — numa nova visita,
+ * outra aba ou outro navegador, aparece de novo.
  */
 export function ClosedStorePopup({ settings }: { settings: StoreHoursSettings }) {
   const pathname = usePathname();
@@ -62,9 +64,9 @@ export function ClosedStorePopup({ settings }: { settings: StoreHoursSettings })
     if (!current.closed) return;
     const seenValue = `${current.dateKey}-${current.reason}`;
     try {
-      if (localStorage.getItem(SEEN_KEY) === seenValue) return;
+      if (sessionStorage.getItem(SEEN_KEY) === seenValue) return;
     } catch {
-      // sem localStorage: mostra mesmo assim
+      // sem sessionStorage: mostra mesmo assim
     }
     setOpen(true);
   }, [settings]);
@@ -81,7 +83,7 @@ export function ClosedStorePopup({ settings }: { settings: StoreHoursSettings })
     setOpen(false);
     if (status.closed) {
       try {
-        localStorage.setItem(SEEN_KEY, `${status.dateKey}-${status.reason}`);
+        sessionStorage.setItem(SEEN_KEY, `${status.dateKey}-${status.reason}`);
       } catch {
         // ignora
       }
