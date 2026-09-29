@@ -1,11 +1,9 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { getPayment } from "@/lib/mercadopago";
+import { getPaymentState, type PaymentState } from "@/lib/mercadopago";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getSiteSettings } from "@/lib/settings";
 import { cancelExpiredOrder } from "@/lib/orders";
 import { sendNewOrderAlert, sendPaidAfterCancelAlert } from "@/lib/whatsappAlert";
-
-type MpPayment = Awaited<ReturnType<typeof getPayment>>;
 
 /**
  * Aplica no pedido o status de um pagamento do Mercado Pago. Usado pelo
@@ -14,7 +12,7 @@ type MpPayment = Awaited<ReturnType<typeof getPayment>>;
  * As mudanças são "atômicas": só quem muda o pedido de verdade manda o
  * e-mail e o WhatsApp — então avisos repetidos do MP nunca duplicam nada.
  */
-export async function applyPayment(payment: MpPayment) {
+export async function applyPayment(payment: PaymentState) {
   const orderId = payment.external_reference;
   if (!orderId) return;
   const db = getSupabaseAdmin();
@@ -89,7 +87,7 @@ export async function syncOrderPayment(order: { id: string; status: string; paym
   // Só pedidos com Pix gerado pela API (o id da preferência antiga não é um pagamento).
   if (order.status !== "awaiting_payment" || !order.payment_id || !order.pix_qr_code) return;
   try {
-    await applyPayment(await getPayment(order.payment_id));
+    await applyPayment(await getPaymentState(order.payment_id));
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error("[pagamento] consulta ao Mercado Pago:", order.id, err instanceof Error ? err.message : err);

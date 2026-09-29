@@ -14,6 +14,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { releaseAbandonedOrders } from "@/lib/orders";
 import { locateCep, suggestFreightPricing } from "@/lib/geo";
 import { mercadoPagoDiagnostics } from "@/lib/mercadopago";
+import { syncOrderPayment } from "@/lib/paymentSync";
 import {
   getWhatsappStatus,
   newOrderAlertText,
@@ -380,6 +381,16 @@ export async function POST(req: Request) {
 
       // ---------------- pedidos ----------------
       case "listOrders": {
+        // Pix ainda aguardando: confere no Mercado Pago antes de listar (garante
+        // que o pedido vire pago mesmo se o aviso do MP não chegar).
+        const { data: waiting } = await db
+          .from("orders")
+          .select("id, status, payment_id, pix_qr_code")
+          .eq("status", "awaiting_payment")
+          .not("pix_qr_code", "is", null)
+          .limit(10);
+        await Promise.all((waiting ?? []).map((o) => syncOrderPayment(o)));
+
         let query = db
           .from("orders")
           .select("*, order_items(*)")

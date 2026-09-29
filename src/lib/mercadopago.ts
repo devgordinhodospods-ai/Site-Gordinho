@@ -1,4 +1,4 @@
-import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
+import { MercadoPagoConfig, Order, Preference, Payment } from "mercadopago";
 
 function getClient(): MercadoPagoConfig {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
@@ -84,24 +84,30 @@ export async function createPaymentPreference(params: {
   return result;
 }
 
-/**
- * Cria um pagamento Pix direto (sem sair do site): devolve o "copia e
- * cola" pro QR code e o link da página de pagamento do Mercado Pago.
- */
-export async function createPixPayment(params: {
+type PixParams = {
   orderId: string;
   amountCents: number;
   description: string;
   payer: { email: string; firstName?: string; lastName?: string; cpf?: string | null };
   notificationUrl: string;
   expiresAt: Date;
-}) {
+};
+
+type PixCharge = { id: string; qrCode: string; ticketUrl: string | null };
+
+/**
+ * O Mercado Pago só aceita Pix com validade de no mínimo 30 minutos,
+ * contados quando o pedido chega lá. +2 min de folga pra nunca ficar
+ * abaixo disso (o site cancela o pedido pelo próprio cronômetro).
+ */
+function pixExpiration(expiresAt: Date) {
+  return new Date(Math.max(expiresAt.getTime(), Date.now() + 30 * 60 * 1000) + 2 * 60 * 1000);
+}
+
+/** Pix pela API de Payments (/v1/payments). */
+async function createPixViaPayments(params: PixParams): Promise<PixCharge> {
   const payment = new Payment(getClient());
   const cpf = params.payer.cpf?.replace(/\D/g, "");
-  // O Mercado Pago só aceita Pix com validade de no mínimo 30 minutos,
-  // contados quando o pedido chega lá. +2 min de folga pra nunca ficar
-  // abaixo disso (o site cancela o pedido pelo próprio cronômetro).
-  const pixExpiresAt = new Date(Math.max(params.expiresAt.getTime(), Date.now() + 30 * 60 * 1000) + 2 * 60 * 1000);
   const result = await payment.create({
     body: {
       transaction_amount: params.amountCents / 100,
@@ -109,7 +115,7 @@ export async function createPixPayment(params: {
       payment_method_id: "pix",
       external_reference: params.orderId,
       notification_url: params.notificationUrl,
-      date_of_expiration: toMercadoPagoDate(pixExpiresAt),
+      date_of_expiration: toMercadoPagoDate(pixExpiration(params.expiresAt)),
       payer: {
         email: params.payer.email,
         first_name: params.payer.firstName,
@@ -124,6 +130,95 @@ export async function createPixPayment(params: {
   const data = result.point_of_interaction?.transaction_data;
   if (!result.id || !data?.qr_code) throw new Error("Mercado Pago não devolveu o QR code do Pix.");
   return { id: String(result.id), qrCode: data.qr_code, ticketUrl: data.ticket_url ?? null };
+}
+
+/**
+ * Pix pela API de Orders (/v1/orders) — o modelo das aplicações novas
+ * "Checkout Transparente via Orders". O id devolvido começa com "ORD".
+ */
+async function createPixViaOrders(params: PixParams): Promise<PixCharge> {
+  const order = new Order(getClient());
+  const cpf = params.payer.cpf?.replace(/\D/g, "");
+  const amount = (params.amountCents / 100).toFixed(2);
+  const minutes = Math.ceil((pixExpiration(params.expiresAt).getTime() - Date.now()) / 60000);
+  const result = await order.create({
+    body: {
+      type: "online",
+      processing_mode: "automatic",
+      total_amount: amount,
+      external_reference: params.orderId,
+      description: params.description,
+      payer: {
+        email: params.payer.email,
+        first_name: params.payer.firstName,
+        last_name: params.payer.lastName,
+        identification: cpf?.length === 11 ? { type: "CPF", number: cpf } : undefined,
+      },
+      transactions: {
+        payments: [
+          {
+            amount,
+            payment_method: { id: "pix", type: "bank_transfer" },
+            expiration_time: `PT${minutes}M`,
+          },
+        ],
+      },
+    },
+    requestOptions: { idempotencyKey: `pix-order-${params.orderId}` },
+  });
+
+  const method = result.transactions?.payments?.[0]?.payment_method;
+  if (!result.id || !method?.qr_code) throw new Error("Mercado Pago (Orders) não devolveu o QR code do Pix.");
+  return { id: String(result.id), qrCode: method.qr_code, ticketUrl: method.ticket_url ?? null };
+}
+
+/**
+ * Cria o Pix do pedido (QR code + copia e cola + link). Tenta a API de
+ * Payments e, se o Mercado Pago recusar (ex.: aplicação criada como
+ * "Checkout Transparente via Orders"), a API de Orders.
+ */
+export async function createPixPayment(params: PixParams): Promise<PixCharge> {
+  try {
+    return await createPixViaPayments(params);
+  } catch (paymentsErr) {
+    try {
+      return await createPixViaOrders(params);
+    } catch (ordersErr) {
+      // eslint-disable-next-line no-console
+      console.error("[pix] Payments:", describeMercadoPagoError(paymentsErr).detail);
+      // eslint-disable-next-line no-console
+      console.error("[pix] Orders:", describeMercadoPagoError(ordersErr).detail);
+      throw ordersErr;
+    }
+  }
+}
+
+/** Status de um Pix no formato usado pelo site, seja da API de Payments ou de Orders. */
+export type PaymentState = {
+  id: string;
+  /** "approved" = pago · "cancelled" = vencido/cancelado · outros = aguardando */
+  status: string;
+  external_reference: string | null;
+};
+
+export async function getPaymentState(id: string): Promise<PaymentState> {
+  if (id.startsWith("ORD")) {
+    const order = await new Order(getClient()).get({ id });
+    const pay = order.transactions?.payments?.[0];
+    const paid =
+      order.status === "processed" ||
+      pay?.status === "processed" ||
+      pay?.status === "approved" ||
+      pay?.status_detail === "accredited";
+    const cancelled = ["expired", "canceled", "cancelled", "failed", "refunded"].includes(order.status ?? "");
+    return {
+      id,
+      status: paid ? "approved" : cancelled ? "cancelled" : order.status ?? "pending",
+      external_reference: order.external_reference ?? null,
+    };
+  }
+  const payment = await getPayment(id);
+  return { id: String(payment.id), status: payment.status ?? "pending", external_reference: payment.external_reference ?? null };
 }
 
 export async function getPayment(paymentId: string | number) {
