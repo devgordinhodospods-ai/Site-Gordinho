@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admins";
 import { releaseAbandonedOrders } from "@/lib/orders";
+import { syncOrderPayment } from "@/lib/paymentSync";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -32,5 +33,23 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
   }
 
+  // Pix ainda "aguardando": confere direto no Mercado Pago (se o aviso do MP
+  // se perder, o pedido vira pago mesmo assim, e a loja é avisada).
+  if (order.status === "awaiting_payment" && shouldCheck(order.id)) {
+    await syncOrderPayment(order);
+    const { data: fresh } = await db.from("orders").select("*, order_items(*)").eq("id", id).maybeSingle();
+    return NextResponse.json({ order: fresh ?? order });
+  }
+
   return NextResponse.json({ order });
+}
+
+// No máximo uma consulta ao Mercado Pago a cada 15 s por pedido.
+const lastCheck = new Map<string, number>();
+function shouldCheck(orderId: string) {
+  const now = Date.now();
+  if (now - (lastCheck.get(orderId) ?? 0) < 15_000) return false;
+  lastCheck.set(orderId, now);
+  if (lastCheck.size > 500) lastCheck.clear();
+  return true;
 }

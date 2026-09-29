@@ -79,11 +79,37 @@ export function newOrderAlertText(order: Order, items: OrderItem[]) {
   return lines.join("\n");
 }
 
-/** Avisa a loja no WhatsApp que caiu um pedido pago (nunca derruba o webhook). */
-export async function sendNewOrderAlert(params: { order: Order; items: OrderItem[]; settings: SiteSettings }) {
-  const to = params.settings.whatsapp_alert_number;
+/** Envia pro WhatsApp da loja, com uma 2ª tentativa se a 1ª falhar. */
+async function alertStore(settings: SiteSettings, text: string) {
+  const to = settings.whatsapp_alert_number;
   if (!to || !whatsappAlertConfigured()) return;
-  const result = await sendWhatsappText(to, newOrderAlertText(params.order, params.items));
+  let result = await sendWhatsappText(to, text);
+  if (!result.ok) {
+    await new Promise((r) => setTimeout(r, 3000));
+    result = await sendWhatsappText(to, text);
+  }
   // eslint-disable-next-line no-console
   if (!result.ok) console.error("[whatsapp-alert]", result.error);
+}
+
+/** Avisa a loja no WhatsApp que caiu um pedido pago (nunca derruba o webhook). */
+export async function sendNewOrderAlert(params: { order: Order; items: OrderItem[]; settings: SiteSettings }) {
+  await alertStore(params.settings, newOrderAlertText(params.order, params.items));
+}
+
+/** Pix aprovado num pedido que já estava cancelado: o dono precisa resolver. */
+export async function sendPaidAfterCancelAlert(params: { order: Order; settings: SiteSettings }) {
+  const { order } = params;
+  const phone = (order.customer_phone ?? "").replace(/\D/g, "");
+  const text = [
+    "⚠️ *Pix pago em pedido cancelado*",
+    `*#${orderCode(order)}* · ${centsToBRL(order.total_cents)}`,
+    "",
+    "O cliente pagou depois que o pedido já tinha sido cancelado (prazo do Pix). O dinheiro entrou na conta do Mercado Pago.",
+    "Fale com o cliente pra entregar mesmo assim ou devolver o valor.",
+    "",
+    `👤 ${order.customer_name}${phone ? ` · wa.me/${phone.length <= 11 ? `55${phone}` : phone}` : ""}`,
+    `Painel: ${process.env.APP_URL ?? ""}/admin/pedidos`,
+  ].join("\n");
+  await alertStore(params.settings, text);
 }
