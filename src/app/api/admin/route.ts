@@ -13,7 +13,13 @@ import { getSiteSettings } from "@/lib/settings";
 import { getErrorMessage } from "@/lib/errors";
 import { releaseAbandonedOrders } from "@/lib/orders";
 import { locateCep, suggestFreightPricing } from "@/lib/geo";
-import { getWhatsappStatus, sendWhatsappText, whatsappAlertConfigured, whatsappQrPageUrl } from "@/lib/whatsappAlert";
+import {
+  getWhatsappStatus,
+  newOrderAlertText,
+  sendWhatsappText,
+  whatsappAlertConfigured,
+  whatsappQrPageUrl,
+} from "@/lib/whatsappAlert";
 import type { OrderStatus } from "@/lib/types";
 
 const READ_ACTIONS = new Set([
@@ -569,9 +575,46 @@ export async function POST(req: Request) {
         if (to.length < 10) {
           return NextResponse.json({ error: "Digite o WhatsApp da loja com DDD e salve antes de testar." }, { status: 400 });
         }
+        // Pedido de exemplo (não existe no banco), no mesmo formato do aviso real.
+        const now = new Date();
+        const sample = {
+          id: randomUUID(),
+          user_id: null,
+          customer_name: "Cliente Exemplo",
+          customer_email: "cliente@exemplo.com",
+          customer_phone: "11999990000",
+          shipping_address: {
+            street: "Rua das Flores",
+            number: "123",
+            complement: "apto 45",
+            neighborhood: "Centro",
+            city: "São Paulo",
+            state: "SP",
+            zip: "01000-000",
+          },
+          shipping_zone_id: null,
+          status: "paid" as const,
+          subtotal_cents: 6500,
+          shipping_fee_cents: 800,
+          service_fee_cents: 325,
+          total_cents: 6825,
+          payment_provider: "mercadopago",
+          payment_id: null,
+          payment_status: "approved",
+          pix_qr_code: null,
+          payment_url: null,
+          payment_expires_at: null,
+          order_day: new Date(now.getTime() - BRASILIA_OFFSET_MS).toISOString().slice(0, 10),
+          day_number: 1,
+          created_at: now.toISOString(),
+          updated_at: now.toISOString(),
+        };
+        const sampleItems = [
+          { id: "1", order_id: sample.id, product_id: null, product_name: "Pod Descartável 10K", flavor_id: null, flavor_name: "Melancia com Menta", quantity: 1, unit_price_cents: 6500, unit_cost_cents: null },
+        ];
         const result = await sendWhatsappText(
           to,
-          "✅ *Teste de aviso da loja*\nSe chegou esta mensagem, os avisos de pedido pago vão chegar aqui."
+          `🧪 *MENSAGEM DE TESTE* (pedido de exemplo)\n\n${newOrderAlertText(sample, sampleItems)}`
         );
         if (!result.ok) return NextResponse.json({ error: result.error }, { status: 502 });
         return NextResponse.json({ ok: true });
