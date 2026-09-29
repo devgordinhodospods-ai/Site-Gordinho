@@ -13,6 +13,7 @@ import { getSiteSettings } from "@/lib/settings";
 import { getErrorMessage } from "@/lib/errors";
 import { releaseAbandonedOrders } from "@/lib/orders";
 import { locateCep, suggestFreightPricing } from "@/lib/geo";
+import { getWhatsappStatus, sendWhatsappText, whatsappAlertConfigured, whatsappQrPageUrl } from "@/lib/whatsappAlert";
 import type { OrderStatus } from "@/lib/types";
 
 const READ_ACTIONS = new Set([
@@ -65,6 +66,7 @@ const SETTINGS_KEYS = [
   "announcement_text",
   "hero_image_url",
   "hero_images",
+  "whatsapp_alert_number",
   "closed_popup_enabled",
   "closed_days",
   "open_time",
@@ -553,6 +555,25 @@ export async function POST(req: Request) {
         const pix = await sendPixPendingEmail({ order, items, settings });
         if (!pix.sent) return NextResponse.json({ error: `E-mail não enviado: ${pix.error}` }, { status: 502 });
         await sendOrderConfirmationEmail({ order: { ...order, status: "paid" }, items, settings });
+        return NextResponse.json({ ok: true });
+      }
+
+      case "whatsappStatus": {
+        if (!whatsappAlertConfigured()) return NextResponse.json({ configured: false });
+        const result = await getWhatsappStatus();
+        return NextResponse.json({ configured: true, qrUrl: whatsappQrPageUrl(), ...result });
+      }
+
+      case "sendTestWhatsapp": {
+        const to = String(body.to ?? "").replace(/\D/g, "");
+        if (to.length < 10) {
+          return NextResponse.json({ error: "Digite o WhatsApp da loja com DDD e salve antes de testar." }, { status: 400 });
+        }
+        const result = await sendWhatsappText(
+          to,
+          "✅ *Teste de aviso da loja*\nSe chegou esta mensagem, os avisos de pedido pago vão chegar aqui."
+        );
+        if (!result.ok) return NextResponse.json({ error: result.error }, { status: 502 });
         return NextResponse.json({ ok: true });
       }
 

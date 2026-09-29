@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, Clock, Home, Mail, Percent, Phone, Store, type LucideIcon } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, Clock, Home, Mail, Percent, Phone, Store, type LucideIcon } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_SETTINGS, heroImages } from "@/lib/settings";
@@ -12,11 +12,12 @@ import { FileInput } from "@/components/ui/FileInput";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { Loader } from "@/components/ui/Loader";
 import { EmailTestCard } from "@/components/admin/EmailTestCard";
+import { WhatsappAlertCard } from "@/components/admin/WhatsappAlertCard";
 import { ClosedStoreCard } from "@/components/layout/ClosedStorePopup";
 import type { SiteSettings } from "@/lib/types";
 
 type ImageKind = "logo" | "favicon" | "footer" | "hero";
-type TabId = "loja" | "home" | "contato" | "horario" | "taxas" | "emails";
+type TabId = "loja" | "home" | "contato" | "horario" | "taxas" | "avisos";
 
 const TABS: { id: TabId; label: string; icon: LucideIcon; description: string }[] = [
   { id: "loja", label: "Loja", icon: Store, description: "Nome, logo e ícone da aba do navegador." },
@@ -24,7 +25,7 @@ const TABS: { id: TabId; label: string; icon: LucideIcon; description: string }[
   { id: "contato", label: "Rodapé e contato", icon: Phone, description: "Imagem do rodapé, WhatsApp, e-mail e Instagram." },
   { id: "horario", label: "Horário e loja fechada", icon: Clock, description: "Aviso pro cliente quando a loja não está funcionando." },
   { id: "taxas", label: "Taxas", icon: Percent, description: "Taxa de serviço cobrada junto com os produtos." },
-  { id: "emails", label: "E-mails", icon: Mail, description: "Teste os e-mails que o cliente recebe." },
+  { id: "avisos", label: "Avisos", icon: Bell, description: "Aviso de pedido pago no WhatsApp da loja e teste dos e-mails do cliente." },
 ];
 
 const IMAGE_FIELD: Record<ImageKind, keyof SiteSettings> = {
@@ -489,10 +490,26 @@ export function SettingsManager() {
           </div>
         )}
 
-        {tab === "emails" && <EmailTestCard />}
+        {tab === "avisos" && (
+          <div className="space-y-8">
+            <div>
+              <h3 className="font-display mb-3 flex items-center gap-2 text-slate-900">WhatsApp de pedido novo</h3>
+              <WhatsappAlertCard
+                number={settings.whatsapp_alert_number ?? ""}
+                onChange={(v) => set("whatsapp_alert_number", v || null)}
+              />
+            </div>
+            <div className="border-t border-blue-50 pt-6">
+              <h3 className="font-display mb-3 flex items-center gap-2 text-slate-900">
+                <Mail size={16} className="text-brand" /> E-mails do cliente
+              </h3>
+              <EmailTestCard />
+            </div>
+          </div>
+        )}
       </section>
 
-      {tab !== "emails" && (
+      {(
         <div className="sticky bottom-0 z-20 -mx-4 mt-4 border-t border-blue-100 bg-white/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border">
           <div className="flex flex-wrap items-center justify-end gap-3">
             {error && <p className="mr-auto text-sm text-red-600">{error}</p>}

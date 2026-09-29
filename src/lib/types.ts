@@ -18,6 +18,7 @@ export type SiteSettings = {
   announcement_text: string | null;
   hero_image_url: string | null;
   hero_images: string[];
+  whatsapp_alert_number: string | null;
   closed_popup_enabled: boolean;
   closed_days: number[];
   open_time: string | null;

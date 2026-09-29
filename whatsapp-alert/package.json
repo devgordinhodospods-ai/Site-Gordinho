@@ -1,0 +1,19 @@
+{
+  "name": "whatsapp-alert",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Conecta um WhatsApp por QR code (como o WhatsApp Web) e envia avisos de pedido novo pro número da loja.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4"
+  }
+}

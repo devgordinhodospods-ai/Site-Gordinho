@@ -4,6 +4,7 @@ import { getPayment } from "@/lib/mercadopago";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getSiteSettings } from "@/lib/settings";
 import { cancelExpiredOrder } from "@/lib/orders";
+import { sendNewOrderAlert } from "@/lib/whatsappAlert";
 
 /**
  * Webhook do Mercado Pago. Configurar a notification_url do Checkout Pro
@@ -74,6 +75,7 @@ export async function POST(req: Request) {
         items: items ?? [],
         settings,
       });
+      await sendNewOrderAlert({ order: { ...order, status: "paid" }, items: items ?? [], settings });
     }
 
     return NextResponse.json({ received: true });
