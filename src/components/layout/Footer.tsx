@@ -41,7 +41,9 @@ export function Footer({ settings }: { settings: SiteSettings }) {
   ].filter(Boolean) as { icon: typeof Instagram; label: string; href: string }[];
 
   return (
-    <footer className="mt-16 bg-slate-950 text-slate-300">
+    <footer className="mt-16 bg-black text-slate-300">
+      {/* Mesma linha em degradê ciano do topo */}
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-brand/70 to-transparent" />
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 text-center sm:grid-cols-3 sm:text-left">
         <div className="flex flex-col items-center gap-3 self-start sm:flex-row">
           {image ? (
@@ -100,7 +102,7 @@ export function Footer({ settings }: { settings: SiteSettings }) {
         </div>
       </div>
 
-      <div className="border-t border-slate-800 px-4 py-5 text-center text-sm text-slate-500">
+      <div className="border-t border-white/10 px-4 py-5 text-center text-sm text-slate-500">
         © {new Date().getFullYear()} {settings.store_name}. Todos os direitos reservados.
       </div>
     </footer>
