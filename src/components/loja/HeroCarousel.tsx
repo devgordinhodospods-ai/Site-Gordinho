@@ -22,18 +22,20 @@ export function HeroCarousel({
   aspect?: string;
 }) {
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const count = images.length;
 
   const go = useCallback((next: number) => setIndex(((next % count) + count) % count), [count]);
 
-  // Recomeça a contagem de 7 s a cada troca (automática ou manual).
+  // Loop infinito: troca a cada 7 s e, depois da última, volta pra primeira.
+  // A contagem recomeça a cada troca (automática ou pelas setas/bolinhas).
+  // Sem pausa ao passar o mouse: no celular o toque "prende" o mouse em cima
+  // e o banner parava na segunda imagem.
   useEffect(() => {
-    if (count < 2 || paused) return;
+    if (count < 2) return;
     const timer = setTimeout(() => go(index + 1), SLIDE_MS);
     return () => clearTimeout(timer);
-  }, [index, count, paused, go]);
+  }, [index, count, go]);
 
   if (count === 0) return null;
 
@@ -43,8 +45,6 @@ export function HeroCarousel({
       // em qualquer aparelho, sem faixas pretas nos lados.
       className={`relative w-full overflow-hidden bg-black ${aspect}`}
       aria-roledescription="carrossel"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
       onTouchStart={(e) => (touchStartX.current = e.touches[0].clientX)}
       onTouchEnd={(e) => {
         if (touchStartX.current == null) return;
