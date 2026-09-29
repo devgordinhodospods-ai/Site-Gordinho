@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
 import { FileInput } from "@/components/ui/FileInput";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { EmailTestCard } from "@/components/admin/EmailTestCard";
 import type { SiteSettings } from "@/lib/types";
 
 export function SettingsManager() {
@@ -290,6 +291,8 @@ export function SettingsManager() {
           {saving ? "Salvando..." : "Salvar configurações"}
         </button>
       </div>
+
+      <EmailTestCard />
     </div>
   );
 }

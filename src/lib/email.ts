@@ -19,18 +19,20 @@ function getTransport() {
 
 type Attachment = { filename: string; content: Buffer; cid: string };
 
+type SendResult = { sent: true } | { sent: false; error: string };
+
 async function sendMail(params: {
   to: string;
   subject: string;
   html: string;
   settings: SiteSettings;
   attachments?: Attachment[];
-}) {
+}): Promise<SendResult> {
   const transport = getTransport();
   if (!transport) {
     // eslint-disable-next-line no-console
     console.warn(`SMTP não configurado — e-mail "${params.subject}" não enviado.`);
-    return;
+    return { sent: false, error: "SMTP não configurado (variáveis SMTP_HOST, SMTP_USER e SMTP_PASS na Vercel)." };
   }
   try {
     await transport.sendMail({
@@ -40,10 +42,13 @@ async function sendMail(params: {
       html: params.html,
       attachments: params.attachments,
     });
+    return { sent: true };
   } catch (err) {
     // E-mail nunca derruba o pedido/pagamento.
+    const message = err instanceof Error ? err.message : String(err);
     // eslint-disable-next-line no-console
-    console.error("[email]", params.subject, err instanceof Error ? err.message : err);
+    console.error("[email]", params.subject, message);
+    return { sent: false, error: message };
   }
 }
 
@@ -59,31 +64,55 @@ function shortId(order: Order) {
   return order.id.slice(0, 8).toUpperCase();
 }
 
-/** Moldura dos e-mails: cabeçalho azul com o nome da loja e cartão branco. */
+// Paleta escura — mesma do e-mail de código do Supabase (modelo "escuro").
+const C = {
+  page: "#05070f",
+  card: "#0b1224",
+  line: "#1e2b4d",
+  box: "#111c38",
+  blue: "#2563eb",
+  neon: "#60a5fa",
+  title: "#ffffff",
+  text: "#cbd5e1",
+  muted: "#94a3b8",
+  faint: "#64748b",
+};
+
+/** Nome da loja com a parte "Dos..." em azul, igual ao e-mail de código. */
+function brandName(storeName: string) {
+  const name = escapeHtml(storeName);
+  return name.replace(/(Dos\w+)$/, `<span style="color:#3b82f6;">$1</span>`);
+}
+
+/** Moldura dos e-mails: fundo escuro, cartão azul-marinho, rodapé discreto. */
 function layout(settings: SiteSettings, bodyHtml: string) {
-  const store = escapeHtml(settings.store_name);
   return `
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef4ff;padding:32px 12px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:${C.page};padding:36px 12px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
     <tr><td align="center">
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:18px;overflow:hidden;">
-        <tr><td align="center" style="background-color:#1d4ed8;background:linear-gradient(135deg,#2563eb 0%,#0f2f8f 100%);padding:26px 24px;">
-          <span style="color:#ffffff;font-size:22px;font-weight:900;">${store}</span>
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:500px;background:${C.card};border:1px solid ${C.line};border-radius:18px;">
+        <tr><td align="center" style="padding:30px 24px 6px;">
+          <span style="color:#ffffff;font-size:24px;font-weight:900;">${brandName(settings.store_name)}</span>
         </td></tr>
-        <tr><td style="padding:28px 26px;color:#0f172a;font-size:15px;line-height:1.5;">
+        <tr><td style="padding:18px 26px 26px;color:${C.text};font-size:15px;line-height:1.55;">
           ${bodyHtml}
         </td></tr>
-        <tr><td align="center" style="padding:18px 24px;background:#f8fafc;color:#94a3b8;font-size:12px;">
-          ${store} · e-mail automático, não precisa responder.
+        <tr><td align="center" style="padding:22px 24px;color:#475569;font-size:12px;border-top:1px solid ${C.line};">
+          © ${escapeHtml(settings.store_name)} · e-mail automático, não precisa responder.
         </td></tr>
       </table>
     </td></tr>
   </table>`;
 }
 
+function heading(title: string, text: string) {
+  return `<p style="margin:0 0 8px;font-size:20px;font-weight:800;color:${C.title};text-align:center;">${title}</p>
+    <p style="margin:0 0 20px;color:${C.muted};text-align:center;">${text}</p>`;
+}
+
 function button(href: string, label: string, primary = true) {
   const style = primary
-    ? "background:#1d4ed8;color:#ffffff;border:1px solid #1d4ed8;"
-    : "background:#ffffff;color:#1d4ed8;border:1px solid #bfd3ff;";
+    ? `background:${C.blue};color:#ffffff;border:1px solid ${C.blue};`
+    : `background:transparent;color:${C.neon};border:1px solid ${C.blue};`;
   return `<a href="${href}" style="${style}display:inline-block;padding:12px 22px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;margin:4px;">${label}</a>`;
 }
 
@@ -91,25 +120,25 @@ function itemsTable(order: Order, items: OrderItem[]) {
   const rows = items
     .map(
       (item) => `<tr>
-        <td style="padding:6px 0;color:#334155;">${item.quantity}x ${escapeHtml(item.product_name)}${
-          item.flavor_name ? `<br/><span style="font-size:12px;color:#64748b;">Sabor: ${escapeHtml(item.flavor_name)}</span>` : ""
+        <td style="padding:7px 0;color:${C.text};">${item.quantity}x ${escapeHtml(item.product_name)}${
+          item.flavor_name ? `<br/><span style="font-size:12px;color:${C.faint};">Sabor: ${escapeHtml(item.flavor_name)}</span>` : ""
         }</td>
-        <td style="padding:6px 0;text-align:right;color:#334155;white-space:nowrap;">${centsToBRL(item.unit_price_cents * item.quantity)}</td>
+        <td style="padding:7px 0;text-align:right;color:${C.text};white-space:nowrap;">${centsToBRL(item.unit_price_cents * item.quantity)}</td>
       </tr>`
     )
     .join("");
   return `
-  <table width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;font-size:14px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;border-top:1px solid ${C.line};border-bottom:1px solid ${C.line};font-size:14px;">
     ${rows}
-    <tr><td style="padding:6px 0;color:#64748b;">Taxa de serviço</td><td style="padding:6px 0;text-align:right;color:#64748b;">${centsToBRL(order.service_fee_cents)}</td></tr>
-    <tr><td style="padding:8px 0;font-weight:800;">Total</td><td style="padding:8px 0;text-align:right;font-weight:800;color:#1d4ed8;">${centsToBRL(order.total_cents)}</td></tr>
+    <tr><td style="padding:7px 0;color:${C.muted};">Taxa de serviço</td><td style="padding:7px 0;text-align:right;color:${C.muted};">${centsToBRL(order.service_fee_cents)}</td></tr>
+    <tr><td style="padding:9px 0;font-weight:800;color:${C.title};">Total</td><td style="padding:9px 0;text-align:right;font-weight:800;color:${C.neon};">${centsToBRL(order.total_cents)}</td></tr>
   </table>`;
 }
 
 function freightNote(order: Order) {
-  return `<p style="margin:0 0 18px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;color:#92400e;font-size:13px;">
+  return `<p style="margin:0 0 18px;background:#1f1706;border:1px solid #854d0e;border-radius:12px;padding:11px 13px;color:#fcd34d;font-size:13px;">
     ${order.shipping_fee_cents > 0 ? `<strong>Frete estimado: ${centsToBRL(order.shipping_fee_cents)}</strong><br/>` : ""}
-    O frete é pago em dinheiro ou Pix direto ao entregador na hora da entrega.
+    🛵 O frete é pago em dinheiro ou Pix direto ao entregador na hora da entrega.
   </p>`;
 }
 
@@ -125,33 +154,36 @@ export async function sendPixPendingEmail(params: { order: Order; items: OrderIt
 
   let pixBlock = "";
   if (order.pix_qr_code) {
-    const png = await QRCode.toBuffer(order.pix_qr_code, { width: 480, margin: 1 });
+    const png = await QRCode.toBuffer(order.pix_qr_code, { width: 480, margin: 2 });
     attachments.push({ filename: "pix-qrcode.png", content: png, cid: "pix-qrcode" });
     pixBlock = `
-      <div style="text-align:center;margin:18px 0;">
-        <img src="cid:pix-qrcode" alt="QR code do Pix" width="220" height="220" style="display:inline-block;border:1px solid #dbe6ff;border-radius:14px;padding:8px;background:#ffffff;" />
+      <div style="text-align:center;margin:22px 0 18px;">
+        <img src="cid:pix-qrcode" alt="QR code do Pix" width="210" height="210" style="display:inline-block;background:#ffffff;border-radius:14px;padding:8px;border:2px solid ${C.blue};" />
       </div>
-      <p style="margin:0 0 6px;font-size:13px;color:#64748b;">Ou use o <strong>Pix copia e cola</strong>:</p>
-      <div style="background:#f1f5f9;border-radius:10px;padding:12px;font-family:Consolas,monospace;font-size:12px;color:#0f172a;word-break:break-all;">${escapeHtml(order.pix_qr_code)}</div>`;
+      <p style="margin:0 0 8px;font-size:13px;color:${C.muted};text-align:center;">Ou use o <strong style="color:${C.title};">Pix copia e cola</strong>:</p>
+      <div style="background:${C.box};border:1px solid ${C.line};border-radius:12px;padding:12px;font-family:Consolas,monospace;font-size:12px;color:#e2e8f0;word-break:break-all;">${escapeHtml(order.pix_qr_code)}</div>`;
   }
 
   const deadline = order.payment_expires_at
-    ? `<p style="margin:16px 0 0;background:#eef4ff;border-radius:10px;padding:10px 12px;color:#1e3a8a;font-size:14px;">⏱️ Pague até <strong>${brasiliaTime(order.payment_expires_at)}</strong> (horário de Brasília). Depois disso o pedido é cancelado automaticamente.</p>`
+    ? `<div style="background:${C.box};border:1px solid ${C.blue};border-radius:14px;padding:16px;text-align:center;">
+        <span style="display:block;font-size:13px;color:${C.muted};">Pague até</span>
+        <span style="display:block;font-size:34px;font-weight:900;letter-spacing:2px;color:${C.neon};">${brasiliaTime(order.payment_expires_at)}</span>
+        <span style="display:block;font-size:12px;color:${C.faint};">horário de Brasília · depois disso o pedido é cancelado</span>
+      </div>`
     : "";
 
   const body = `
-    <p style="margin:0 0 6px;font-size:20px;font-weight:800;">Pedido recebido! 🎉</p>
-    <p style="margin:0 0 4px;color:#475569;">Olá, ${escapeHtml(order.customer_name)}! Seu pedido <strong>#${shortId(order)}</strong> está reservado. Agora é só pagar o Pix de <strong>${centsToBRL(order.total_cents)}</strong>.</p>
+    ${heading("Seu pedido está reservado 🔐", `Olá, ${escapeHtml(order.customer_name)}! Pague o Pix de <strong style="color:${C.title};">${centsToBRL(order.total_cents)}</strong> do pedido <strong style="color:${C.title};">#${shortId(order)}</strong> pra confirmar.`)}
     ${deadline}
     ${pixBlock}
-    <div style="text-align:center;margin:20px 0 6px;">
+    <div style="text-align:center;margin:22px 0 4px;">
       ${order.payment_url ? button(order.payment_url, "Abrir página de pagamento") : ""}
       ${button(orderUrl, "Ver meu pedido", !order.payment_url)}
     </div>
     ${itemsTable(order, items)}
     ${freightNote(order)}`;
 
-  await sendMail({
+  return sendMail({
     to: order.customer_email,
     subject: `Pague seu pedido #${shortId(order)} com Pix - ${settings.store_name}`,
     html: layout(settings, body),
@@ -164,13 +196,12 @@ export async function sendPixPendingEmail(params: { order: Order; items: OrderIt
 export async function sendOrderConfirmationEmail(params: { order: Order; items: OrderItem[]; settings: SiteSettings }) {
   const { order, items, settings } = params;
   const body = `
-    <p style="margin:0 0 6px;font-size:20px;font-weight:800;">Pagamento aprovado! ✅</p>
-    <p style="margin:0 0 4px;color:#475569;">Olá, ${escapeHtml(order.customer_name)}! Recebemos o pagamento do pedido <strong>#${shortId(order)}</strong>. Já vamos separar tudo pra entrega.</p>
+    ${heading("Pagamento aprovado ✅", `Olá, ${escapeHtml(order.customer_name)}! Recebemos o pagamento do pedido <strong style="color:${C.title};">#${shortId(order)}</strong>. Já vamos separar tudo pra entrega.`)}
     ${itemsTable(order, items)}
     ${freightNote(order)}
     <div style="text-align:center;">${button(`${appUrl()}/pedidos/${order.id}`, "Acompanhar pedido")}</div>`;
 
-  await sendMail({
+  return sendMail({
     to: order.customer_email,
     subject: `Pagamento aprovado - Pedido #${shortId(order)} - ${settings.store_name}`,
     html: layout(settings, body),
@@ -193,9 +224,12 @@ export async function sendOrderStatusUpdateEmail(params: { order: Order; setting
   if (!info) return;
 
   const body = `
-    <p style="margin:0 0 6px;font-size:20px;font-weight:800;">${info.title}</p>
-    <p style="margin:0 0 20px;color:#475569;">Olá, ${escapeHtml(order.customer_name)}! ${info.text}</p>
-    <p style="margin:0 0 20px;color:#475569;">Pedido <strong>#${shortId(order)}</strong> · ${centsToBRL(order.total_cents)}</p>
+    ${heading(info.title, `Olá, ${escapeHtml(order.customer_name)}! ${info.text}`)}
+    <div style="background:${C.box};border:1px solid ${C.line};border-radius:14px;padding:14px;text-align:center;margin:0 0 20px;">
+      <span style="font-size:13px;color:${C.muted};">Pedido</span>
+      <span style="display:block;font-size:22px;font-weight:900;letter-spacing:2px;color:${C.neon};">#${shortId(order)}</span>
+      <span style="font-size:13px;color:${C.muted};">${centsToBRL(order.total_cents)}</span>
+    </div>
     <div style="text-align:center;">${button(`${appUrl()}/pedidos/${order.id}`, "Ver pedido")}</div>`;
 
   await sendMail({

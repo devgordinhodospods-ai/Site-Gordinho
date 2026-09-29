@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admins";
-import { sendOrderStatusUpdateEmail } from "@/lib/email";
+import { randomUUID } from "crypto";
+import { sendOrderConfirmationEmail, sendOrderStatusUpdateEmail, sendPixPendingEmail } from "@/lib/email";
 import { getSiteSettings } from "@/lib/settings";
 import { getErrorMessage } from "@/lib/errors";
 import { releaseAbandonedOrders } from "@/lib/orders";
@@ -428,6 +429,48 @@ export async function POST(req: Request) {
         const { error } = await db.from("site_users").delete().eq("id", user.id);
         if (error) throw error;
         await db.from("pending_signups").delete().eq("email", user.email);
+        return NextResponse.json({ ok: true });
+      }
+
+      case "sendTestEmail": {
+        const to = String(body.to ?? "").trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+          return NextResponse.json({ error: "Digite um e-mail válido." }, { status: 400 });
+        }
+        const settings = await getSiteSettings();
+        const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+        const now = new Date();
+        // Pedido de exemplo (não existe no banco): serve só pra ver o e-mail.
+        const order = {
+          id: randomUUID(),
+          user_id: null,
+          customer_name: "Cliente Teste",
+          customer_email: to,
+          customer_phone: null,
+          shipping_address: {},
+          shipping_zone_id: null,
+          status: "awaiting_payment" as const,
+          subtotal_cents: 5990,
+          shipping_fee_cents: 900,
+          service_fee_cents: 300,
+          total_cents: 6290,
+          payment_provider: "mercadopago",
+          payment_id: null,
+          payment_status: "pending",
+          pix_qr_code:
+            "00020126360014br.gov.bcb.pix0114+5500000000000520400005303986540562.905802BR5915GORDINHODOSPODS6009SAO PAULO62140510TESTE0000163049F2B",
+          payment_url: appUrl,
+          payment_expires_at: new Date(now.getTime() + 30 * 60 * 1000).toISOString(),
+          created_at: now.toISOString(),
+          updated_at: now.toISOString(),
+        };
+        const items = [
+          { id: "1", order_id: order.id, product_id: null, product_name: "Pod Descartável 5000 puffs", flavor_id: null, flavor_name: "Menta Gelada", quantity: 1, unit_price_cents: 4990, unit_cost_cents: 0 },
+          { id: "2", order_id: order.id, product_id: null, product_name: "Seda Extra Fina", flavor_id: null, flavor_name: null, quantity: 1, unit_price_cents: 1000, unit_cost_cents: 0 },
+        ];
+        const pix = await sendPixPendingEmail({ order, items, settings });
+        if (!pix.sent) return NextResponse.json({ error: `E-mail não enviado: ${pix.error}` }, { status: 502 });
+        await sendOrderConfirmationEmail({ order: { ...order, status: "paid" }, items, settings });
         return NextResponse.json({ ok: true });
       }
 

@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ShoppingBag, Trash2 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Lock, ShoppingBag, Trash2 } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { centsToBRL } from "@/lib/money";
 import { LoaderPage } from "@/components/ui/Loader";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
 
 export default function CarrinhoPage() {
+  const { status: sessionStatus } = useSession();
+  const loggedIn = sessionStatus === "authenticated";
   const hydrated = useCartStore((s) => s.hydrated);
   const items = useCartStore((s) => s.items);
   const setQuantity = useCartStore((s) => s.setQuantity);
@@ -91,9 +94,14 @@ export default function CarrinhoPage() {
           <p className="mt-2 text-xs text-slate-500">
             A taxa de serviço é calculada no checkout. O frete é pago direto ao entregador na hora da entrega.
           </p>
-          <Link href="/checkout" className="btn-primary mt-5 w-full">
+          <Link href={loggedIn ? "/checkout" : "/login?callbackUrl=/checkout"} className="btn-primary mt-5 w-full">
             Finalizar compra
           </Link>
+          {!loggedIn && (
+            <p className="mt-2 flex items-center justify-center gap-1 text-xs text-slate-500">
+              <Lock size={12} /> Você vai entrar ou criar sua conta pra finalizar.
+            </p>
+          )}
           <Link href="/#produtos" className="mt-3 block text-center text-sm text-brand hover:underline">
             Continuar comprando
           </Link>

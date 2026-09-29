@@ -55,6 +55,11 @@ export default function CheckoutPage() {
       .catch(() => null);
   }, []);
 
+  // Sem login não tem checkout: vai direto pro entrar/criar conta e volta pra cá.
+  useEffect(() => {
+    if (status === "unauthenticated") router.replace("/login?callbackUrl=/checkout");
+  }, [status, router]);
+
   useEffect(() => {
     if (status !== "authenticated") return;
     Promise.all([
@@ -110,20 +115,7 @@ export default function CheckoutPage() {
     return <LoaderPage label="Carregando checkout..." />;
   }
 
-  if (!session) {
-    return (
-      <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-brand">
-          <Lock size={26} />
-        </div>
-        <h1 className="font-display text-xl text-slate-900">Entre pra finalizar a compra</h1>
-        <p className="mt-1 text-sm text-slate-500">Seu carrinho fica guardado — é só fazer login.</p>
-        <Link href="/login?callbackUrl=/checkout" className="btn-primary mt-6">
-          Entrar ou criar conta
-        </Link>
-      </div>
-    );
-  }
+  if (!session) return <LoaderPage label="Abrindo o login..." />;
 
   if (redirecting) return <LoaderPage label="Abrindo o Pix do seu pedido..." />;
 

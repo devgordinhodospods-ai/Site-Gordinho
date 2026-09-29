@@ -13,6 +13,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = safePath(searchParams.get("callbackUrl"));
+  const fromCheckout = callbackUrl.startsWith("/checkout");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,8 +49,19 @@ function LoginForm() {
       style={{ background: "linear-gradient(160deg, #eaf2ff 0%, #ffffff 55%)" }}
     >
       <div className="card w-full max-w-sm p-8">
-        <h1 className="font-display mb-1 text-center text-2xl text-slate-900">Bem-vindo de volta</h1>
-        <p className="mb-6 text-center text-sm text-slate-500">Entre na sua conta para continuar</p>
+        {fromCheckout ? (
+          <>
+            <h1 className="font-display mb-1 text-center text-2xl text-slate-900">Falta pouco!</h1>
+            <p className="mb-6 rounded-xl bg-blue-50 p-3 text-center text-sm text-slate-600">
+              Pra finalizar a compra, entre na sua conta ou crie uma. Seu carrinho fica salvo.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="font-display mb-1 text-center text-2xl text-slate-900">Bem-vindo de volta</h1>
+            <p className="mb-6 text-center text-sm text-slate-500">Entre na sua conta para continuar</p>
+          </>
+        )}
 
         <button
           className="btn-google"
