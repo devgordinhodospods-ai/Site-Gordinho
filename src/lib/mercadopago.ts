@@ -167,3 +167,51 @@ export function describeMercadoPagoError(err: unknown): { message: string; detai
   }
   return { message, detail };
 }
+
+export type MercadoPagoDiagnostics = {
+  tokenType: "produção" | "teste" | "desconhecido";
+  account: { id: number; nickname: string | null; email: string | null; siteId: string | null } | null;
+  accountError: string | null;
+  pixAvailable: boolean | null;
+  methods: string[];
+};
+
+/**
+ * Pergunta ao Mercado Pago de qual conta é o Access Token e se essa conta
+ * pode receber Pix — pra descobrir por que o Pix é recusado.
+ */
+export async function mercadoPagoDiagnostics(): Promise<MercadoPagoDiagnostics> {
+  const token = process.env.MERCADOPAGO_ACCESS_TOKEN ?? "";
+  const headers = { Authorization: `Bearer ${token}` };
+  const tokenType = token.startsWith("APP_USR-") ? "produção" : token.startsWith("TEST-") ? "teste" : "desconhecido";
+
+  const result: MercadoPagoDiagnostics = { tokenType, account: null, accountError: null, pixAvailable: null, methods: [] };
+  if (!token) {
+    result.accountError = "MERCADOPAGO_ACCESS_TOKEN não está configurado na Vercel.";
+    return result;
+  }
+
+  try {
+    const res = await fetch("https://api.mercadopago.com/users/me", { headers, cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      result.account = { id: data.id, nickname: data.nickname ?? null, email: data.email ?? null, siteId: data.site_id ?? null };
+    } else {
+      result.accountError = `${res.status} ${data.message ?? data.error ?? ""}`.trim();
+    }
+  } catch (err) {
+    result.accountError = err instanceof Error ? err.message : String(err);
+  }
+
+  try {
+    const res = await fetch("https://api.mercadopago.com/v1/payment_methods", { headers, cache: "no-store" });
+    const data = await res.json().catch(() => []);
+    if (res.ok && Array.isArray(data)) {
+      result.methods = data.filter((m) => m.status === "active").map((m) => String(m.id));
+      result.pixAvailable = result.methods.includes("pix");
+    }
+  } catch {
+    // fica null: não deu pra consultar
+  }
+  return result;
+}

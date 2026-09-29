@@ -13,6 +13,7 @@ import { getSiteSettings } from "@/lib/settings";
 import { getErrorMessage } from "@/lib/errors";
 import { releaseAbandonedOrders } from "@/lib/orders";
 import { locateCep, suggestFreightPricing } from "@/lib/geo";
+import { mercadoPagoDiagnostics } from "@/lib/mercadopago";
 import {
   getWhatsappStatus,
   newOrderAlertText,
@@ -562,6 +563,10 @@ export async function POST(req: Request) {
         if (!pix.sent) return NextResponse.json({ error: `E-mail não enviado: ${pix.error}` }, { status: 502 });
         await sendOrderConfirmationEmail({ order: { ...order, status: "paid" }, items, settings });
         return NextResponse.json({ ok: true });
+      }
+
+      case "mpDiagnostics": {
+        return NextResponse.json(await mercadoPagoDiagnostics());
       }
 
       case "whatsappStatus": {

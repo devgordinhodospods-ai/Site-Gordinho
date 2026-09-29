@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
-import { Bell, ChevronLeft, ChevronRight, Clock, Home, Mail, Percent, Phone, Store, type LucideIcon } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, Clock, Home, Mail, Percent, Phone, QrCode, Store, type LucideIcon } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { supabase } from "@/lib/supabase";
 import { DEFAULT_SETTINGS, heroImages } from "@/lib/settings";
@@ -13,11 +13,12 @@ import { HelpTip } from "@/components/ui/HelpTip";
 import { Loader } from "@/components/ui/Loader";
 import { EmailTestCard } from "@/components/admin/EmailTestCard";
 import { WhatsappAlertCard } from "@/components/admin/WhatsappAlertCard";
+import { MercadoPagoCheck } from "@/components/admin/MercadoPagoCheck";
 import { ClosedStoreCard } from "@/components/layout/ClosedStorePopup";
 import type { SiteSettings } from "@/lib/types";
 
 type ImageKind = "logo" | "favicon" | "footer" | "hero";
-type TabId = "loja" | "home" | "contato" | "horario" | "taxas" | "avisos";
+type TabId = "loja" | "home" | "contato" | "horario" | "taxas" | "pagamento" | "avisos";
 
 const TABS: { id: TabId; label: string; icon: LucideIcon; description: string }[] = [
   { id: "loja", label: "Loja", icon: Store, description: "Nome, logo e ícone da aba do navegador." },
@@ -25,6 +26,7 @@ const TABS: { id: TabId; label: string; icon: LucideIcon; description: string }[
   { id: "contato", label: "Rodapé e contato", icon: Phone, description: "Imagem do rodapé, WhatsApp, e-mail e Instagram." },
   { id: "horario", label: "Horário e loja fechada", icon: Clock, description: "Aviso pro cliente quando a loja não está funcionando." },
   { id: "taxas", label: "Taxas", icon: Percent, description: "Taxa de serviço cobrada junto com os produtos." },
+  { id: "pagamento", label: "Pagamento", icon: QrCode, description: "Conexão com o Mercado Pago pra receber por Pix." },
   { id: "avisos", label: "Avisos", icon: Bell, description: "Aviso de pedido pago no WhatsApp da loja e teste dos e-mails do cliente." },
 ];
 
@@ -452,6 +454,8 @@ export function SettingsManager() {
             </div>
           </div>
         )}
+
+        {tab === "pagamento" && <MercadoPagoCheck />}
 
         {tab === "taxas" && (
           <div className="space-y-4">
