@@ -158,8 +158,10 @@ export function describeMercadoPagoError(err: unknown): { message: string; detai
   } else if (/collector|same user|invalid users involved|yourself|payer_email/i.test(detail)) {
     message =
       "Esta conta usa o mesmo e-mail da conta do Mercado Pago da loja, e o Mercado Pago não deixa pagar pra si mesmo. Faça o teste com outra conta do site.";
-  } else if (e.status === 401 || /unauthorized|invalid access token|invalid_token|invalid credentials/i.test(detail)) {
-    message = "O Access Token do Mercado Pago configurado na Vercel é inválido ou foi renovado.";
+  } else if (/live credentials/i.test(detail)) {
+    message = `O Mercado Pago ainda não liberou as credenciais de produção pra receber Pix por API (Mercado Pago: ${detail}).`;
+  } else if (/invalid access token|invalid_token|invalid credentials|malformed access token/i.test(detail)) {
+    message = `O Access Token do Mercado Pago configurado na Vercel é inválido ou foi renovado (Mercado Pago: ${detail}).`;
   } else {
     message = `Não foi possível gerar o Pix agora (Mercado Pago: ${detail}). Tente de novo em instantes.`;
   }
