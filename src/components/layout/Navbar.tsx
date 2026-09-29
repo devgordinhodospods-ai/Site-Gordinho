@@ -54,12 +54,12 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-blue-100 bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-40 bg-black shadow-[0_8px_30px_-12px_rgba(0,0,0,0.6)]">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3 md:flex-nowrap md:gap-6">
         <SmoothTopLink
           href="/"
           aria-label={storeName}
-          className="font-display flex shrink-0 items-center gap-2 text-lg text-brand"
+          className="font-display flex shrink-0 items-center gap-2 text-lg text-white"
         >
           {logoUrl ? (
             <Image
@@ -68,13 +68,13 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
               width={160}
               height={56}
               priority
-              className="h-12 w-auto max-w-[160px] rounded-lg object-contain sm:h-14"
+              className="h-12 w-auto max-w-[180px] object-contain sm:h-14"
             />
           ) : (
             <>
               <span
                 className="font-display flex h-9 w-9 items-center justify-center rounded-lg text-white"
-                style={{ background: "linear-gradient(135deg, #2563eb, #0f2f8f)" }}
+                style={{ background: "linear-gradient(135deg, #38bdf8, #0284c7)" }}
               >
                 {storeName.charAt(0).toUpperCase()}
               </span>
@@ -87,7 +87,7 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
           <div className="relative">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
-              className="input pl-10"
+              className="input border-white/10 bg-white/[0.07] pl-10 text-white placeholder:text-slate-400 focus:border-brand focus:bg-white/10 focus:ring-brand/20"
               placeholder="Buscar produtos..."
               value={search}
               onChange={(e) => handleChange(e.target.value)}
@@ -99,7 +99,7 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
           {session?.user?.isAdmin && (
             <Link
               href="/admin"
-              className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-blue-50 hover:text-brand"
+              className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
               aria-label="Painel"
             >
               <LayoutDashboard size={16} /> <span className="hidden sm:inline">Painel</span>
@@ -108,7 +108,7 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
 
           <Link
             href="/carrinho"
-            className="relative rounded-lg p-2 text-slate-600 transition-colors hover:bg-blue-50 hover:text-brand"
+            className="relative rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Carrinho"
           >
             <ShoppingCart size={22} />
@@ -124,7 +124,7 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
           ) : (
             <Link
               href="/login"
-              className="flex items-center gap-1 rounded-lg p-2 text-slate-600 transition-colors hover:bg-blue-50 hover:text-brand"
+              className="flex items-center gap-1 rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
               title="Entrar"
             >
               <User size={20} />
@@ -132,6 +132,8 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
           )}
         </div>
       </div>
+      {/* Linha fina em degradê ciano: separa o topo do conteúdo */}
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-brand/70 to-transparent" />
     </header>
   );
 }

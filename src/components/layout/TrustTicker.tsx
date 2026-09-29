@@ -21,9 +21,9 @@ export function TrustTicker() {
         ITEMS.map((item, i) => (
           <div
             key={`${s}-${i}`}
-            className="flex items-center gap-2 whitespace-nowrap px-6 text-sm font-bold text-white"
+            className="flex items-center gap-2 whitespace-nowrap px-6 text-sm font-bold text-slate-100"
           >
-            <item.icon size={16} />
+            <item.icon size={16} className="text-accent" />
             {item.label}
           </div>
         ))
@@ -32,7 +32,7 @@ export function TrustTicker() {
   );
 
   return (
-    <div className="overflow-hidden bg-brand-dark py-2.5" style={{ background: "#0f2f8f" }}>
+    <div className="overflow-hidden border-y border-white/5 bg-brand-ink py-2.5">
       <div className="marquee-track">
         {strip}
         {strip}

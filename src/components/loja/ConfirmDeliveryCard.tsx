@@ -34,7 +34,7 @@ export function ConfirmDeliveryCard({ orderId, onConfirmed }: { orderId: string;
       <div className="card mb-4 overflow-hidden border border-blue-100">
         <div
           className="flex items-center gap-4 px-5 py-5 text-white"
-          style={{ background: "linear-gradient(135deg, #2563eb, #0f2f8f)" }}
+          style={{ background: "linear-gradient(135deg, #38bdf8, #0284c7)" }}
         >
           <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/15">
             <Bike size={28} className="animate-[bikeRide_1.6s_ease-in-out_infinite]" />

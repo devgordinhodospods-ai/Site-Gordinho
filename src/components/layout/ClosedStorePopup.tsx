@@ -23,7 +23,7 @@ export function ClosedStoreCard({
     <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl">
       <div
         className="relative flex flex-col items-center px-6 pb-6 pt-8 text-center text-white"
-        style={{ background: "linear-gradient(160deg, #0f2f8f 0%, #1d4ed8 60%, #3b82f6 100%)" }}
+        style={{ background: "linear-gradient(160deg, #070b14 0%, #0c4a6e 55%, #0ea5e9 100%)" }}
       >
         <span className="absolute left-6 top-5 h-1.5 w-1.5 rounded-full bg-white/60" />
         <span className="absolute right-10 top-8 h-1 w-1 rounded-full bg-white/50" />

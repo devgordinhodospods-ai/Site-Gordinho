@@ -82,7 +82,7 @@ export function ProductCard({ product }: { product: ProductWithFlavors }) {
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white shadow-brand transition-transform hover:scale-110 ${
                   justAdded ? "bg-green-600" : ""
                 }`}
-                style={justAdded ? undefined : { background: "linear-gradient(135deg, #2563eb, #0f2f8f)" }}
+                style={justAdded ? undefined : { background: "linear-gradient(135deg, #38bdf8, #0284c7)" }}
                 aria-label={justAdded ? "Adicionado ao carrinho" : "Adicionar ao carrinho"}
               >
                 {justAdded ? <Check size={16} /> : <Plus size={16} />}

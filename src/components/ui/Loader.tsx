@@ -1,6 +1,6 @@
 export function Loader({
   size = 40,
-  color = "#1d4ed8",
+  color = "#0ea5e9",
   className = "",
 }: {
   size?: number;

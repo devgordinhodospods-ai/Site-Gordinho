@@ -214,7 +214,7 @@ export default function CheckoutPage() {
                     <input
                       type="radio"
                       name="address"
-                      className="mt-1 accent-[#1d4ed8]"
+                      className="mt-1 accent-[#0ea5e9]"
                       checked={selectedAddressId === a.id}
                       onChange={() => setSelectedAddressId(a.id)}
                     />
@@ -237,7 +237,7 @@ export default function CheckoutPage() {
                     <input
                       type="radio"
                       name="address"
-                      className="accent-[#1d4ed8]"
+                      className="accent-[#0ea5e9]"
                       checked={selectedAddressId === NEW_ADDRESS}
                       onChange={() => setSelectedAddressId(NEW_ADDRESS)}
                     />

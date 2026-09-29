@@ -124,7 +124,7 @@ export function HomeCatalog({
     <section id="produtos" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-10">
       <div
         className="mb-8 rounded-3xl border border-blue-100 p-5 sm:p-6"
-        style={{ background: "linear-gradient(135deg, #eff5ff 0%, #ffffff 70%)" }}
+        style={{ background: "linear-gradient(135deg, #ecfeff 0%, #f0f9ff 35%, #ffffff 75%)" }}
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>

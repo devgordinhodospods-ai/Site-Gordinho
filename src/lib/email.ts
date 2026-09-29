@@ -71,8 +71,8 @@ const C = {
   card: "#0b1224",
   line: "#1e2b4d",
   box: "#111c38",
-  blue: "#2563eb",
-  neon: "#60a5fa",
+  blue: "#0ea5e9",
+  neon: "#38bdf8",
   title: "#ffffff",
   text: "#cbd5e1",
   muted: "#94a3b8",
@@ -82,7 +82,7 @@ const C = {
 /** Nome da loja com a parte "Dos..." em azul, igual ao e-mail de código. */
 function brandName(storeName: string) {
   const name = escapeHtml(storeName);
-  return name.replace(/(Dos\w+)$/, `<span style="color:#3b82f6;">$1</span>`);
+  return name.replace(/(Dos\w+)$/, `<span style="color:#22c3f3;">$1</span>`);
 }
 
 /** Moldura dos e-mails: fundo escuro, cartão azul-marinho, rodapé discreto. */
