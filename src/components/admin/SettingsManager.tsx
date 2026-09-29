@@ -17,7 +17,7 @@ import { MercadoPagoCheck } from "@/components/admin/MercadoPagoCheck";
 import { ClosedStoreCard } from "@/components/layout/ClosedStorePopup";
 import type { SiteSettings } from "@/lib/types";
 
-type ImageKind = "logo" | "favicon" | "footer" | "hero";
+type ImageKind = "logo" | "favicon" | "footer" | "hero" | "heroMobile";
 type TabId = "loja" | "home" | "contato" | "horario" | "taxas" | "pagamento" | "avisos";
 
 const TABS: { id: TabId; label: string; icon: LucideIcon; description: string }[] = [
@@ -35,6 +35,7 @@ const IMAGE_FIELD: Record<ImageKind, keyof SiteSettings> = {
   favicon: "store_favicon_url",
   footer: "footer_image_url",
   hero: "hero_image_url",
+  heroMobile: "hero_images_mobile",
 };
 
 function Field({ label, help, children, hint }: { label: string; help: string; children: ReactNode; hint?: string }) {
@@ -85,6 +86,7 @@ export function SettingsManager() {
       for (const row of rows) merged[row.key] = row.value;
       // Lojas antigas tinham uma imagem só no banner: vira o 1º item da lista.
       merged.hero_images = heroImages(merged as SiteSettings);
+      if (!Array.isArray(merged.hero_images_mobile)) merged.hero_images_mobile = [];
       setSettings(merged as SiteSettings);
       setSaved(JSON.stringify(merged));
       setLoaded(true);
@@ -109,7 +111,9 @@ export function SettingsManager() {
       setSettings((s) =>
         kind === "hero"
           ? { ...s, hero_images: [...s.hero_images, data.publicUrl] }
-          : { ...s, [IMAGE_FIELD[kind]]: data.publicUrl }
+          : kind === "heroMobile"
+            ? { ...s, hero_images_mobile: [...(s.hero_images_mobile ?? []), data.publicUrl] }
+            : { ...s, [IMAGE_FIELD[kind]]: data.publicUrl }
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao enviar imagem.");
@@ -159,6 +163,76 @@ export function SettingsManager() {
             </button>
           )}
         </div>
+      </Field>
+    );
+  }
+
+  function bannerField(opts: {
+    field: "hero_images" | "hero_images_mobile";
+    kind: "hero" | "heroMobile";
+    label: string;
+    help: string;
+    hint: string;
+    aspect: string;
+    empty: string;
+  }) {
+    const list = settings[opts.field];
+    return (
+      <Field label={opts.label} help={opts.help} hint={opts.hint}>
+        {list.length > 0 && (
+          <ul className={`mb-3 grid gap-3 ${opts.kind === "heroMobile" ? "grid-cols-2 sm:grid-cols-4" : "sm:grid-cols-2"}`}>
+            {list.map((url, i) => {
+              const move = (to: number) => {
+                const next = [...list];
+                [next[i], next[to]] = [next[to], next[i]];
+                set(opts.field, next);
+              };
+              return (
+                <li key={`${url}-${i}`} className="overflow-hidden rounded-xl border border-blue-100 bg-white">
+                  <div className={`relative w-full bg-black ${opts.aspect}`}>
+                    <Image src={url} alt={`Banner ${i + 1}`} fill className="object-cover" sizes="400px" />
+                    <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
+                      {i + 1}º
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 p-2">
+                    <button
+                      type="button"
+                      className="rounded-lg p-2 text-slate-500 hover:bg-blue-50 hover:text-brand disabled:opacity-30"
+                      onClick={() => move(i - 1)}
+                      disabled={i === 0}
+                      aria-label="Mover pra antes"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg p-2 text-slate-500 hover:bg-blue-50 hover:text-brand disabled:opacity-30"
+                      onClick={() => move(i + 1)}
+                      disabled={i === list.length - 1}
+                      aria-label="Mover pra depois"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="ml-auto rounded-lg px-2 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                      onClick={() => set(opts.field, list.filter((_, j) => j !== i))}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <FileInput
+          onFileSelected={(file) => handleUpload(file, opts.kind)}
+          disabled={uploading === opts.kind}
+          label={uploading === opts.kind ? "Enviando..." : list.length ? "Adicionar outra imagem" : "Escolher imagem"}
+        />
+        {list.length === 0 && <p className="mt-1.5 text-xs text-slate-500">{opts.empty}</p>}
       </Field>
     );
   }
@@ -237,68 +311,24 @@ export function SettingsManager() {
                 onChange={(e) => set("announcement_text", e.target.value || null)}
               />
             </Field>
-            <Field
-              label="Banner da vitrine"
-              help="Imagens exibidas no topo da página inicial, em fundo preto. Com mais de uma, elas passam sozinhas a cada 7 segundos, na ordem abaixo."
-              hint="Tamanho ideal: 1920 × 600 px (ocupa a largura toda da tela, sem faixas). Com várias, passam a cada 7 segundos."
-            >
-              {settings.hero_images.length > 0 && (
-                <ul className="mb-3 grid gap-3 sm:grid-cols-2">
-                  {settings.hero_images.map((url, i) => {
-                    const move = (to: number) => {
-                      const list = [...settings.hero_images];
-                      [list[i], list[to]] = [list[to], list[i]];
-                      set("hero_images", list);
-                    };
-                    return (
-                      <li key={`${url}-${i}`} className="overflow-hidden rounded-xl border border-blue-100 bg-white">
-                        <div className="relative aspect-[16/5] w-full bg-black">
-                          <Image src={url} alt={`Banner ${i + 1}`} fill className="object-contain" sizes="400px" />
-                          <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
-                            {i + 1}º
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 p-2">
-                          <button
-                            type="button"
-                            className="rounded-lg p-2 text-slate-500 hover:bg-blue-50 hover:text-brand disabled:opacity-30"
-                            onClick={() => move(i - 1)}
-                            disabled={i === 0}
-                            aria-label="Mover pra antes"
-                          >
-                            <ChevronLeft size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded-lg p-2 text-slate-500 hover:bg-blue-50 hover:text-brand disabled:opacity-30"
-                            onClick={() => move(i + 1)}
-                            disabled={i === settings.hero_images.length - 1}
-                            aria-label="Mover pra depois"
-                          >
-                            <ChevronRight size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            className="ml-auto rounded-lg px-2 py-1.5 text-xs text-red-600 hover:bg-red-50"
-                            onClick={() => set("hero_images", settings.hero_images.filter((_, j) => j !== i))}
-                          >
-                            Remover
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-              <FileInput
-                onFileSelected={(file) => handleUpload(file, "hero")}
-                disabled={uploading === "hero"}
-                label={uploading === "hero" ? "Enviando..." : settings.hero_images.length ? "Adicionar outra imagem" : "Escolher imagem"}
-              />
-              {settings.hero_images.length === 0 && (
-                <p className="mt-1.5 text-xs text-slate-500">Sem imagem, o banner não aparece na home.</p>
-              )}
-            </Field>
+            {bannerField({
+              field: "hero_images",
+              kind: "hero",
+              label: "Banner da vitrine (computador e tablet)",
+              help: "Imagens exibidas no topo da página inicial. Com mais de uma, elas passam sozinhas a cada 7 segundos, na ordem abaixo.",
+              hint: "Tamanho ideal: 1920 × 600 px (ocupa a largura toda da tela, sem faixas).",
+              aspect: "aspect-[16/5]",
+              empty: "Sem imagem, o banner não aparece na home.",
+            })}
+            {bannerField({
+              field: "hero_images_mobile",
+              kind: "heroMobile",
+              label: "Banner do celular (opcional)",
+              help: "Versão do banner só pro celular, em formato quadrado — aparece bem maior na tela do celular. Se ficar vazio, o celular mostra o banner do computador.",
+              hint: "Tamanho ideal: 1080 × 1080 px (quadrado, o mesmo tamanho de um post do Instagram).",
+              aspect: "aspect-square",
+              empty: "Vazio: no celular aparece o banner do computador, menor.",
+            })}
           </div>
         )}
 

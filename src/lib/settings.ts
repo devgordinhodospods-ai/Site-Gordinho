@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   announcement_text: "Compra 100% segura • Pagamento via Pix",
   hero_image_url: null,
   hero_images: [],
+  hero_images_mobile: [],
   whatsapp_alert_number: null,
   closed_popup_enabled: false,
   closed_days: [0],

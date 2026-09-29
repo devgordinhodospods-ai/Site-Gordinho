@@ -75,6 +75,7 @@ const SETTINGS_KEYS = [
   "announcement_text",
   "hero_image_url",
   "hero_images",
+  "hero_images_mobile",
   "whatsapp_alert_number",
   "closed_popup_enabled",
   "closed_days",

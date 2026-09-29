@@ -11,7 +11,16 @@ const SLIDE_MS = 7000;
  * fica parada). Setas no computador, arrastar pro lado no celular.
  * Tamanho ideal das imagens: 1920 × 600 px — assim aparecem inteiras.
  */
-export function HeroCarousel({ images, alt }: { images: string[]; alt: string }) {
+export function HeroCarousel({
+  images,
+  alt,
+  aspect = "aspect-[16/5]",
+}: {
+  images: string[];
+  alt: string;
+  /** Proporção do banner: 16:5 (1920×600) no computador, quadrado no banner do celular. */
+  aspect?: string;
+}) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
@@ -32,7 +41,7 @@ export function HeroCarousel({ images, alt }: { images: string[]; alt: string })
     <section
       // Proporção fixa 1920×600 (16:5): a imagem ocupa a largura toda da tela
       // em qualquer aparelho, sem faixas pretas nos lados.
-      className="relative aspect-[16/5] w-full overflow-hidden bg-black"
+      className={`relative w-full overflow-hidden bg-black ${aspect}`}
       aria-roledescription="carrossel"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}

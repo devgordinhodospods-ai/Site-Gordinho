@@ -32,9 +32,23 @@ export default async function HomePage({
     getActiveCategories(),
   ]);
 
+  const mobileBanners = (settings.hero_images_mobile ?? []).filter(Boolean);
+
   return (
     <div>
-      <HeroCarousel images={heroImages(settings)} alt={settings.store_name} />
+      {mobileBanners.length > 0 ? (
+        <>
+          {/* Celular: banner próprio, quadrado (bem maior na tela) */}
+          <div className="sm:hidden">
+            <HeroCarousel images={mobileBanners} alt={settings.store_name} aspect="aspect-square" />
+          </div>
+          <div className="hidden sm:block">
+            <HeroCarousel images={heroImages(settings)} alt={settings.store_name} />
+          </div>
+        </>
+      ) : (
+        <HeroCarousel images={heroImages(settings)} alt={settings.store_name} />
+      )}
 
       <TrustTicker />
 
