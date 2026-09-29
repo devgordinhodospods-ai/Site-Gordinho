@@ -3,10 +3,11 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Clock, MapPin, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, MapPin, PartyPopper, XCircle } from "lucide-react";
 import { centsToBRL } from "@/lib/money";
 import { LoaderPage } from "@/components/ui/Loader";
 import { PixPaymentPanel } from "@/components/loja/PixPaymentPanel";
+import { ConfirmDeliveryCard } from "@/components/loja/ConfirmDeliveryCard";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 import { orderCode } from "@/lib/orderCode";
 
@@ -48,6 +49,7 @@ function PedidoDetalheContent() {
   const paymentStatus = searchParams.get("status");
   const [order, setOrder] = useState<(Order & { order_items: OrderItem[] }) | null>(null);
   const [loading, setLoading] = useState(true);
+  const [justDelivered, setJustDelivered] = useState(false);
 
   useEffect(() => {
     fetch(`/api/pedidos/${params.id}`)
@@ -111,6 +113,24 @@ function PedidoDetalheContent() {
 
       {order.status === "awaiting_payment" && (order.pix_qr_code || order.payment_url) && (
         <PixPaymentPanel order={order} />
+      )}
+      {order.status === "shipped" && (
+        <ConfirmDeliveryCard
+          orderId={order.id}
+          onConfirmed={() => {
+            setOrder({ ...order, status: "delivered" });
+            setJustDelivered(true);
+          }}
+        />
+      )}
+      {justDelivered && (
+        <div className="card mb-4 flex items-center gap-3 border border-green-100 bg-green-50 p-4 text-green-800">
+          <PartyPopper size={22} className="shrink-0" />
+          <p className="text-sm">
+            <span className="font-display block text-base">Entrega confirmada! 🎉</span>
+            Obrigado pela compra. Esperamos você de volta!
+          </p>
+        </div>
       )}
       {order.status === "paid" && order.payment_status === "approved" && (
         <div className="mb-4 flex items-center gap-2 rounded-xl bg-green-50 p-4 text-sm text-green-800">

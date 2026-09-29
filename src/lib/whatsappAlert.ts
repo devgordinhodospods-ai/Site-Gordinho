@@ -149,3 +149,14 @@ export async function sendPaidAfterCancelAlert(params: { order: Order; settings:
   ].join("\n");
   await alertStore(params.settings, text);
 }
+
+/** O cliente confirmou pelo site que recebeu o pedido. */
+export async function sendDeliveryConfirmedAlert(params: { order: Order; settings: SiteSettings }) {
+  const { order } = params;
+  const text = [
+    "✅ *Entrega confirmada pelo cliente*",
+    `*Pedido #${orderCode(order)}* · ${order.customer_name}`,
+    `*Total:* ${centsToBRL(order.total_cents)}`,
+  ].join("\n");
+  await alertStore(params.settings, text);
+}

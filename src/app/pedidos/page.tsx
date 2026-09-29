@@ -92,6 +92,11 @@ export default function PedidosPage() {
               <div className="min-w-0">
                 <p className="text-slate-900">Pedido #{orderCode(order)}</p>
                 <p className="text-sm text-slate-500">{new Date(order.created_at).toLocaleDateString("pt-BR")}</p>
+                {order.status === "shipped" && (
+                  <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-600 px-2.5 py-0.5 text-xs text-white">
+                    Recebeu? Confirmar entrega →
+                  </p>
+                )}
                 {order.status === "awaiting_payment" && (
                   <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-0.5 text-xs text-white">
                     Pagar agora com Pix →

@@ -196,3 +196,13 @@
     padding-bottom: 76px;
   }
 }
+
+@keyframes bikeRide {
+  0%,
+  100% {
+    transform: translateX(-3px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
