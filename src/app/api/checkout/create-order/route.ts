@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth";
 import { computeServiceFee } from "@/lib/money";
 import { estimateFreight } from "@/lib/geo";
 import { getSiteSettings } from "@/lib/settings";
-import { createPaymentPreference, createPixPayment } from "@/lib/mercadopago";
+import { createPixPayment, describeMercadoPagoError } from "@/lib/mercadopago";
 import { PAYMENT_WINDOW_MS, releaseAbandonedOrders } from "@/lib/orders";
 import { sendPixPendingEmail } from "@/lib/email";
 
@@ -131,38 +131,13 @@ export async function POST(req: Request) {
     });
     payment = { id: pix.id, qrCode: pix.qrCode, url: pix.ticketUrl, status: "pending" };
   } catch (pixErr) {
+    // A loja recebe só por Pix: sem QR code não tem como pagar. Cancela
+    // (devolve o estoque) e mostra o motivo que o Mercado Pago deu.
+    await db.rpc("cancel_order", { p_order_id: orderId });
+    const reason = describeMercadoPagoError(pixErr);
     // eslint-disable-next-line no-console
-    console.error("[create-order] Pix:", pixErr instanceof Error ? pixErr.message : pixErr);
-    try {
-      // Plano B: link do Checkout Pro (Pix/cartão na página do Mercado Pago).
-      const preference = await createPaymentPreference({
-        orderId,
-        items: (orderItems ?? []).map((i) => ({
-          title: i.flavor_name ? `${i.product_name} (${i.flavor_name})` : i.product_name,
-          quantity: i.quantity,
-          unitPriceCents: i.unit_price_cents,
-        })),
-        serviceFeeCents: order?.service_fee_cents ?? 0,
-        payerEmail: session.user.email,
-        successUrl: `${appUrl}/pedidos/${orderId}?status=success`,
-        failureUrl: `${appUrl}/pedidos/${orderId}?status=failure`,
-        pendingUrl: `${appUrl}/pedidos/${orderId}?status=pending`,
-        notificationUrl,
-        expiresAt,
-      });
-      if (!preference.id || !preference.init_point) throw new Error("Preferência sem link de pagamento.");
-      payment = { id: preference.id, qrCode: null, url: preference.init_point, status: "pending" };
-    } catch (err) {
-      // Sem Pix nem link o pedido não tem como ser pago: cancela e devolve
-      // o estoque, pro cliente poder tentar de novo sem duplicar.
-      await db.rpc("cancel_order", { p_order_id: orderId });
-      // eslint-disable-next-line no-console
-      console.error("[create-order] Mercado Pago:", err instanceof Error ? err.message : err);
-      return NextResponse.json(
-        { error: "Não foi possível gerar o pagamento agora. Tente novamente em instantes." },
-        { status: 502 }
-      );
-    }
+    console.error("[create-order] Pix:", reason.detail);
+    return NextResponse.json({ error: reason.message }, { status: 502 });
   }
 
   const { data: updated } = await db

@@ -127,3 +127,37 @@ export async function getPayment(paymentId: string | number) {
   const payment = new Payment(client);
   return payment.get({ id: paymentId });
 }
+
+/**
+ * Transforma o erro da API do Mercado Pago numa mensagem que ajuda a
+ * resolver (ex.: conta sem chave Pix), sem esconder o detalhe técnico.
+ */
+export function describeMercadoPagoError(err: unknown): { message: string; detail: string } {
+  const e = (err ?? {}) as {
+    message?: string;
+    error?: string;
+    status?: number;
+    cause?: { code?: string | number; description?: string }[] | unknown;
+  };
+  const causes = Array.isArray(e.cause) ? (e.cause as { code?: string | number; description?: string }[]) : [];
+  const detail =
+    [e.status, e.error, e.message, ...causes.map((c) => [c.code, c.description].filter(Boolean).join(" "))]
+      .filter(Boolean)
+      .join(" | ") || String(err);
+
+  let message: string;
+  if (/MERCADOPAGO_ACCESS_TOKEN/.test(detail)) {
+    message = "O pagamento ainda não foi configurado na loja (falta o Access Token do Mercado Pago na Vercel).";
+  } else if (/key enabled for QR|without key|pix key|chave pix/i.test(detail)) {
+    message =
+      "A conta do Mercado Pago da loja ainda não tem chave Pix cadastrada (no app: Pix → Minhas chaves → Cadastrar chave).";
+  } else if (/collector|same user|invalid users involved|yourself|payer_email/i.test(detail)) {
+    message =
+      "Esta conta usa o mesmo e-mail da conta do Mercado Pago da loja, e o Mercado Pago não deixa pagar pra si mesmo. Faça o teste com outra conta do site.";
+  } else if (e.status === 401 || /unauthorized|invalid access token|invalid_token|invalid credentials/i.test(detail)) {
+    message = "O Access Token do Mercado Pago configurado na Vercel é inválido ou foi renovado.";
+  } else {
+    message = `Não foi possível gerar o Pix agora (Mercado Pago: ${detail}). Tente de novo em instantes.`;
+  }
+  return { message, detail };
+}
