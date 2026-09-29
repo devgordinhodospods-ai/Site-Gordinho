@@ -59,24 +59,60 @@ export async function sendWhatsappText(to: string, text: string): Promise<{ ok: 
 function formatAddress(address: Record<string, unknown>) {
   const a = address as Record<string, string | undefined>;
   if (!a.street) return null;
-  return `${a.street}, ${a.number}${a.complement ? ` - ${a.complement}` : ""} · ${a.neighborhood} · ${a.city}`;
+  return [
+    `${a.street}, ${a.number}${a.complement ? ` - ${a.complement}` : ""}`,
+    a.neighborhood,
+    [a.city, a.state].filter(Boolean).join(" - "),
+    a.zip,
+  ]
+    .filter(Boolean)
+    .join(" - ");
 }
 
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function customerWhatsapp(phone: string | null) {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  if (!digits) return null;
+  const full = digits.length <= 11 ? `55${digits}` : digits;
+  return `+${full}`;
+}
+
+/** Mesmas informações do card do pedido no painel. */
 export function newOrderAlertText(order: Order, items: OrderItem[]) {
+  const address = formatAddress(order.shipping_address);
+  const phone = customerWhatsapp(order.customer_phone);
   const lines = [
     "🛒 *Pedido novo pago!*",
-    `*#${orderCode(order)}* · ${centsToBRL(order.total_cents)}`,
     "",
+    `*Pedido #${orderCode(order)}*`,
+    `*Data:* ${formatDateTime(order.created_at)}`,
+    `*Cliente:* ${order.customer_name}`,
+    `*E-mail:* ${order.customer_email}`,
+    phone ? `*WhatsApp:* ${phone}` : null,
+    address ? `*Endereço:* ${address}` : null,
+    "*Pagamento:* Mercado Pago · Pix aprovado ✅",
+    `*Total pago no site:* ${centsToBRL(order.total_cents)}`,
+    order.shipping_fee_cents > 0
+      ? `*Frete a cobrar do cliente na entrega:* ${centsToBRL(order.shipping_fee_cents)}`
+      : "*Frete:* combinar com o cliente na entrega",
+    "",
+    "*Itens:*",
     ...items.map((i) => `• ${i.quantity}x ${i.product_name}${i.flavor_name ? ` (${i.flavor_name})` : ""}`),
     "",
+    `Painel: ${process.env.APP_URL ?? ""}/admin/pedidos`,
   ];
-  const address = formatAddress(order.shipping_address);
-  if (address) lines.push(`📍 ${address}`);
-  const phone = (order.customer_phone ?? "").replace(/\D/g, "");
-  lines.push(`👤 ${order.customer_name}${phone ? ` · wa.me/${phone.length <= 11 ? `55${phone}` : phone}` : ""}`);
-  if (order.shipping_fee_cents > 0) lines.push(`🛵 Frete a cobrar na entrega: ${centsToBRL(order.shipping_fee_cents)}`);
-  lines.push("", `Painel: ${process.env.APP_URL ?? ""}/admin/pedidos`);
-  return lines.join("\n");
+  return lines.filter((l) => l !== null).join("\n");
 }
 
 /** Envia pro WhatsApp da loja, com uma 2ª tentativa se a 1ª falhar. */
