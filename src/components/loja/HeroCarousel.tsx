@@ -9,6 +9,7 @@ const SLIDE_MS = 7000;
 /**
  * Banner da vitrine: as imagens passam sozinhas a cada 7 s (com uma só,
  * fica parada). Setas no computador, arrastar pro lado no celular.
+ * Tamanho ideal das imagens: 1920 × 600 px — assim aparecem inteiras.
  */
 export function HeroCarousel({ images, alt }: { images: string[]; alt: string }) {
   const [index, setIndex] = useState(0);
@@ -29,7 +30,9 @@ export function HeroCarousel({ images, alt }: { images: string[]; alt: string })
 
   return (
     <section
-      className="relative h-40 w-full overflow-hidden bg-black sm:h-56 md:h-72 lg:h-96"
+      // Proporção fixa 1920×600 (16:5): a imagem ocupa a largura toda da tela
+      // em qualquer aparelho, sem faixas pretas nos lados.
+      className="relative aspect-[16/5] w-full overflow-hidden bg-black"
       aria-roledescription="carrossel"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -54,7 +57,7 @@ export function HeroCarousel({ images, alt }: { images: string[]; alt: string })
             alt={count > 1 ? `${alt} — banner ${i + 1} de ${count}` : alt}
             fill
             priority={i === 0}
-            className="object-contain"
+            className="object-cover"
             sizes="100vw"
           />
         </div>

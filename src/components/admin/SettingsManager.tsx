@@ -240,7 +240,7 @@ export function SettingsManager() {
             <Field
               label="Banner da vitrine"
               help="Imagens exibidas no topo da página inicial, em fundo preto. Com mais de uma, elas passam sozinhas a cada 7 segundos, na ordem abaixo."
-              hint="Tamanho ideal: imagem larga (ex.: 1600 × 500 px). Com várias, passam a cada 7 segundos."
+              hint="Tamanho ideal: 1920 × 600 px (ocupa a largura toda da tela, sem faixas). Com várias, passam a cada 7 segundos."
             >
               {settings.hero_images.length > 0 && (
                 <ul className="mb-3 grid gap-3 sm:grid-cols-2">
