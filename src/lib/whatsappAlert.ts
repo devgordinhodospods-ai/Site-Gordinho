@@ -1,4 +1,5 @@
 import { centsToBRL } from "@/lib/money";
+import { sendAdminAlertEmail } from "@/lib/email";
 import { orderCode } from "@/lib/orderCode";
 import type { Order, OrderItem, SiteSettings } from "@/lib/types";
 
@@ -22,7 +23,15 @@ export function whatsappQrPageUrl() {
   return cfg ? `${cfg.url}/?token=${encodeURIComponent(cfg.token)}` : null;
 }
 
-export async function getWhatsappStatus(): Promise<{ status: string; number: string | null } | { error: string }> {
+export type WhatsappHealth = {
+  status: string;
+  number: string | null;
+  /** false = sessão fora de um volume no Railway (pede QR a cada reinício). */
+  persistent: boolean | null;
+  lastDisconnect: { code: number | null; reason: string; at: string } | null;
+};
+
+export async function getWhatsappStatus(): Promise<WhatsappHealth | { error: string }> {
   const cfg = serviceConfig();
   if (!cfg) return { error: "Serviço de WhatsApp não configurado na Vercel (WHATSAPP_ALERT_URL e WHATSAPP_ALERT_TOKEN)." };
   try {
@@ -33,7 +42,12 @@ export async function getWhatsappStatus(): Promise<{ status: string; number: str
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { error: data.error ?? `O serviço respondeu ${res.status}.` };
-    return { status: data.status, number: data.number ?? null };
+    return {
+      status: data.status,
+      number: data.number ?? null,
+      persistent: data.persistent ?? null,
+      lastDisconnect: data.lastDisconnect ?? null,
+    };
   } catch {
     return { error: "Não foi possível falar com o serviço de WhatsApp (ele está no ar no Railway?)." };
   }
@@ -120,7 +134,11 @@ export function newOrderAlertText(order: Order, items: OrderItem[], opts: { manu
   return lines.filter((l) => l !== null).join("\n");
 }
 
-/** Envia pro WhatsApp da loja, com uma 2ª tentativa se a 1ª falhar. */
+/**
+ * Envia pro WhatsApp da loja, com uma 2ª tentativa se a 1ª falhar. Se o
+ * WhatsApp estiver desconectado, o aviso vai por e-mail pros admins, pra
+ * loja não perder pedido.
+ */
 async function alertStore(settings: SiteSettings, text: string) {
   const to = settings.whatsapp_alert_number;
   if (!to || !whatsappAlertConfigured()) return;
@@ -129,8 +147,17 @@ async function alertStore(settings: SiteSettings, text: string) {
     await new Promise((r) => setTimeout(r, 3000));
     result = await sendWhatsappText(to, text);
   }
-  // eslint-disable-next-line no-console
-  if (!result.ok) console.error("[whatsapp-alert]", result.error);
+  if (!result.ok) {
+    // eslint-disable-next-line no-console
+    console.error("[whatsapp-alert]", result.error);
+    await sendAdminAlertEmail({
+      settings,
+      subject: "Aviso de pedido (WhatsApp não enviou)",
+      title: "O WhatsApp de avisos não conseguiu enviar",
+      intro: `Motivo: ${result.error} Abaixo está o aviso que iria pro WhatsApp da loja. Pra voltar a receber por lá, abra Configurações → Avisos no painel e leia o QR code.`,
+      text: text.replace(/\*/g, ""),
+    });
+  }
 }
 
 /** Avisa a loja no WhatsApp que caiu um pedido pago (nunca derruba o webhook). */

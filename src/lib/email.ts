@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { getAdminEmails } from "@/lib/admins";
 import QRCode from "qrcode";
 import { centsToBRL } from "@/lib/money";
 import type { Order, OrderItem, SiteSettings } from "@/lib/types";
@@ -300,5 +301,31 @@ export async function sendOrderCancelledEmail(params: { order: Order; settings: 
     subject: `Pedido #${shortId(order)} cancelado - ${settings.store_name}`,
     html: layout(settings, body),
     settings,
+  });
+}
+
+/** Aviso interno pros e-mails de ADMIN_EMAILS (ex.: WhatsApp de avisos caiu). */
+export async function sendAdminAlertEmail(params: {
+  settings: SiteSettings;
+  subject: string;
+  title: string;
+  intro: string;
+  text?: string;
+}) {
+  const to = getAdminEmails();
+  if (to.length === 0) return { sent: false, error: "ADMIN_EMAILS vazio." } as const;
+  const body = `
+    ${heading(escapeHtml(params.title), escapeHtml(params.intro))}
+    ${
+      params.text
+        ? `<pre style="margin:0 0 20px;white-space:pre-wrap;font-family:inherit;background:${C.box};border:1px solid ${C.line};border-radius:12px;padding:14px;color:${C.text};font-size:14px;">${escapeHtml(params.text)}</pre>`
+        : ""
+    }
+    <div style="text-align:center;">${button(`${appUrl()}/admin/configuracoes`, "Abrir o painel")}</div>`;
+  return sendMail({
+    to: to.join(","),
+    subject: `${params.subject} - ${params.settings.store_name}`,
+    html: layout(params.settings, body),
+    settings: params.settings,
   });
 }

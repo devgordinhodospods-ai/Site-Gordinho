@@ -8,7 +8,15 @@ import { Loader } from "@/components/ui/Loader";
 
 type WaStatus =
   | { configured: false }
-  | { configured: true; qrUrl: string | null; status?: string; number?: string | null; error?: string };
+  | {
+      configured: true;
+      qrUrl: string | null;
+      status?: string;
+      number?: string | null;
+      persistent?: boolean | null;
+      lastDisconnect?: { code: number | null; reason: string; at: string } | null;
+      error?: string;
+    };
 
 const STATUS_TEXT: Record<string, { label: string; tone: string }> = {
   conectado: { label: "Conectado", tone: "bg-green-100 text-green-700" },
@@ -82,6 +90,17 @@ export function WhatsappAlertCard({ number, onChange }: { number: string; onChan
               <span className="text-sm text-slate-700">enviando de +{info.number}</span>
             )}
           </>
+        )}
+        {info?.configured && !info.error && info.status !== "conectado" && info.lastDisconnect && (
+          <p className="w-full text-xs text-slate-500 sm:order-last">
+            Última desconexão ({new Date(info.lastDisconnect.at).toLocaleString("pt-BR")}): {info.lastDisconnect.reason}
+          </p>
+        )}
+        {info?.configured && info.persistent === false && (
+          <p className="w-full rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 sm:order-last">
+            A sessão do WhatsApp não está salva num volume no Railway, então todo reinício pede o QR de novo. No
+            Railway, crie um volume em /data no serviço e coloque a variável AUTH_DIR=/data/auth.
+          </p>
         )}
         <div className="ml-auto flex gap-2">
           {info?.configured && info.qrUrl && info.status !== "conectado" && (

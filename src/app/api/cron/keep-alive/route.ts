@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { releaseAbandonedOrders } from "@/lib/orders";
+import { getWhatsappStatus, whatsappAlertConfigured } from "@/lib/whatsappAlert";
+import { sendAdminAlertEmail } from "@/lib/email";
+import { getSiteSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -34,5 +37,25 @@ export async function GET(req: Request) {
   const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
   await db.from("pending_signups").delete().lt("created_at", twoDaysAgo);
 
-  return NextResponse.json({ ok: true, products, ms: Date.now() - startedAt, at: new Date().toISOString() });
+  // 3) WhatsApp de avisos desconectado: avisa os admins por e-mail pra lerem o QR.
+  let whatsapp: string | null = null;
+  if (whatsappAlertConfigured()) {
+    const wa = await getWhatsappStatus();
+    whatsapp = "error" in wa ? "erro" : wa.status;
+    if (whatsapp !== "conectado") {
+      const settings = await getSiteSettings();
+      if (settings.whatsapp_alert_number) {
+        const reason =
+          "error" in wa ? wa.error : (wa.lastDisconnect?.reason ?? "O WhatsApp está esperando a leitura do QR code.");
+        await sendAdminAlertEmail({
+          settings,
+          subject: "WhatsApp de avisos desconectado",
+          title: "O WhatsApp de avisos está desconectado",
+          intro: `Enquanto ele estiver desconectado, os avisos de pedido chegam só por e-mail. ${reason} Abra Configurações → Avisos no painel e leia o QR code de novo.`,
+        });
+      }
+    }
+  }
+
+  return NextResponse.json({ ok: true, products, whatsapp, ms: Date.now() - startedAt, at: new Date().toISOString() });
 }

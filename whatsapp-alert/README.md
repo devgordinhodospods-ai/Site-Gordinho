@@ -41,5 +41,18 @@ Coloque o WhatsApp da loja no campo, **Salvar configurações** e **Enviar teste
 | `POST /send` | `{ "to": "35999998888", "text": "..." }` (`Authorization: Bearer <token>`) |
 | `POST /logout?token=...` | Desconecta o WhatsApp |
 
+## Se desconectar
+
+- O serviço só pede QR novo quando o WhatsApp encerra a sessão de verdade (3
+  tentativas seguidas). Quedas de internet, deploys e reinícios reconectam
+  sozinhos, desde que a sessão esteja no **volume** (passo 4). Se não estiver,
+  o painel e a página do QR mostram um aviso amarelo.
+- O painel mostra o motivo da última desconexão; os logs do Railway também
+  ("Conexão fechada (código ...)").
+- Enquanto estiver desconectado, os avisos de pedido vão por **e-mail** pros
+  endereços de `ADMIN_EMAILS` (Vercel), e o cron diário manda um lembrete.
+- O próprio WhatsApp desconecta aparelhos se o celular do dono ficar mais de
+  ~14 dias sem internet, ou se alguém tirar em **Aparelhos conectados**.
+
 Mensagens saem uma por vez, com pelo menos 4 segundos entre elas, e só pro
 número da loja — uso bem baixo, sem cara de disparo em massa.
