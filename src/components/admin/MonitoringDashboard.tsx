@@ -210,7 +210,7 @@ function SalesChart({ bars, byMonth }: { bars: Bar[]; byMonth: boolean }) {
 
       {active && (
         <div
-          className="pointer-events-none absolute top-0 z-10 w-48 -translate-x-1/2 rounded-xl bg-brand-navy px-3 py-2 text-xs text-slate-300 shadow-xl"
+          className="pointer-events-none absolute top-0 z-10 w-48 -translate-x-1/2 rounded-xl bg-slate-900 px-3 py-2 text-xs text-slate-300 shadow-xl"
           style={{
             left: `clamp(96px, ${((hover! + 0.5) / bars.length) * 100}%, calc(100% - 96px))`,
           }}
@@ -234,12 +234,12 @@ function SalesChart({ bars, byMonth }: { bars: Bar[]; byMonth: boolean }) {
 
 function Metric({ icon: Icon, label, value, hint }: { icon: LucideIcon; label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <p className="flex items-center gap-1.5 text-xs text-slate-400">
-        <Icon size={14} className="text-accent" /> {label}
+    <div className="rounded-2xl border border-blue-100 bg-white/80 p-4 backdrop-blur">
+      <p className="flex items-center gap-1.5 text-xs text-slate-500">
+        <Icon size={14} className="text-brand" /> {label}
       </p>
-      <p className="font-display mt-1 text-xl text-white sm:text-2xl">{value}</p>
-      {hint && <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p>}
+      <p className="font-display mt-1 text-xl text-slate-900 sm:text-2xl">{value}</p>
+      {hint && <p className="mt-0.5 text-[11px] text-slate-400">{hint}</p>}
     </div>
   );
 }
@@ -317,26 +317,26 @@ export function MonitoringDashboard() {
         : `${formatDay(from)} até ${formatDay(to)}`;
 
   const dateInput =
-    "mt-1 w-full rounded-xl border border-white/15 bg-white/[0.06] px-3 py-2 text-sm text-white outline-none [color-scheme:dark] focus:border-accent";
+    "mt-1 w-full rounded-xl border-2 border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand focus:ring-4 focus:ring-blue-100";
 
   const hero = (
     <section
-      className="relative overflow-hidden rounded-3xl p-5 text-white shadow-[0_20px_50px_-20px_rgba(3,10,26,0.8)] sm:p-7"
-      style={{ background: "radial-gradient(120% 140% at 100% 0%, #0c4a6e 0%, #061633 45%, #030a1a 100%)" }}
+      className="relative overflow-hidden rounded-3xl border border-blue-100 p-5 shadow-[0_10px_40px_-16px_rgba(14,165,233,0.35)] sm:p-7"
+      style={{ background: "linear-gradient(135deg, #ecfeff 0%, #f0f9ff 40%, #ffffff 100%)" }}
     >
-      <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-accent/20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-accent/25 blur-3xl" />
 
       <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-accent">
+          <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-brand">
             <Sparkles size={14} /> Monitoramento
           </p>
-          <h1 className="font-display mt-1 text-2xl sm:text-3xl">Como a loja está indo</h1>
-          <p className="mt-1 text-sm text-slate-400">{rangeInvalid ? "Período inválido" : periodLabel}</p>
+          <h1 className="font-display mt-1 text-2xl text-slate-900 sm:text-3xl">Como a loja está indo</h1>
+          <p className="mt-1 text-sm text-slate-500">{rangeInvalid ? "Período inválido" : periodLabel}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:flex sm:items-end">
-          <label className="block text-[11px] uppercase tracking-wide text-slate-400">
+          <label className="block text-[11px] uppercase tracking-wide text-slate-500">
             De
             <input
               type="date"
@@ -346,7 +346,7 @@ export function MonitoringDashboard() {
               onChange={(e) => chooseDate("from", e.target.value)}
             />
           </label>
-          <label className="block text-[11px] uppercase tracking-wide text-slate-400">
+          <label className="block text-[11px] uppercase tracking-wide text-slate-500">
             Até
             <input
               type="date"
@@ -367,8 +367,8 @@ export function MonitoringDashboard() {
             onClick={() => choosePreset(p.id)}
             className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
               preset === p.id
-                ? "bg-white text-brand-navy shadow-[0_0_0_3px_rgba(34,211,238,0.35)]"
-                : "bg-white/[0.06] text-slate-300 hover:bg-white/15 hover:text-white"
+                ? "bg-brand text-white shadow-brand"
+                : "border border-blue-100 bg-white text-slate-600 hover:border-brand hover:text-brand"
             }`}
           >
             {p.label}
@@ -376,30 +376,31 @@ export function MonitoringDashboard() {
         ))}
       </div>
       {rangeInvalid && (
-        <p className="relative mt-3 text-sm text-rose-300">
-          A data inicial precisa ser antes (ou igual) da data final.
-        </p>
+        <p className="relative mt-3 text-sm text-red-600">A data inicial precisa ser antes (ou igual) da data final.</p>
       )}
 
       {stats && (
         <div
           className={`relative mt-6 grid gap-3 transition-opacity lg:grid-cols-[1.3fr_1fr] ${loading ? "opacity-50" : ""}`}
         >
-          <div className="rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/15 to-transparent p-5">
-            <p className="text-sm text-slate-300">Faturamento</p>
+          <div
+            className="rounded-2xl p-5 text-white shadow-brand"
+            style={{ background: "linear-gradient(135deg, #38bdf8 0%, #0ea5e9 45%, #0284c7 100%)" }}
+          >
+            <p className="text-sm text-blue-50">Faturamento</p>
             <p className="font-display mt-1 text-4xl tracking-tight sm:text-5xl">
               {centsToBRL(stats.totalVendidoCents)}
             </p>
             <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-2">
               <div>
-                <p className="text-xs text-slate-400">Lucro</p>
-                <p className="font-display text-2xl text-accent">{centsToBRL(stats.lucroTotalCents)}</p>
+                <p className="text-xs text-blue-100">Lucro</p>
+                <p className="font-display text-2xl">{centsToBRL(stats.lucroTotalCents)}</p>
               </div>
-              <span className="mb-1 rounded-full bg-emerald-400/15 px-2.5 py-1 text-xs font-bold text-emerald-300">
+              <span className="mb-1 rounded-full bg-white/20 px-2.5 py-1 text-xs font-bold text-white">
                 margem {stats.margemPercent.toFixed(1)}%
               </span>
             </div>
-            <p className="mt-2 text-[11px] text-slate-500">
+            <p className="mt-2 text-[11px] text-blue-100">
               Produtos {centsToBRL(stats.lucroProdutosCents)} + taxas de serviço {centsToBRL(stats.taxasServicoCents)}
             </p>
           </div>
@@ -609,7 +610,7 @@ export function MonitoringDashboard() {
                     <li key={p.name + rank} className="flex items-center gap-3">
                       <span
                         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${
-                          rank === 1 ? "bg-brand-navy text-accent" : "bg-slate-100 text-slate-500"
+                          rank === 1 ? "bg-brand text-white shadow-brand" : "bg-slate-100 text-slate-500"
                         }`}
                       >
                         {rank}
