@@ -32,7 +32,7 @@ export function TrustTicker() {
   );
 
   return (
-    <div className="overflow-hidden border-y border-white/5 bg-brand-ink py-2.5">
+    <div className="theme-static overflow-hidden border-y border-white/5 bg-brand-ink py-2.5">
       <div className="marquee-track">
         {strip}
         {strip}

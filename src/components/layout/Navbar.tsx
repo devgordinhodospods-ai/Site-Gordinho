@@ -8,6 +8,7 @@ import { ShoppingCart, User, LayoutDashboard, Search } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { useEffect, useRef } from "react";
 import { scrollToProducts, useSearchStore } from "@/store/search";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { SmoothTopLink } from "@/components/ui/SmoothTopLink";
 
@@ -59,7 +60,7 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
         <SmoothTopLink
           href="/"
           aria-label={storeName}
-          className="font-display flex shrink-0 items-center gap-2 text-lg text-white"
+          className="theme-static font-display flex shrink-0 items-center gap-2 text-lg text-white"
         >
           {logoUrl ? (
             <Image
@@ -83,7 +84,7 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
           )}
         </SmoothTopLink>
 
-        <form onSubmit={handleSearch} className="order-3 w-full md:order-none md:max-w-md md:flex-1">
+        <form onSubmit={handleSearch} className="theme-static order-3 w-full md:order-none md:max-w-md md:flex-1">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
@@ -99,16 +100,18 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
           {session?.user?.isAdmin && (
             <Link
               href="/admin"
-              className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+              className="theme-static flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-bold text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
               aria-label="Painel"
             >
               <LayoutDashboard size={16} /> <span className="hidden sm:inline">Painel</span>
             </Link>
           )}
 
+          <ThemeToggle className="theme-static rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white" />
+
           <Link
             href="/carrinho"
-            className="relative rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+            className="theme-static relative rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Carrinho"
           >
             <ShoppingCart size={22} />
@@ -124,7 +127,7 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
           ) : (
             <Link
               href="/login"
-              className="flex items-center gap-1 rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+              className="theme-static flex items-center gap-1 rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
               title="Entrar"
             >
               <User size={20} />

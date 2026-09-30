@@ -33,7 +33,7 @@ export function ConfirmDeliveryCard({ orderId, onConfirmed }: { orderId: string;
     <>
       <div className="card mb-4 overflow-hidden border border-blue-100">
         <div
-          className="flex items-center gap-4 px-5 py-5 text-white"
+          className="theme-static flex items-center gap-4 px-5 py-5 text-white"
           style={{ background: "linear-gradient(135deg, #38bdf8, #0284c7)" }}
         >
           <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/15">
@@ -55,7 +55,7 @@ export function ConfirmDeliveryCard({ orderId, onConfirmed }: { orderId: string;
 
       {asking && (
         <div
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/60 px-4 pb-4 backdrop-blur-sm sm:items-center sm:pb-0"
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-brand-ink/60 px-4 pb-4 backdrop-blur-sm sm:items-center sm:pb-0"
           onClick={() => !sending && setAsking(false)}
           role="dialog"
           aria-modal="true"

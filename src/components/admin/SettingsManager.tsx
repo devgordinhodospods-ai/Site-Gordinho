@@ -338,7 +338,7 @@ export function SettingsManager() {
               label: "Imagem do rodapé",
               help: "Imagem exibida no rodapé do site, ao lado do nome da loja.",
               hint: "Opcional: sem ela, o rodapé usa a logo.",
-              preview: "h-16 w-32 bg-slate-900",
+              preview: "h-16 w-32 bg-brand-ink",
             })}
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label="WhatsApp" help="Número do botão de WhatsApp do rodapé e dos e-mails. Coloque com DDD (ex: 11999998888).">
@@ -401,7 +401,7 @@ export function SettingsManager() {
                           }
                           className={`h-10 w-12 rounded-xl border text-sm transition ${
                             closed
-                              ? "border-transparent bg-slate-800 text-white"
+                              ? "border-transparent bg-brand-ink text-white dark:bg-rose-500/80"
                               : "border-blue-100 bg-white text-slate-700 hover:border-brand"
                           }`}
                         >
@@ -410,7 +410,7 @@ export function SettingsManager() {
                       );
                     })}
                   </div>
-                  <p className="mt-1.5 text-xs text-slate-500">Os escuros ficam fechados o dia todo.</p>
+                  <p className="mt-1.5 text-xs text-slate-500">Os marcados ficam fechados o dia todo.</p>
                 </Field>
 
                 <Field
@@ -467,7 +467,7 @@ export function SettingsManager() {
 
             <div>
               <p className="mb-2 text-xs uppercase tracking-widest text-slate-500">Prévia</p>
-              <div className="flex justify-center rounded-2xl bg-slate-800/80 p-5">
+              <div className="flex justify-center rounded-2xl bg-brand-ink/90 p-5">
                 <ClosedStoreCard
                   title={settings.closed_popup_title || "Estamos fechados agora"}
                   message={closedMessage(settings, previewNextOpen)}

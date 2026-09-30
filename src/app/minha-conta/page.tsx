@@ -212,10 +212,7 @@ export default function MinhaContaPage() {
   }
 
   return (
-    <div
-      className="min-h-[calc(100vh-4rem)] px-4 py-12"
-      style={{ background: "linear-gradient(160deg, #e0f7ff 0%, #ffffff 55%)" }}
-    >
+    <div className="bg-soft-auth min-h-[calc(100vh-4rem)] px-4 py-12">
       <div className="mx-auto grid max-w-3xl gap-6 md:grid-cols-2">
         <div className="card h-fit p-8">
           <h1 className="font-display mb-1 text-2xl text-slate-900">Meus dados</h1>

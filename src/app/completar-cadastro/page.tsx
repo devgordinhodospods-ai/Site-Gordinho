@@ -86,10 +86,7 @@ function CompletarCadastroContent() {
   }
 
   return (
-    <div
-      className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12"
-      style={{ background: "linear-gradient(160deg, #e0f7ff 0%, #ffffff 55%)" }}
-    >
+    <div className="bg-soft-auth flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12">
       <div className="card w-full max-w-md p-8">
         <h1 className="font-display mb-1 text-center text-2xl text-slate-900">Só mais um passo</h1>
         <p className="mb-6 text-center text-sm text-slate-500">

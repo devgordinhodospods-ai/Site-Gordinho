@@ -23,7 +23,7 @@ export function UserMenu({ name }: { name?: string | null }) {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+        className="theme-static flex items-center gap-1 rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
         title={name ?? "Minha conta"}
         aria-label="Minha conta"
       >

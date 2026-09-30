@@ -180,7 +180,7 @@ export function UsersManager() {
 
       {(details || loadingDetails) && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 py-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-brand-ink/60 px-4 py-6"
           onClick={closeDetails}
         >
           <div

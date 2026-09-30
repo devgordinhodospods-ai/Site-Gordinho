@@ -43,7 +43,7 @@ export function HeroCarousel({
     <section
       // Proporção fixa 1920×600 (16:5): a imagem ocupa a largura toda da tela
       // em qualquer aparelho, sem faixas pretas nos lados.
-      className={`relative w-full overflow-hidden bg-black ${aspect}`}
+      className={`theme-static relative w-full overflow-hidden bg-black ${aspect}`}
       aria-roledescription="carrossel"
       onTouchStart={(e) => (touchStartX.current = e.touches[0].clientX)}
       onTouchEnd={(e) => {

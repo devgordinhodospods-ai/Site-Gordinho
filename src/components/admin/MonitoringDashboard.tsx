@@ -210,7 +210,7 @@ function SalesChart({ bars, byMonth }: { bars: Bar[]; byMonth: boolean }) {
 
       {active && (
         <div
-          className="pointer-events-none absolute top-0 z-10 w-48 -translate-x-1/2 rounded-xl bg-slate-900 px-3 py-2 text-xs text-slate-300 shadow-xl"
+          className="pointer-events-none absolute top-0 z-10 w-48 -translate-x-1/2 theme-static rounded-xl bg-brand-ink px-3 py-2 text-xs text-slate-300 shadow-xl"
           style={{
             left: `clamp(96px, ${((hover! + 0.5) / bars.length) * 100}%, calc(100% - 96px))`,
           }}
@@ -321,8 +321,7 @@ export function MonitoringDashboard() {
 
   const hero = (
     <section
-      className="relative overflow-hidden rounded-3xl border border-blue-100 p-5 shadow-[0_10px_40px_-16px_rgba(14,165,233,0.35)] sm:p-7"
-      style={{ background: "linear-gradient(135deg, #ecfeff 0%, #f0f9ff 40%, #ffffff 100%)" }}
+      className="bg-soft relative overflow-hidden rounded-3xl border border-blue-100 p-5 shadow-[0_10px_40px_-16px_rgba(14,165,233,0.35)] sm:p-7"
     >
       <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-accent/25 blur-3xl" />
 
@@ -384,7 +383,7 @@ export function MonitoringDashboard() {
           className={`relative mt-6 grid gap-3 transition-opacity lg:grid-cols-[1.3fr_1fr] ${loading ? "opacity-50" : ""}`}
         >
           <div
-            className="rounded-2xl p-5 text-white shadow-brand"
+            className="theme-static rounded-2xl p-5 text-white shadow-brand"
             style={{ background: "linear-gradient(135deg, #38bdf8 0%, #0ea5e9 45%, #0284c7 100%)" }}
           >
             <p className="text-sm text-blue-50">Faturamento</p>

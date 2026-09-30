@@ -54,7 +54,7 @@ export function ProductCard({ product }: { product: ProductWithFlavors }) {
           <div className="flex h-full items-center justify-center text-sm text-slate-400">Sem imagem</div>
         )}
         {outOfStock ? (
-          <span className="absolute left-2 top-2 rounded-md bg-slate-900 px-2 py-1 text-xs text-white">Esgotado</span>
+          <span className="absolute left-2 top-2 rounded-md bg-brand-ink px-2 py-1 text-xs text-white">Esgotado</span>
         ) : hasDiscount ? (
           <span className="absolute left-2 top-2 rounded-md bg-red-600 px-2 py-1 text-xs text-white">
             -{discountPercent}%

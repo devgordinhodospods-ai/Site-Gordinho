@@ -44,10 +44,7 @@ function LoginForm() {
   }
 
   return (
-    <div
-      className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12"
-      style={{ background: "linear-gradient(160deg, #e0f7ff 0%, #ffffff 55%)" }}
-    >
+    <div className="bg-soft-auth flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-12">
       <div className="card w-full max-w-sm p-8">
         {fromCheckout ? (
           <>

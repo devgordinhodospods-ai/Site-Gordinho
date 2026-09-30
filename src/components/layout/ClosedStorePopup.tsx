@@ -22,7 +22,7 @@ export function ClosedStoreCard({
   return (
     <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl">
       <div
-        className="relative flex flex-col items-center px-6 pb-6 pt-8 text-center text-white"
+        className="theme-static relative flex flex-col items-center px-6 pb-6 pt-8 text-center text-white"
         style={{ background: "linear-gradient(160deg, #070b14 0%, #0c4a6e 55%, #0ea5e9 100%)" }}
       >
         <span className="absolute left-6 top-5 h-1.5 w-1.5 rounded-full bg-white/60" />
@@ -94,7 +94,7 @@ export function ClosedStorePopup({ settings }: { settings: StoreHoursSettings })
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-brand-ink/60 px-4 backdrop-blur-sm"
       onClick={close}
       role="dialog"
       aria-modal="true"

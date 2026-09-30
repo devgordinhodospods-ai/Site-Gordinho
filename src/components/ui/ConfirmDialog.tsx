@@ -34,7 +34,7 @@ export function useConfirm() {
 
   const dialog = state ? (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-brand-ink/60 px-4"
       onClick={() => handle(false)}
     >
       <div className="card w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>

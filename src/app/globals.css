@@ -9,6 +9,72 @@
   --store-ink: #070b14;
 }
 
+/* ---------------------------------------------------------------------- */
+/* Tema claro / escuro                                                     */
+/* As escalas slate e blue do Tailwind leem estas variáveis. No escuro a   */
+/* escala inverte: slate-900 (texto) fica claro, slate-50/blue-50 (fundos) */
+/* ficam escuros. Trechos que já são escuros nos dois temas (topo, rodapé, */
+/* faixas em degradê) usam .theme-static e mantêm as cores originais.      */
+/* ---------------------------------------------------------------------- */
+
+:root,
+.dark .theme-static {
+  --slate-50: 248 250 252;
+  --slate-100: 241 245 249;
+  --slate-200: 226 232 240;
+  --slate-300: 203 213 225;
+  --slate-400: 148 163 184;
+  --slate-500: 100 116 139;
+  --slate-600: 71 85 105;
+  --slate-700: 51 65 85;
+  --slate-800: 30 41 59;
+  --slate-900: 15 23 42;
+  --slate-950: 2 6 23;
+  --blue-50: 240 249 255;
+  --blue-100: 224 242 254;
+  --blue-200: 186 230 253;
+  --blue-300: 125 211 252;
+  --blue-400: 56 189 248;
+  --blue-500: 14 165 233;
+  --blue-600: 2 132 199;
+  --blue-700: 3 105 161;
+  --blue-800: 7 89 133;
+  --blue-900: 12 74 110;
+  --blue-950: 8 47 73;
+  --surface: 255 255 255;
+}
+
+.dark {
+  color-scheme: dark;
+  --slate-50: 9 15 28;
+  --slate-100: 24 33 50;
+  --slate-200: 40 52 73;
+  --slate-300: 64 78 101;
+  --slate-400: 122 137 160;
+  --slate-500: 150 164 185;
+  --slate-600: 177 189 205;
+  --slate-700: 203 213 225;
+  --slate-800: 226 232 240;
+  --slate-900: 241 245 249;
+  --slate-950: 248 250 252;
+  --blue-50: 13 31 51;
+  --blue-100: 21 46 72;
+  --blue-200: 30 66 100;
+  --blue-300: 56 130 180;
+  --blue-400: 56 189 248;
+  --blue-500: 14 165 233;
+  --blue-600: 56 189 248;
+  --blue-700: 125 211 252;
+  --blue-800: 186 230 253;
+  --blue-900: 224 242 254;
+  --blue-950: 240 249 255;
+  --surface: 14 22 38;
+}
+
+.dark .theme-static {
+  color-scheme: light;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -207,4 +273,79 @@
   50% {
     transform: translateX(3px);
   }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Modo escuro: cores fixas (branco e cores de status) que não vêm das     */
+/* escalas com variável. Fora das camadas pra valer sobre as utilities.    */
+/* ---------------------------------------------------------------------- */
+
+.dark body {
+  background-color: #070c17;
+}
+
+/* Seletor de atributo (e não .bg-white) pra o @apply bg-white não copiar esta regra. */
+.dark :is([class~="bg-white"], .card, .input, .btn-secondary, .btn-google):not(.theme-static, .theme-static *) {
+  background-color: rgb(var(--surface));
+}
+.dark [class~="bg-white/80"]:not(.theme-static *) {
+  background-color: rgb(var(--surface) / 0.8);
+}
+.dark [class~="bg-white/95"]:not(.theme-static *) {
+  background-color: rgb(var(--surface) / 0.95);
+}
+.dark .card:not(.theme-static *) {
+  box-shadow: 0 4px 24px -10px rgba(0, 0, 0, 0.6);
+}
+
+/* Fundos claros de aviso/status viram tons translúcidos */
+.dark :is(.bg-red-50, .bg-red-100):not(.theme-static *) {
+  background-color: rgb(239 68 68 / 0.14);
+}
+.dark :is(.bg-green-50, .bg-green-100):not(.theme-static *) {
+  background-color: rgb(34 197 94 / 0.14);
+}
+.dark :is(.bg-amber-50, .bg-amber-100):not(.theme-static *) {
+  background-color: rgb(245 158 11 / 0.14);
+}
+.dark .bg-indigo-100:not(.theme-static *) {
+  background-color: rgb(99 102 241 / 0.18);
+}
+.dark :is(.border-red-100, .border-red-200):not(.theme-static *) {
+  border-color: rgb(239 68 68 / 0.3);
+}
+.dark .border-green-100:not(.theme-static *) {
+  border-color: rgb(34 197 94 / 0.3);
+}
+.dark .border-amber-200:not(.theme-static *) {
+  border-color: rgb(245 158 11 / 0.35);
+}
+.dark :is(.text-red-600, .text-red-700, .text-red-800, .text-rose-600):not(.theme-static *) {
+  color: #fca5a5;
+}
+.dark :is(.text-green-600, .text-green-700, .text-green-800, .text-emerald-600):not(.theme-static *) {
+  color: #86efac;
+}
+.dark :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900):not(.theme-static *) {
+  color: #fcd34d;
+}
+.dark .text-indigo-700:not(.theme-static *) {
+  color: #a5b4fc;
+}
+
+/* Fundos em degradê claro (vitrine, login, painel) */
+.bg-soft {
+  background: linear-gradient(135deg, #ecfeff 0%, #f0f9ff 40%, #ffffff 100%);
+}
+.bg-soft-auth {
+  background: linear-gradient(160deg, #e0f7ff 0%, #ffffff 55%);
+}
+.dark .bg-soft {
+  background: linear-gradient(135deg, #0b2233 0%, #0d1a2e 45%, #0e1626 100%);
+}
+.dark .bg-soft-auth {
+  background: linear-gradient(160deg, #0b2233 0%, #070c17 55%);
+}
+.dark .btn-secondary:hover:not(:disabled) {
+  background-color: rgb(var(--blue-50));
 }

@@ -1,7 +1,17 @@
 import type { Config } from "tailwindcss";
-import colors from "tailwindcss/colors";
+// Slate e azul vêm de variáveis CSS (globals.css): no modo escuro a escala
+// inverte (fundo claro vira escuro, texto escuro vira claro) sem mexer em
+// cada tela.
+const scale = (name: string) =>
+  Object.fromEntries(
+    [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((step) => [
+      step,
+      `rgb(var(--${name}-${step}) / <alpha-value>)`,
+    ])
+  );
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -32,10 +42,11 @@ const config: Config = {
         black: "900",
       },
       // Paleta tirada da logo (preto + ciano do "DosPod's"): a escala "blue"
-      // do site inteiro vira a "sky" (azul claro), então bg-blue-50,
+      // do site inteiro usa os tons da "sky" (azul claro), então bg-blue-50,
       // border-blue-100 etc. acompanham a marca sem mexer tela por tela.
       colors: {
-        blue: colors.sky,
+        blue: scale("blue"),
+        slate: scale("slate"),
         brand: {
           DEFAULT: "#0ea5e9",
           dark: "#0284c7",

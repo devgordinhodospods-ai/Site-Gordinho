@@ -41,7 +41,7 @@ export function Footer({ settings }: { settings: SiteSettings }) {
   ].filter(Boolean) as { icon: typeof Instagram; label: string; href: string }[];
 
   return (
-    <footer className="mt-16 bg-brand-navy text-slate-300">
+    <footer className="theme-static mt-16 bg-brand-navy text-slate-300">
       {/* Mesma linha em degradê ciano do topo */}
       <div className="h-px w-full bg-gradient-to-r from-transparent via-brand/70 to-transparent" />
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 text-center sm:grid-cols-3 sm:text-left">

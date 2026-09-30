@@ -68,7 +68,7 @@ export function PixPaymentPanel({
   return (
     <div className="card mb-4 overflow-hidden border border-blue-100">
       <div
-        className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-white"
+        className="theme-static flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-white"
         style={{ background: "linear-gradient(135deg, #38bdf8, #0284c7)" }}
       >
         <div>

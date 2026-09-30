@@ -132,10 +132,7 @@ export function HomeCatalog({
 
   return (
     <section id="produtos" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-10">
-      <div
-        className="mb-8 rounded-3xl border border-blue-100 p-5 sm:p-6"
-        style={{ background: "linear-gradient(135deg, #ecfeff 0%, #f0f9ff 35%, #ffffff 75%)" }}
-      >
+      <div className="bg-soft mb-8 rounded-3xl border border-blue-100 p-5 sm:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs uppercase tracking-widest text-brand">Nossa loja</p>

@@ -36,7 +36,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const settings = await getSiteSettings();
 
   return (
-    <html lang="pt-BR" className={lato.variable}>
+    <html lang="pt-BR" className={lato.variable} suppressHydrationWarning>
+      <head>
+        {/* Aplica o modo escuro salvo antes da página aparecer (sem piscar). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem("theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="flex min-h-screen flex-col font-sans">
         <SessionProviderWrapper>
           <AnnouncementBar text={settings.announcement_text} />
