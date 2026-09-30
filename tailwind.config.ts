@@ -42,7 +42,7 @@ const config: Config = {
           light: "#38bdf8",
           ink: "#070b14",
           // Faixa do topo e rodapé. Pra voltar ao preto: "#000000".
-          navy: "#061633",
+          navy: "#030a1a",
         },
         accent: {
           DEFAULT: "#22d3ee",
