@@ -54,7 +54,7 @@ export function Navbar({ storeName, logoUrl }: { storeName: string; logoUrl: str
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-black shadow-[0_8px_30px_-12px_rgba(0,0,0,0.6)]">
+    <header className="sticky top-0 z-40 bg-brand-navy shadow-[0_8px_30px_-12px_rgba(0,0,0,0.6)]">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3 md:flex-nowrap md:gap-6">
         <SmoothTopLink
           href="/"
