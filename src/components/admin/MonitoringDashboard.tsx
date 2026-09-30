@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
+  BarChart3,
   CalendarDays,
-  DollarSign,
-  TrendingUp,
-  ShoppingBag,
   CheckCircle2,
   Clock,
-  XCircle,
-  Wallet,
+  Receipt,
+  Sparkles,
+  Table2,
   Trophy,
+  XCircle,
   type LucideIcon,
 } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
@@ -51,6 +52,9 @@ type DashboardStats = {
 const DAYS_PER_PAGE = 10;
 const PRODUCTS_PER_PAGE = 8;
 const WEEKDAYS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+/** Acima disso o gráfico agrupa por mês (barras finas demais não dão pra ler). */
+const MAX_DAY_BARS = 62;
 
 type Preset = "hoje" | "ontem" | "7dias" | "30dias" | "mes" | "mesPassado" | "tudo" | "custom";
 
@@ -108,17 +112,143 @@ function weekday(ymd: string) {
   return WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
 }
 
-function StatCard({ icon: Icon, label, value, sub }: { icon: LucideIcon; label: string; value: string; sub?: string }) {
-  return (
-    <div className="card border-t-4 border-t-brand p-4">
-      <div className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-500">
-        <Icon size={14} /> {label}
+type Bar = { key: string; label: string; short: string; pedidos: number; vendasCents: number; lucroCents: number };
+
+/** Barras do gráfico: um dia por barra, ou um mês por barra em períodos longos. */
+function buildBars(days: DashboardStats["salesByDay"]): { bars: Bar[]; byMonth: boolean } {
+  const asc = [...days].sort((a, b) => a.date.localeCompare(b.date));
+  if (asc.length <= MAX_DAY_BARS) {
+    return {
+      byMonth: false,
+      bars: asc.map((d) => ({
+        key: d.date,
+        label: `${weekday(d.date)}, ${formatDay(d.date)}`,
+        short: d.date.slice(8, 10) + "/" + d.date.slice(5, 7),
+        pedidos: d.pedidos,
+        vendasCents: d.vendasCents,
+        lucroCents: d.lucroCents,
+      })),
+    };
+  }
+  const months = new Map<string, Bar>();
+  for (const d of asc) {
+    const key = d.date.slice(0, 7);
+    const [y, m] = key.split("-").map(Number);
+    const bar = months.get(key) ?? {
+      key,
+      label: `${MONTHS[m - 1]} de ${y}`,
+      short: `${MONTHS[m - 1]}/${String(y).slice(2)}`,
+      pedidos: 0,
+      vendasCents: 0,
+      lucroCents: 0,
+    };
+    bar.pedidos += d.pedidos;
+    bar.vendasCents += d.vendasCents;
+    bar.lucroCents += d.lucroCents;
+    months.set(key, bar);
+  }
+  return { byMonth: true, bars: [...months.values()] };
+}
+
+function SalesChart({ bars, byMonth }: { bars: Bar[]; byMonth: boolean }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const max = Math.max(...bars.map((b) => b.vendasCents), 0);
+  // Rótulos do eixo: no máximo ~8, espalhados.
+  const labelEvery = Math.max(1, Math.ceil(bars.length / 8));
+  const active = hover != null ? bars[hover] : null;
+
+  if (max === 0) {
+    return (
+      <div className="flex h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 text-center">
+        <BarChart3 className="mb-2 text-slate-300" size={28} />
+        <p className="text-sm text-slate-500">Nenhuma venda paga nesse período.</p>
       </div>
-      <p className="font-display text-2xl text-brand">{value}</p>
-      {sub && <p className="text-xs text-slate-400">{sub}</p>}
+    );
+  }
+
+  return (
+    <div className="relative">
+      <div
+        className="relative flex h-52 items-end gap-[2px] border-b border-slate-200 sm:h-60"
+        onMouseLeave={() => setHover(null)}
+      >
+        {/* Grade leve: metade e topo */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-slate-100" />
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 border-t border-dashed border-slate-100" />
+        <span className="pointer-events-none absolute -top-2 right-0 bg-white pl-1 text-[10px] text-slate-400">
+          {centsToBRL(max)}
+        </span>
+        {bars.map((b, i) => {
+          const h = b.vendasCents > 0 ? Math.max(3, (b.vendasCents / max) * 100) : 0;
+          return (
+            <button
+              key={b.key}
+              type="button"
+              className="group relative flex h-full min-w-0 flex-1 items-end justify-center focus:outline-none"
+              onMouseEnter={() => setHover(i)}
+              onFocus={() => setHover(i)}
+              onClick={() => setHover(i)}
+              aria-label={`${b.label}: ${centsToBRL(b.vendasCents)} em ${b.pedidos} pedidos`}
+            >
+              <span
+                className={`block w-full max-w-10 rounded-t transition-colors ${
+                  hover === i ? "bg-brand-dark" : "bg-brand"
+                } ${hover != null && hover !== i ? "opacity-40" : ""}`}
+                style={{ height: `${h}%` }}
+              />
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-1.5 flex gap-[2px]">
+        {bars.map((b, i) => (
+          <span key={b.key} className="min-w-0 flex-1 text-center text-[10px] leading-tight text-slate-400">
+            {i % labelEvery === 0 ? b.short : ""}
+          </span>
+        ))}
+      </div>
+
+      {active && (
+        <div
+          className="pointer-events-none absolute top-0 z-10 w-48 -translate-x-1/2 rounded-xl bg-brand-navy px-3 py-2 text-xs text-slate-300 shadow-xl"
+          style={{
+            left: `clamp(96px, ${((hover! + 0.5) / bars.length) * 100}%, calc(100% - 96px))`,
+          }}
+        >
+          <p className="mb-1 font-bold text-white">{active.label}</p>
+          <p className="flex justify-between">
+            <span>Vendas</span> <span className="font-bold text-white">{centsToBRL(active.vendasCents)}</span>
+          </p>
+          <p className="flex justify-between">
+            <span>Lucro</span> <span className="font-bold text-white">{centsToBRL(active.lucroCents)}</span>
+          </p>
+          <p className="flex justify-between">
+            <span>Pedidos pagos</span> <span className="font-bold text-white">{active.pedidos}</span>
+          </p>
+        </div>
+      )}
+      {byMonth && <p className="mt-2 text-xs text-slate-400">Período longo: cada barra é um mês.</p>}
     </div>
   );
 }
+
+function Metric({ icon: Icon, label, value, hint }: { icon: LucideIcon; label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <p className="flex items-center gap-1.5 text-xs text-slate-400">
+        <Icon size={14} className="text-accent" /> {label}
+      </p>
+      <p className="font-display mt-1 text-xl text-white sm:text-2xl">{value}</p>
+      {hint && <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p>}
+    </div>
+  );
+}
+
+const STATUS_PARTS = [
+  { key: "pagos", label: "Pagos", icon: CheckCircle2, bar: "bg-emerald-500", text: "text-emerald-600" },
+  { key: "pendentes", label: "Aguardando Pix", icon: Clock, bar: "bg-amber-400", text: "text-amber-600" },
+  { key: "cancelados", label: "Cancelados", icon: XCircle, bar: "bg-rose-500", text: "text-rose-600" },
+] as const;
 
 export function MonitoringDashboard() {
   const [preset, setPreset] = useState<Preset>("hoje");
@@ -129,6 +259,7 @@ export function MonitoringDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [dayPage, setDayPage] = useState(1);
   const [productPage, setProductPage] = useState(1);
+  const [showTable, setShowTable] = useState(false);
 
   const rangeInvalid = preset !== "tudo" && (!from || !to || from > to);
 
@@ -154,6 +285,8 @@ export function MonitoringDashboard() {
       cancelled = true;
     };
   }, [preset, from, to, rangeInvalid]);
+
+  const chart = useMemo(() => buildBars(stats?.salesByDay ?? []), [stats]);
 
   function choosePreset(id: Exclude<Preset, "custom">) {
     setPreset(id);
@@ -183,66 +316,119 @@ export function MonitoringDashboard() {
         ? `${weekday(from)}, ${formatDay(from)}`
         : `${formatDay(from)} até ${formatDay(to)}`;
 
-  const periodPicker = (
-    <div className="card mb-6 p-4">
-      <div className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-700">
-        <CalendarDays size={16} className="text-brand" /> Período
+  const dateInput =
+    "mt-1 w-full rounded-xl border border-white/15 bg-white/[0.06] px-3 py-2 text-sm text-white outline-none [color-scheme:dark] focus:border-accent";
+
+  const hero = (
+    <section
+      className="relative overflow-hidden rounded-3xl p-5 text-white shadow-[0_20px_50px_-20px_rgba(3,10,26,0.8)] sm:p-7"
+      style={{ background: "radial-gradient(120% 140% at 100% 0%, #0c4a6e 0%, #061633 45%, #030a1a 100%)" }}
+    >
+      <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-accent/20 blur-3xl" />
+
+      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-accent">
+            <Sparkles size={14} /> Monitoramento
+          </p>
+          <h1 className="font-display mt-1 text-2xl sm:text-3xl">Como a loja está indo</h1>
+          <p className="mt-1 text-sm text-slate-400">{rangeInvalid ? "Período inválido" : periodLabel}</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-end">
+          <label className="block text-[11px] uppercase tracking-wide text-slate-400">
+            De
+            <input
+              type="date"
+              className={dateInput}
+              value={preset === "tudo" ? "" : from}
+              max={todayBrasilia()}
+              onChange={(e) => chooseDate("from", e.target.value)}
+            />
+          </label>
+          <label className="block text-[11px] uppercase tracking-wide text-slate-400">
+            Até
+            <input
+              type="date"
+              className={dateInput}
+              value={preset === "tudo" ? "" : to}
+              max={todayBrasilia()}
+              onChange={(e) => chooseDate("to", e.target.value)}
+            />
+          </label>
+        </div>
       </div>
-      <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+
+      <div className="relative -mx-5 mt-4 flex gap-1.5 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0 [&::-webkit-scrollbar]:hidden">
         {PRESETS.map((p) => (
           <button
             key={p.id}
             type="button"
             onClick={() => choosePreset(p.id)}
-            className={`shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+            className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
               preset === p.id
-                ? "border-brand bg-brand text-white shadow-brand"
-                : "border-blue-100 bg-white text-slate-600 hover:border-brand hover:text-brand"
+                ? "bg-white text-brand-navy shadow-[0_0_0_3px_rgba(34,211,238,0.35)]"
+                : "bg-white/[0.06] text-slate-300 hover:bg-white/15 hover:text-white"
             }`}
           >
             {p.label}
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:flex sm:items-end">
-        <label className="block text-xs font-semibold text-slate-500">
-          De
-          <input
-            type="date"
-            className="input mt-1"
-            value={preset === "tudo" ? "" : from}
-            max={todayBrasilia()}
-            onChange={(e) => chooseDate("from", e.target.value)}
-          />
-        </label>
-        <label className="block text-xs font-semibold text-slate-500">
-          Até
-          <input
-            type="date"
-            className="input mt-1"
-            value={preset === "tudo" ? "" : to}
-            max={todayBrasilia()}
-            onChange={(e) => chooseDate("to", e.target.value)}
-          />
-        </label>
-      </div>
-      {rangeInvalid ? (
-        <p className="mt-2 text-sm text-red-600">A data inicial precisa ser antes (ou igual) da data final.</p>
-      ) : (
-        <p className="mt-2 text-sm text-slate-500">
-          Mostrando: <span className="font-semibold text-slate-800">{periodLabel}</span>
+      {rangeInvalid && (
+        <p className="relative mt-3 text-sm text-rose-300">
+          A data inicial precisa ser antes (ou igual) da data final.
         </p>
       )}
-    </div>
+
+      {stats && (
+        <div
+          className={`relative mt-6 grid gap-3 transition-opacity lg:grid-cols-[1.3fr_1fr] ${loading ? "opacity-50" : ""}`}
+        >
+          <div className="rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/15 to-transparent p-5">
+            <p className="text-sm text-slate-300">Faturamento</p>
+            <p className="font-display mt-1 text-4xl tracking-tight sm:text-5xl">
+              {centsToBRL(stats.totalVendidoCents)}
+            </p>
+            <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-2">
+              <div>
+                <p className="text-xs text-slate-400">Lucro</p>
+                <p className="font-display text-2xl text-accent">{centsToBRL(stats.lucroTotalCents)}</p>
+              </div>
+              <span className="mb-1 rounded-full bg-emerald-400/15 px-2.5 py-1 text-xs font-bold text-emerald-300">
+                margem {stats.margemPercent.toFixed(1)}%
+              </span>
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500">
+              Produtos {centsToBRL(stats.lucroProdutosCents)} + taxas de serviço {centsToBRL(stats.taxasServicoCents)}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Metric icon={CheckCircle2} label="Pedidos pagos" value={String(stats.pedidosPagos)} />
+            <Metric icon={Receipt} label="Ticket médio" value={centsToBRL(stats.ticketMedioCents)} />
+            <Metric
+              icon={BarChart3}
+              label="Pedidos feitos"
+              value={String(stats.totalPedidos)}
+              hint="Inclui não pagos"
+            />
+            <Metric
+              icon={Trophy}
+              label="Itens vendidos"
+              value={String(stats.topProducts.reduce((n, p) => n + p.quantity, 0))}
+            />
+          </div>
+        </div>
+      )}
+    </section>
   );
 
   if (!stats) {
     return (
       <div>
-        <h1 className="font-display mb-4 text-2xl text-slate-900">Visão geral</h1>
-        {periodPicker}
+        {hero}
         {error ? (
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="mt-6 text-sm text-red-600">{error}</p>
         ) : (
           <div className="flex justify-center py-16">
             <Loader />
@@ -252,179 +438,202 @@ export function MonitoringDashboard() {
     );
   }
 
+  const statusCounts = {
+    pagos: stats.pedidosPagos,
+    pendentes: stats.pedidosPendentes,
+    cancelados: stats.pedidosCancelados,
+  };
+  const statusTotal = statusCounts.pagos + statusCounts.pendentes + statusCounts.cancelados;
+  const conversion = statusTotal > 0 ? (statusCounts.pagos / statusTotal) * 100 : 0;
+
   const dayPages = Math.max(1, Math.ceil(stats.salesByDay.length / DAYS_PER_PAGE));
   const daysShown = stats.salesByDay.slice((dayPage - 1) * DAYS_PER_PAGE, dayPage * DAYS_PER_PAGE);
   const productPages = Math.max(1, Math.ceil(stats.topProducts.length / PRODUCTS_PER_PAGE));
   const productOffset = (productPage - 1) * PRODUCTS_PER_PAGE;
   const productsShown = stats.topProducts.slice(productOffset, productOffset + PRODUCTS_PER_PAGE);
+  const topReceita = stats.topProducts[0]?.receitaCents ?? 0;
+
+  const quick = [
+    ["Hoje", stats.periodStats.today],
+    ["Esta semana", stats.periodStats.week],
+    ["Este mês", stats.periodStats.month],
+  ] as const;
 
   return (
-    <div>
-      <h1 className="font-display mb-1 text-2xl text-slate-900">Visão geral</h1>
-      <p className="mb-6 text-sm text-slate-500">
-        Conta só pedidos pagos. Lucro = preço de venda − custo do produto + taxa de serviço (o frete vai direto pro
-        entregador e a tarifa do Mercado Pago não entra na conta). Datas no horário de Brasília.
-      </p>
+    <div className={loading ? "cursor-progress" : ""} aria-busy={loading}>
+      {hero}
+      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-      {periodPicker}
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
-
-      <div className={`transition-opacity ${loading ? "pointer-events-none opacity-50" : ""}`} aria-busy={loading}>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          <StatCard
-            icon={DollarSign}
-            label="Total vendido"
-            value={centsToBRL(stats.totalVendidoCents)}
-            sub="Pedidos pagos (produtos + taxa)"
-          />
-          <StatCard
-            icon={TrendingUp}
-            label="Lucro total"
-            value={centsToBRL(stats.lucroTotalCents)}
-            sub={`Margem ${stats.margemPercent.toFixed(1)}% · produtos ${centsToBRL(stats.lucroProdutosCents)} + taxas ${centsToBRL(stats.taxasServicoCents)}`}
-          />
-          <StatCard
-            icon={ShoppingBag}
-            label="Total de pedidos"
-            value={String(stats.totalPedidos)}
-            sub="No período, todos os status"
-          />
-          <StatCard
-            icon={CheckCircle2}
-            label="Pedidos pagos"
-            value={String(stats.pedidosPagos)}
-            sub="Status: pago em diante"
-          />
-          <StatCard
-            icon={Clock}
-            label="Pedidos pendentes"
-            value={String(stats.pedidosPendentes)}
-            sub="Aguardando pagamento"
-          />
-          <StatCard
-            icon={XCircle}
-            label="Pedidos cancelados"
-            value={String(stats.pedidosCancelados)}
-            sub="Status: cancelado"
-          />
-          <StatCard
-            icon={Wallet}
-            label="Ticket médio"
-            value={centsToBRL(stats.ticketMedioCents)}
-            sub="Por pedido pago"
-          />
-        </div>
-
+      <div className={`transition-opacity ${loading ? "pointer-events-none opacity-50" : ""}`}>
         {stats.itensSemCusto > 0 && (
-          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            {stats.itensSemCusto} {stats.itensSemCusto === 1 ? "item vendido não tem" : "itens vendidos não têm"} valor
-            de custo cadastrado — pra esses, o lucro considera custo zero e fica maior do que o real. Cadastre o custo
-            em Produtos pra ter o lucro certo nas próximas vendas.
-          </p>
+          <div className="mt-5 flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+            <p>
+              {stats.itensSemCusto} {stats.itensSemCusto === 1 ? "item vendido não tem" : "itens vendidos não têm"}{" "}
+              custo cadastrado — pra esses o lucro considera custo zero e fica maior que o real. Cadastre o custo em
+              Produtos.
+            </p>
+          </div>
         )}
 
-        <div className="card mt-6 p-4">
-          <h2 className="font-display mb-3 text-lg text-slate-900">Resumo rápido</h2>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {(
-              [
-                ["Hoje", stats.periodStats.today],
-                ["Esta semana", stats.periodStats.week],
-                ["Este mês", stats.periodStats.month],
-              ] as const
-            ).map(([label, period]) => (
-              <div key={label} className="rounded-xl bg-blue-50 p-4">
-                <p className="mb-2 text-sm font-bold text-brand">{label}</p>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Vendas</span>
-                  <span className="font-bold text-slate-900">{centsToBRL(period.vendasCents)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Lucro</span>
-                  <span className="font-bold text-slate-900">{centsToBRL(period.lucroCents)}</span>
-                </div>
+        <div className="mt-5 grid gap-5 xl:grid-cols-[1.6fr_1fr] xl:items-start">
+          <section id="vendas-por-dia" className="card scroll-mt-24 p-5">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-display text-lg text-slate-900">Vendas no período</h2>
+                <p className="text-xs text-slate-500">Toque ou passe o mouse nas barras pra ver o dia</p>
               </div>
-            ))}
+              {stats.salesByDay.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowTable((v) => !v)}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-brand hover:text-brand"
+                >
+                  {showTable ? <BarChart3 size={14} /> : <Table2 size={14} />}
+                  {showTable ? "Ver gráfico" : "Ver tabela"}
+                </button>
+              )}
+            </div>
+
+            {showTable ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[380px] text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-400">
+                      <th className="py-2 pr-3 font-semibold">Dia</th>
+                      <th className="px-3 py-2 text-right font-semibold">Pedidos</th>
+                      <th className="px-3 py-2 text-right font-semibold">Vendas</th>
+                      <th className="py-2 pl-3 text-right font-semibold">Lucro</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {daysShown.map((d) => (
+                      <tr
+                        key={d.date}
+                        className={`border-b border-slate-50 ${d.pedidos === 0 ? "text-slate-400" : "text-slate-700"}`}
+                      >
+                        <td className="py-2 pr-3">
+                          {formatDay(d.date)} <span className="text-xs text-slate-400">{weekday(d.date)}</span>
+                        </td>
+                        <td className="px-3 py-2 text-right">{d.pedidos}</td>
+                        <td className="px-3 py-2 text-right">{centsToBRL(d.vendasCents)}</td>
+                        <td className="py-2 pl-3 text-right">{centsToBRL(d.lucroCents)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <Pagination
+                  page={dayPage}
+                  totalPages={dayPages}
+                  onChange={setDayPage}
+                  scrollTarget="vendas-por-dia"
+                  compact
+                />
+              </div>
+            ) : (
+              <SalesChart bars={chart.bars} byMonth={chart.byMonth} />
+            )}
+          </section>
+
+          <div className="flex flex-col gap-5">
+            <section className="card p-5">
+              <div className="mb-4 flex items-baseline justify-between">
+                <h2 className="font-display text-lg text-slate-900">Pedidos</h2>
+                <span className="text-xs text-slate-500">
+                  {statusTotal > 0 ? `${conversion.toFixed(0)}% viraram venda` : "Nenhum pedido"}
+                </span>
+              </div>
+              <div className="flex h-3 gap-[2px] overflow-hidden rounded-full bg-slate-100">
+                {statusTotal > 0 &&
+                  STATUS_PARTS.map((part) =>
+                    statusCounts[part.key] > 0 ? (
+                      <span
+                        key={part.key}
+                        className={part.bar}
+                        style={{ width: `${(statusCounts[part.key] / statusTotal) * 100}%` }}
+                      />
+                    ) : null,
+                  )}
+              </div>
+              <ul className="mt-4 space-y-2.5">
+                {STATUS_PARTS.map((part) => (
+                  <li key={part.key} className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 text-slate-600">
+                      <part.icon size={16} className={part.text} /> {part.label}
+                    </span>
+                    <span className="font-bold text-slate-900">{statusCounts[part.key]}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="card p-5">
+              <h2 className="font-display mb-1 text-lg text-slate-900">Agora</h2>
+              <p className="mb-3 text-xs text-slate-500">Sempre atual, independente do período escolhido</p>
+              <div className="divide-y divide-slate-100">
+                {quick.map(([label, period]) => (
+                  <div key={label} className="flex items-center justify-between py-2.5">
+                    <span className="flex items-center gap-2 text-sm text-slate-600">
+                      <CalendarDays size={15} className="text-brand" /> {label}
+                    </span>
+                    <span className="text-right">
+                      <span className="block text-sm font-bold text-slate-900">{centsToBRL(period.vendasCents)}</span>
+                      <span className="block text-[11px] text-slate-500">lucro {centsToBRL(period.lucroCents)}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         </div>
 
-        <div id="vendas-por-dia" className="card mt-6 scroll-mt-24 overflow-x-auto p-4">
-          <h2 className="font-display mb-3 flex items-center gap-2 text-lg text-slate-900">
-            <CalendarDays size={18} className="text-brand" /> Vendas por dia
-          </h2>
-          {stats.salesByDay.length === 0 ? (
-            <p className="text-sm text-slate-500">Nenhuma venda paga nesse período.</p>
-          ) : (
-            <>
-              <table className="w-full min-w-[420px] text-sm">
-                <thead>
-                  <tr className="text-left text-xs font-bold uppercase tracking-wide text-white">
-                    <th className="rounded-l-lg bg-brand px-3 py-2">Dia</th>
-                    <th className="bg-brand px-3 py-2 text-right">Pedidos pagos</th>
-                    <th className="bg-brand px-3 py-2 text-right">Vendas</th>
-                    <th className="rounded-r-lg bg-brand px-3 py-2 text-right">Lucro</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {daysShown.map((d) => (
-                    <tr
-                      key={d.date}
-                      className={`border-b border-blue-50 last:border-0 ${d.pedidos === 0 ? "text-slate-400" : ""}`}
-                    >
-                      <td className="px-3 py-2 font-medium">
-                        <span className={d.pedidos === 0 ? "" : "text-slate-800"}>{formatDay(d.date)}</span>{" "}
-                        <span className="text-xs text-slate-400">{weekday(d.date)}</span>
-                      </td>
-                      <td className="px-3 py-2 text-right">{d.pedidos}</td>
-                      <td className="px-3 py-2 text-right">{centsToBRL(d.vendasCents)}</td>
-                      <td className="px-3 py-2 text-right">{centsToBRL(d.lucroCents)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <Pagination
-                page={dayPage}
-                totalPages={dayPages}
-                onChange={setDayPage}
-                scrollTarget="vendas-por-dia"
-                compact
-              />
-            </>
-          )}
-        </div>
-
-        <div id="top-produtos" className="card mt-6 scroll-mt-24 overflow-x-auto p-4">
-          <h2 className="font-display mb-3 flex items-center gap-2 text-lg text-slate-900">
-            <Trophy size={18} className="text-brand" /> Top produtos vendidos
-          </h2>
+        <section id="top-produtos" className="card mt-5 scroll-mt-24 p-5">
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 className="font-display flex items-center gap-2 text-lg text-slate-900">
+              <Trophy size={18} className="text-brand" /> Mais vendidos
+            </h2>
+            {stats.topProducts.length > 0 && (
+              <span className="text-xs text-slate-500">
+                {stats.topProducts.length} {stats.topProducts.length === 1 ? "produto" : "produtos"}
+              </span>
+            )}
+          </div>
           {stats.topProducts.length === 0 ? (
             <p className="text-sm text-slate-500">Nenhuma venda nesse período.</p>
           ) : (
             <>
-              <table className="w-full min-w-[500px] text-sm">
-                <thead>
-                  <tr className="text-left text-xs font-bold uppercase tracking-wide text-white">
-                    <th className="rounded-l-lg bg-brand px-3 py-2">#</th>
-                    <th className="bg-brand px-3 py-2">Produto</th>
-                    <th className="bg-brand px-3 py-2 text-right">Quantidade</th>
-                    <th className="bg-brand px-3 py-2 text-right">Receita</th>
-                    <th className="bg-brand px-3 py-2 text-right">Lucro</th>
-                    <th className="rounded-r-lg bg-brand px-3 py-2 text-right">Margem</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {productsShown.map((p, i) => (
-                    <tr key={p.name + i} className="border-b border-blue-50 last:border-0">
-                      <td className="px-3 py-2 text-slate-400">{productOffset + i + 1}</td>
-                      <td className="px-3 py-2 font-medium text-slate-800">{p.name}</td>
-                      <td className="px-3 py-2 text-right">{p.quantity}</td>
-                      <td className="px-3 py-2 text-right">{centsToBRL(p.receitaCents)}</td>
-                      <td className="px-3 py-2 text-right">{centsToBRL(p.lucroCents)}</td>
-                      <td className="px-3 py-2 text-right">{p.margemPercent.toFixed(1)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <ol className="space-y-3">
+                {productsShown.map((p, i) => {
+                  const rank = productOffset + i + 1;
+                  return (
+                    <li key={p.name + rank} className="flex items-center gap-3">
+                      <span
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${
+                          rank === 1 ? "bg-brand-navy text-accent" : "bg-slate-100 text-slate-500"
+                        }`}
+                      >
+                        {rank}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <p className="truncate text-sm font-semibold text-slate-800">{p.name}</p>
+                          <p className="shrink-0 text-sm font-bold text-slate-900">{centsToBRL(p.receitaCents)}</p>
+                        </div>
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className="h-full rounded-full bg-brand"
+                            style={{ width: `${topReceita > 0 ? (p.receitaCents / topReceita) * 100 : 0}%` }}
+                          />
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          {p.quantity} {p.quantity === 1 ? "unidade" : "unidades"} · lucro {centsToBRL(p.lucroCents)} ·
+                          margem {p.margemPercent.toFixed(1)}%
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
               <Pagination
                 page={productPage}
                 totalPages={productPages}
@@ -434,7 +643,12 @@ export function MonitoringDashboard() {
               />
             </>
           )}
-        </div>
+        </section>
+
+        <p className="mt-5 text-xs text-slate-400">
+          Conta só pedidos pagos. Lucro = preço de venda − custo do produto + taxa de serviço (o frete vai direto pro
+          entregador e a tarifa do Mercado Pago não entra). Datas no horário de Brasília.
+        </p>
       </div>
     </div>
   );
