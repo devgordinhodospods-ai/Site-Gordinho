@@ -374,7 +374,7 @@ begin
 end;
 $order_fn$;
 
-revoke all on function create_order_with_items(text,text,text,uuid,jsonb,uuid,int,int,jsonb,jsonb) from public;
+revoke all on function create_order_with_items(text,text,text,uuid,jsonb,uuid,int,int,jsonb,jsonb) from public, anon, authenticated;
 grant execute on function create_order_with_items(text,text,text,uuid,jsonb,uuid,int,int,jsonb,jsonb) to service_role;
 
 -- ----------------------------------------------------------------------------
@@ -413,7 +413,7 @@ begin
 end;
 $cancel_fn$;
 
-revoke all on function cancel_order(uuid) from public;
+revoke all on function cancel_order(uuid) from public, anon, authenticated;
 grant execute on function cancel_order(uuid) to service_role;
 
 -- ----------------------------------------------------------------------------

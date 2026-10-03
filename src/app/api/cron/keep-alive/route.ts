@@ -57,5 +57,12 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, products, whatsapp, ms: Date.now() - startedAt, at: new Date().toISOString() });
+  // 4) Registro da execução: dá pra conferir no Supabase (tabela
+  // site_settings, linha "cron_last_run") que o cron rodou e quando.
+  const at = new Date().toISOString();
+  await db
+    .from("site_settings")
+    .upsert({ key: "cron_last_run", value: { at, products, whatsapp }, updated_at: at }, { onConflict: "key" });
+
+  return NextResponse.json({ ok: true, products, whatsapp, ms: Date.now() - startedAt, at });
 }
