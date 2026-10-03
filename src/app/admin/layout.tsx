@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admins";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { NewOrderAlert } from "@/components/admin/NewOrderAlert";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -18,6 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             Painel administrativo
           </p>
           <AdminNav />
+          <NewOrderAlert />
         </aside>
         <div className="mt-6 min-w-0 lg:mt-0">{children}</div>
       </div>

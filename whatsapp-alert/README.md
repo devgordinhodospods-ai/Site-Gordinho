@@ -37,7 +37,7 @@ Coloque o WhatsApp da loja no campo, **Salvar configurações** e **Enviar teste
 | Rota | O que faz |
 |---|---|
 | `GET /?token=...` | Página com o QR code / status |
-| `GET /health` | Status em JSON (`Authorization: Bearer <token>`) |
+| `GET /health` | Status em JSON, com o QR code quando estiver esperando leitura (`Authorization: Bearer <token>`) |
 | `POST /send` | `{ "to": "35999998888", "text": "..." }` (`Authorization: Bearer <token>`) |
 | `POST /logout?token=...` | Desconecta o WhatsApp |
 

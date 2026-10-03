@@ -8,6 +8,7 @@ import { useCartStore } from "@/store/cart";
 import { centsToBRL } from "@/lib/money";
 import { LoaderPage } from "@/components/ui/Loader";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
+import { FreightEstimator } from "@/components/loja/FreightEstimator";
 
 export default function CarrinhoPage() {
   const { status: sessionStatus } = useSession();
@@ -91,8 +92,12 @@ export default function CarrinhoPage() {
             <span className="text-slate-600">Subtotal</span>
             <span className="text-lg text-slate-900">{centsToBRL(subtotal)}</span>
           </div>
-          <p className="mt-2 text-xs text-slate-500">
-            A taxa de serviço é calculada no checkout. O frete é pago direto ao entregador na hora da entrega.
+          <div className="mt-4 border-t border-blue-50 pt-4">
+            <FreightEstimator label="Calcule o frete (motoboy):" />
+          </div>
+          <p className="mt-3 text-xs text-slate-500">
+            A taxa de serviço é calculada no checkout. O frete é uma estimativa e é pago direto ao entregador na hora
+            da entrega, não no site.
           </p>
           <Link href={loggedIn ? "/checkout" : "/login?callbackUrl=/checkout"} className="btn-primary mt-5 w-full">
             Finalizar compra

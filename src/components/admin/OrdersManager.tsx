@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MessageCircle, MapPin, CreditCard, Trash2 } from "lucide-react";
+import { NEW_ORDER_EVENT } from "@/components/admin/NewOrderAlert";
 import { adminApi } from "@/lib/adminApi";
 import { centsToBRL } from "@/lib/money";
 import { HelpTip } from "@/components/ui/HelpTip";
@@ -93,6 +94,14 @@ export function OrdersManager() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
+
+  // Entrou pedido pago novo (aviso do painel): recarrega a lista sozinha.
+  useEffect(() => {
+    const reload = () => load();
+    window.addEventListener(NEW_ORDER_EVENT, reload);
+    return () => window.removeEventListener(NEW_ORDER_EVENT, reload);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 

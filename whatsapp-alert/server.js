@@ -2,7 +2,8 @@
 //
 // Conecta um WhatsApp por QR code (como o WhatsApp Web) e expõe:
 //   GET  /?token=...       página com o QR code / status da conexão
-//   GET  /health           status em JSON (com Authorization: Bearer <token>)
+//   GET  /health           status em JSON, com o QR code quando estiver esperando
+//                          leitura (Authorization: Bearer <token>)
 //   POST /send             { to, text } → envia a mensagem (Authorization: Bearer <token>)
 //   POST /logout?token=... desconecta o WhatsApp
 //
@@ -299,7 +300,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/health") {
       if (!validToken(bearer(req))) return json(res, 401, { error: "Token inválido." });
-      return json(res, 200, { status, number: me, persistent, lastDisconnect });
+      return json(res, 200, { status, number: me, persistent, lastDisconnect, qr: status === "aguardando_qr" ? qr : null });
     }
 
     if (req.method === "POST" && url.pathname === "/send") {

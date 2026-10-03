@@ -29,6 +29,8 @@ export type WhatsappHealth = {
   /** false = sessão fora de um volume no Railway (pede QR a cada reinício). */
   persistent: boolean | null;
   lastDisconnect: { code: number | null; reason: string; at: string } | null;
+  /** Conteúdo do QR code enquanto espera leitura (o painel desenha a imagem). */
+  qr: string | null;
 };
 
 export async function getWhatsappStatus(): Promise<WhatsappHealth | { error: string }> {
@@ -47,6 +49,7 @@ export async function getWhatsappStatus(): Promise<WhatsappHealth | { error: str
       number: data.number ?? null,
       persistent: data.persistent ?? null,
       lastDisconnect: data.lastDisconnect ?? null,
+      qr: data.qr ?? null,
     };
   } catch {
     return { error: "Não foi possível falar com o serviço de WhatsApp (ele está no ar no Railway?)." };

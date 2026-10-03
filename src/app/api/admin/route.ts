@@ -450,6 +450,31 @@ export async function POST(req: Request) {
         return NextResponse.json({ orders: data });
       }
 
+      case "orderPulse": {
+        // Consultado pelo painel a cada poucos segundos pra tocar o som de
+        // pedido novo. Confere antes os Pix recentes ainda aguardando (caso o
+        // aviso do Mercado Pago atrase) e devolve os pedidos pagos ainda não
+        // tratados (status "paid").
+        const recent = new Date(Date.now() - 40 * 60 * 1000).toISOString();
+        const { data: waiting } = await db
+          .from("orders")
+          .select("id, status, payment_id, pix_qr_code")
+          .eq("status", "awaiting_payment")
+          .not("pix_qr_code", "is", null)
+          .gte("created_at", recent)
+          .limit(5);
+        await Promise.all((waiting ?? []).map((o) => syncOrderPayment(o)));
+
+        const { data, error } = await db
+          .from("orders")
+          .select("id, day_number, order_day, created_at, customer_name, total_cents")
+          .eq("status", "paid")
+          .order("created_at", { ascending: false })
+          .limit(50);
+        if (error) throw error;
+        return NextResponse.json({ paid: data ?? [] });
+      }
+
       case "getOrder": {
         const { data, error } = await db
           .from("orders")

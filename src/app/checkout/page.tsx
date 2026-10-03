@@ -298,7 +298,7 @@ export default function CheckoutPage() {
                         ? centsToBRL(freight.feeCents)
                         : zipDigits.length === 8
                           ? "a combinar"
-                          : "—"}
+                          : "informe o CEP acima"}
                   </span>
                 </div>
                 O frete <strong>não é cobrado no site</strong>: ele é pago em dinheiro ou Pix{" "}
@@ -338,11 +338,30 @@ export default function CheckoutPage() {
               <span>Taxa de serviço</span>
               <span>{centsToBRL(serviceFeeCents)}</span>
             </div>
+            <div className="flex justify-between text-slate-600">
+              <span>Frete (pago ao entregador)</span>
+              <span className={freight?.status === "ok" ? "text-slate-700" : "text-slate-400"}>
+                {loadingFreight
+                  ? "calculando..."
+                  : freight?.status === "ok"
+                    ? centsToBRL(freight.feeCents)
+                    : freight?.status === "out_of_range"
+                      ? "fora da área"
+                      : zipDigits.length === 8
+                        ? "a combinar"
+                        : "informe o CEP"}
+              </span>
+            </div>
             <div className="flex justify-between border-t border-blue-50 pt-2 text-base text-slate-900">
               <span>Total a pagar agora</span>
               <span className="text-brand">{centsToBRL(total)}</span>
             </div>
           </div>
+          {freight?.status === "ok" && (
+            <p className="mt-2 text-xs text-slate-500">
+              + {centsToBRL(freight.feeCents)} de frete estimado, pago em dinheiro ou Pix direto ao entregador.
+            </p>
+          )}
 
           {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
