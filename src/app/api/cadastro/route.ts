@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendEmailCode } from "@/lib/supabaseAuth";
+import { verifyRecaptcha } from "@/lib/recaptchaServer";
 
 const schema = z.object({
   name: z.string().trim().min(2, "Informe seu nome."),
@@ -20,6 +21,9 @@ const schema = z.object({
  */
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
+  // Sem isso, um robô usa o cadastro pra disparar e-mail de código em massa.
+  const human = await verifyRecaptcha(body?.recaptchaToken, "signup");
+  if (!human.ok) return NextResponse.json({ error: human.error }, { status: 400 });
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Dados inválidos." }, { status: 400 });

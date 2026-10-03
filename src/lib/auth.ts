@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { isAdminEmail } from "@/lib/admins";
+import { verifyRecaptcha } from "@/lib/recaptchaServer";
 
 export const authOptions: AuthOptions = {
   session: { strategy: "jwt" },
@@ -24,9 +25,14 @@ export const authOptions: AuthOptions = {
       credentials: {
         email: { label: "E-mail", type: "email" },
         password: { label: "Senha", type: "password" },
+        recaptchaToken: { label: "reCAPTCHA", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        // Barra robôs testando senhas. O erro chega no login como res.error.
+        const human = await verifyRecaptcha(credentials.recaptchaToken, "login");
+        if (!human.ok) throw new Error("RECAPTCHA");
 
         const db = getSupabaseAdmin();
         const { data: user } = await db

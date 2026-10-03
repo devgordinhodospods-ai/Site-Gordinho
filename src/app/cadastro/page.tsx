@@ -3,6 +3,8 @@
 import { safePath } from "@/lib/safePath";
 import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
+import { getRecaptchaToken } from "@/lib/recaptcha";
+import { RecaptchaNotice } from "@/components/ui/RecaptchaNotice";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, KeyRound, Lock, Mail, Phone, User } from "lucide-react";
@@ -24,7 +26,7 @@ function CadastroContent() {
     const res = await fetch("/api/cadastro", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, recaptchaToken: await getRecaptchaToken("signup") }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error ?? "Não foi possível enviar o código.");
@@ -76,7 +78,12 @@ function CadastroContent() {
       return;
     }
 
-    const login = await signIn("credentials", { email: form.email, password: form.password, redirect: false });
+    const login = await signIn("credentials", {
+      email: form.email,
+      password: form.password,
+      recaptchaToken: (await getRecaptchaToken("login")) ?? "",
+      redirect: false,
+    });
     if (login?.error) {
       router.push("/login");
       return;
@@ -146,6 +153,7 @@ function CadastroContent() {
                 {loading ? <Loader size={18} color="#fff" /> : "Continuar"}
               </button>
             </form>
+            <RecaptchaNotice className="mt-4" />
 
             <p className="mt-6 text-center text-sm text-slate-500">
               Já tem conta?{" "}

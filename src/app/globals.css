@@ -349,3 +349,9 @@
 .dark .btn-secondary:hover:not(:disabled) {
   background-color: rgb(var(--blue-50));
 }
+
+/* Selo flutuante do reCAPTCHA escondido: os formulários protegidos mostram o
+   aviso em texto (RecaptchaNotice), como o Google permite. */
+.grecaptcha-badge {
+  visibility: hidden;
+}

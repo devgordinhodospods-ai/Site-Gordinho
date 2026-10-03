@@ -9,6 +9,8 @@ import { Lock, MapPin, Phone, ShoppingBag, Truck } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { centsToBRL } from "@/lib/money";
 import { Loader, LoaderPage } from "@/components/ui/Loader";
+import { RecaptchaNotice } from "@/components/ui/RecaptchaNotice";
+import { getRecaptchaToken } from "@/lib/recaptcha";
 import { AddressFields, EMPTY_ADDRESS_VALUES, type AddressValues } from "@/components/account/AddressFields";
 import type { UserAddress } from "@/lib/types";
 import type { FreightEstimate } from "@/lib/geo";
@@ -168,6 +170,7 @@ export default function CheckoutPage() {
           })),
           address: { ...address, complement: address.complement || undefined },
           customerPhone: phone,
+          recaptchaToken: await getRecaptchaToken("checkout"),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -372,6 +375,7 @@ export default function CheckoutPage() {
           <p className="mt-3 flex items-center justify-center gap-1 text-xs text-slate-400">
             <Lock size={12} /> Pagamento seguro via Pix (Mercado Pago)
           </p>
+          <RecaptchaNotice className="mt-2" />
         </aside>
       </form>
     </div>

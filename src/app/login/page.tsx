@@ -8,6 +8,8 @@ import Link from "next/link";
 import { Mail, Lock } from "lucide-react";
 import { GoogleIcon } from "@/components/ui/GoogleIcon";
 import { Loader } from "@/components/ui/Loader";
+import { RecaptchaNotice } from "@/components/ui/RecaptchaNotice";
+import { getRecaptchaToken } from "@/lib/recaptcha";
 
 function LoginForm() {
   const router = useRouter();
@@ -28,13 +30,18 @@ function LoginForm() {
     const res = await signIn("credentials", {
       email,
       password,
+      recaptchaToken: (await getRecaptchaToken("login")) ?? "",
       redirect: false,
     });
 
     setLoading(false);
 
     if (res?.error) {
-      setError("E-mail ou senha inválidos.");
+      setError(
+        res.error === "RECAPTCHA"
+          ? "Não conseguimos confirmar que você não é um robô. Recarregue a página e tente de novo."
+          : "E-mail ou senha inválidos."
+      );
       return;
     }
 
@@ -103,6 +110,7 @@ function LoginForm() {
             {loading ? <Loader size={18} color="#fff" /> : "Entrar"}
           </button>
         </form>
+        <RecaptchaNotice className="mt-4" />
 
         <p className="mt-6 text-center text-sm text-slate-500">
           Não tem conta?{" "}

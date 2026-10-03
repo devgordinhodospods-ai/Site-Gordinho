@@ -9,6 +9,7 @@ import { createPixPayment, describeMercadoPagoError } from "@/lib/mercadopago";
 import { PAYMENT_WINDOW_MS, releaseAbandonedOrders } from "@/lib/orders";
 import { sendPixPendingEmail } from "@/lib/email";
 import { orderCode } from "@/lib/orderCode";
+import { verifyRecaptcha } from "@/lib/recaptchaServer";
 
 const schema = z.object({
   items: z
@@ -41,6 +42,9 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
+  // Pedido reserva estoque por 30 min: robô fazendo pedido em massa travaria a loja.
+  const human = await verifyRecaptcha(body?.recaptchaToken, "checkout");
+  if (!human.ok) return NextResponse.json({ error: human.error }, { status: 400 });
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
