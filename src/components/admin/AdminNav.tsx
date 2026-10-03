@@ -23,7 +23,7 @@ export function AdminNav() {
     }`;
 
   return (
-    <nav className="card -mx-1 flex gap-1 overflow-x-auto p-2 [scrollbar-width:none] lg:sticky lg:top-24 lg:mx-0 lg:flex-col lg:overflow-visible [&::-webkit-scrollbar]:hidden">
+    <nav className="card -mx-1 flex gap-1 overflow-x-auto p-2 [scrollbar-width:none] lg:mx-0 lg:flex-col lg:overflow-visible [&::-webkit-scrollbar]:hidden">
       {NAV.map((item) => (
         <Link key={item.href} href={item.href} className={itemClass(pathname === item.href)}>
           <item.icon size={17} />

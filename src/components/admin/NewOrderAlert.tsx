@@ -185,7 +185,7 @@ export function NewOrderAlert() {
           title="Toca uma campainha quando entra pedido pago"
         >
           {soundOn ? <Bell size={16} className="shrink-0 text-brand" /> : <BellOff size={16} className="shrink-0" />}
-          <span className="leading-tight">
+          <span className="whitespace-nowrap leading-tight">
             Som de pedido
             <span className={`block text-xs ${soundOn ? "text-green-600" : "text-slate-400"}`}>
               {soundOn ? "ligado" : "desligado"}
