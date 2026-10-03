@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { getSiteSettings } from "@/lib/settings";
 import { ClosedStorePopup } from "@/components/layout/ClosedStorePopup";
+import { RecaptchaLoader } from "@/components/layout/RecaptchaLoader";
 
 const lato = Lato({
   subsets: ["latin"],
@@ -51,6 +52,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Navbar storeName={settings.store_name} logoUrl={settings.store_logo_url} />
           <main className="flex-1">{children}</main>
           <Footer settings={settings} />
+          <RecaptchaLoader />
           <ClosedStorePopup
             settings={{
               closed_popup_enabled: settings.closed_popup_enabled,
