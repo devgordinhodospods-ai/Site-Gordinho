@@ -95,13 +95,16 @@ export function FreightEstimator({ label = "Informe seu CEP para estimar o frete
 
       {estimate?.status === "ok" && (
         <p className="mt-3 text-sm text-slate-700">
-          Entrega estimada pra {estimate.city} (~{estimate.km} km):{" "}
+          Entrega estimada pra {estimate.city} (~{estimate.km} km
+          {estimate.region ? ` saindo de ${estimate.region}` : ""}):{" "}
           <span className="font-display text-brand">{centsToBRL(estimate.feeCents)}</span>
         </p>
       )}
       {estimate?.status === "out_of_range" && (
         <p className="mt-3 text-sm text-red-600">
-          Ainda não entregamos em {estimate.city} ({estimate.km} km da loja — atendemos até {estimate.maxKm} km).
+          Ainda não entregamos em {estimate.city} ({estimate.km} km{" "}
+          {estimate.region ? `de ${estimate.region}, a região mais perto` : "da loja"} — atendemos até{" "}
+          {estimate.maxKm} km).
         </p>
       )}
       {estimate?.status === "unavailable" && (

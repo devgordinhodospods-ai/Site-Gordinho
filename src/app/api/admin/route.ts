@@ -70,6 +70,7 @@ const SETTINGS_KEYS = [
   "shipping_base_fee_cents",
   "shipping_per_km_cents",
   "shipping_max_km",
+  "shipping_regions",
   "service_fee_percent",
   "service_fee_fixed",
   "announcement_text",

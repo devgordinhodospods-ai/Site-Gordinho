@@ -1,4 +1,5 @@
 import { lookupCep, type CepLookup } from "@/lib/cep";
+import type { ShippingRegion } from "@/lib/types";
 
 export type GeoPoint = { lat: number; lng: number };
 export type LocatedCep = CepLookup & GeoPoint;
@@ -71,30 +72,80 @@ export function distanceKm(a: GeoPoint, b: GeoPoint) {
 const ROAD_FACTOR = 1.3;
 
 export type FreightEstimate =
-  | { status: "ok"; km: number; feeCents: number; city: string }
-  | { status: "out_of_range"; km: number; maxKm: number; city: string }
+  | { status: "ok"; km: number; feeCents: number; city: string; region: string | null }
+  | { status: "out_of_range"; km: number; maxKm: number; city: string; region: string | null }
   | { status: "unavailable" };
 
-export async function estimateFreight(
-  cep: string,
-  settings: {
-    origin_lat: number | null;
-    origin_lng: number | null;
-    shipping_base_fee_cents: number;
-    shipping_per_km_cents: number;
-    shipping_max_km: number;
-  }
-): Promise<FreightEstimate> {
-  if (settings.origin_lat == null || settings.origin_lng == null) return { status: "unavailable" };
+type FreightSettings = {
+  origin_lat: number | null;
+  origin_lng: number | null;
+  origin_address?: string | null;
+  shipping_base_fee_cents: number;
+  shipping_per_km_cents: number;
+  shipping_max_km: number;
+  shipping_regions?: ShippingRegion[] | null;
+};
+
+/**
+ * Regiões de entrega já localizadas no mapa. Lojas antigas (antes das
+ * regiões) têm só o ponto único da loja: vira uma região sem nome.
+ */
+export function freightRegions(settings: FreightSettings): ShippingRegion[] {
+  const regions = (Array.isArray(settings.shipping_regions) ? settings.shipping_regions : []).filter(
+    (r) => r && r.lat != null && r.lng != null
+  );
+  if (regions.length > 0) return regions;
+  if (settings.origin_lat == null || settings.origin_lng == null) return [];
+  return [
+    {
+      id: "loja",
+      name: "",
+      cep: "",
+      address: settings.origin_address ?? null,
+      lat: settings.origin_lat,
+      lng: settings.origin_lng,
+      base_fee_cents: settings.shipping_base_fee_cents,
+      per_km_cents: settings.shipping_per_km_cents,
+      max_km: settings.shipping_max_km,
+    },
+  ];
+}
+
+/**
+ * Estima o frete a partir da região de entrega mais perto do cliente (cada
+ * região tem o próprio ponto de saída e os próprios preços).
+ */
+export async function estimateFreight(cep: string, settings: FreightSettings): Promise<FreightEstimate> {
+  const regions = freightRegions(settings);
+  if (regions.length === 0) return { status: "unavailable" };
   const place = await locateCep(cep);
   if (!place) return { status: "unavailable" };
+  return quoteFromRegions(regions, place);
+}
 
-  const km = Math.round(distanceKm({ lat: settings.origin_lat, lng: settings.origin_lng }, place) * ROAD_FACTOR * 10) / 10;
-  if (settings.shipping_max_km > 0 && km > settings.shipping_max_km) {
-    return { status: "out_of_range", km, maxKm: settings.shipping_max_km, city: place.city };
+/** Escolhe a região mais perto que atende o endereço e calcula o frete dela. */
+export function quoteFromRegions(regions: ShippingRegion[], place: GeoPoint & { city: string }): FreightEstimate {
+  const options = regions
+    .map((r) => ({
+      region: r,
+      km: Math.round(distanceKm({ lat: r.lat as number, lng: r.lng as number }, place) * ROAD_FACTOR * 10) / 10,
+    }))
+    .sort((a, b) => a.km - b.km);
+
+  const inRange = options.find((o) => !(o.region.max_km > 0 && o.km > o.region.max_km));
+  if (!inRange) {
+    const nearest = options[0];
+    return {
+      status: "out_of_range",
+      km: nearest.km,
+      maxKm: nearest.region.max_km,
+      city: place.city,
+      region: nearest.region.name || null,
+    };
   }
-  const feeCents = settings.shipping_base_fee_cents + Math.round(km * settings.shipping_per_km_cents);
-  return { status: "ok", km, feeCents, city: place.city };
+  const { region, km } = inRange;
+  const feeCents = region.base_fee_cents + Math.round(km * region.per_km_cents);
+  return { status: "ok", km, feeCents, city: place.city, region: region.name || null };
 }
 
 export type PricingSuggestion = {

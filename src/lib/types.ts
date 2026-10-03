@@ -1,3 +1,16 @@
+/** Região de entrega: o frete é calculado a partir do CEP dela, com os preços dela. */
+export type ShippingRegion = {
+  id: string;
+  name: string;
+  cep: string;
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
+  base_fee_cents: number;
+  per_km_cents: number;
+  max_km: number;
+};
+
 export type SiteSettings = {
   store_name: string;
   store_logo_url: string | null;
@@ -13,6 +26,8 @@ export type SiteSettings = {
   shipping_base_fee_cents: number;
   shipping_per_km_cents: number;
   shipping_max_km: number;
+  /** Regiões de entrega (cada uma com o próprio ponto de saída e preços). */
+  shipping_regions: ShippingRegion[];
   service_fee_percent: number;
   service_fee_fixed: number;
   announcement_text: string | null;

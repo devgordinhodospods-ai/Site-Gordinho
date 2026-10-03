@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   shipping_base_fee_cents: 500,
   shipping_per_km_cents: 150,
   shipping_max_km: 15,
+  shipping_regions: [],
   service_fee_percent: 5,
   service_fee_fixed: 0,
   announcement_text: "Compra 100% segura • Pagamento via Pix",

@@ -284,7 +284,8 @@ export default function CheckoutPage() {
             </StepTitle>
             {freight?.status === "out_of_range" ? (
               <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                Ainda não entregamos em {freight.city}: fica a {freight.km} km da loja e atendemos até{" "}
+                Ainda não entregamos em {freight.city}: fica a {freight.km} km{" "}
+                {freight.region ? `de ${freight.region}, a região mais perto,` : "da loja"} e atendemos até{" "}
                 {freight.maxKm} km. Escolha outro endereço de entrega.
               </div>
             ) : (

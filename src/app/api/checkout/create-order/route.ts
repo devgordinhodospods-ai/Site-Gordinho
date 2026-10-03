@@ -61,7 +61,11 @@ export async function POST(req: Request) {
   const freight = await estimateFreight(address.zip, settings);
   if (freight.status === "out_of_range") {
     return NextResponse.json(
-      { error: `Ainda não entregamos nesse endereço (${freight.km} km da loja; atendemos até ${freight.maxKm} km).` },
+      {
+        error: `Ainda não entregamos nesse endereço (${freight.km} km ${
+          freight.region ? `de ${freight.region}, a região mais perto` : "da loja"
+        }; atendemos até ${freight.maxKm} km).`,
+      },
       { status: 400 }
     );
   }
@@ -91,7 +95,8 @@ export async function POST(req: Request) {
     p_shipping_zone_id: null,
     p_shipping_fee_cents: freight.status === "ok" ? freight.feeCents : 0,
     p_service_fee_cents: serviceFeeCents,
-    p_shipping_breakdown: freight.status === "ok" ? { km: freight.km, city: freight.city } : null,
+    p_shipping_breakdown:
+      freight.status === "ok" ? { km: freight.km, city: freight.city, region: freight.region } : null,
     p_items: items.map((i) => ({
       product_id: i.productId,
       quantity: i.quantity,
