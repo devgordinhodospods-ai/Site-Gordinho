@@ -204,7 +204,7 @@ export function NewOrderAlert() {
       </div>
 
       {fresh.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-[70] w-[min(92vw,360px)] animate-[popIn_.25s_ease-out]" role="alert">
+        <div className="fixed bottom-24 right-4 z-[70] w-[min(92vw,360px)] animate-[popIn_.25s_ease-out]" role="alert">
           <div className="theme-static overflow-hidden rounded-2xl text-white shadow-2xl">
             <div
               className="flex items-center gap-3 px-4 py-3"

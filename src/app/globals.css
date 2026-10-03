@@ -350,8 +350,10 @@
   background-color: rgb(var(--blue-50));
 }
 
-/* Selo flutuante do reCAPTCHA escondido: os formulários protegidos mostram o
-   aviso em texto (RecaptchaNotice), como o Google permite. */
-.grecaptcha-badge {
-  visibility: hidden;
+/* Selo flutuante do reCAPTCHA (canto de baixo): no celular, sobe acima da
+   barra fixa de "Adicionar" da página de produto. */
+@media (max-width: 639.98px) {
+  body.has-sticky-buy-bar .grecaptcha-badge {
+    bottom: 90px !important;
+  }
 }
