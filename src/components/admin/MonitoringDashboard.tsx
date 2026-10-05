@@ -8,7 +8,9 @@ import {
   CheckCircle2,
   Clock,
   Receipt,
+  Globe,
   Sparkles,
+  Store,
   Table2,
   Trophy,
   XCircle,
@@ -41,6 +43,7 @@ type DashboardStats = {
     lucroCents: number;
     margemPercent: number;
   }[];
+  canais?: { site: { pedidos: number; vendasCents: number }; balcao: { pedidos: number; vendasCents: number } };
   salesByDay: {
     date: string;
     pedidos: number;
@@ -565,6 +568,26 @@ export function MonitoringDashboard() {
                   </li>
                 ))}
               </ul>
+              {stats.canais && (
+                <div className="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4 text-sm">
+                  {(
+                    [
+                      ["Site", Globe, stats.canais.site],
+                      ["Balcão", Store, stats.canais.balcao],
+                    ] as const
+                  ).map(([label, Icon, c]) => (
+                    <div key={label} className="rounded-xl bg-blue-50/60 p-3">
+                      <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                        <Icon size={13} className="text-brand" /> Vendas no {label.toLowerCase()}
+                      </p>
+                      <p className="font-display text-slate-900">{centsToBRL(c.vendasCents)}</p>
+                      <p className="text-[11px] text-slate-500">
+                        {c.pedidos} {c.pedidos === 1 ? "venda" : "vendas"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
 
             <section className="card p-5">

@@ -258,8 +258,13 @@ export async function POST(req: Request) {
           total_cents: number;
           service_fee_cents: number;
           created_at: string;
+          payment_provider: string | null;
         }>((from, to) =>
-          db.from("orders").select("id, status, total_cents, service_fee_cents, created_at").order("id").range(from, to)
+          db
+            .from("orders")
+            .select("id, status, total_cents, service_fee_cents, created_at, payment_provider")
+            .order("id")
+            .range(from, to)
         );
         const items = await fetchAllRows<{
           order_id: string;
@@ -329,6 +334,8 @@ export async function POST(req: Request) {
           return agg;
         };
         let totalPedidos = 0;
+        // Site x balcão (vendas pagas no período).
+        const canais = { site: { pedidos: 0, vendasCents: 0 }, balcao: { pedidos: 0, vendasCents: 0 } };
 
         for (const o of orders) {
           const paid = PAID_LIKE_STATUSES.has(o.status);
@@ -345,6 +352,9 @@ export async function POST(req: Request) {
             totalVendidoCents += o.total_cents;
             taxasServicoCents += o.service_fee_cents;
             pedidosPagos += 1;
+            const canal = canais[o.payment_provider === "balcao" ? "balcao" : "site"];
+            canal.pedidos += 1;
+            canal.vendasCents += o.total_cents;
             // A taxa de serviço fica com a loja: entra no lucro.
             const day = dayOf(o.created_at);
             day.pedidos += 1;
@@ -426,6 +436,7 @@ export async function POST(req: Request) {
           periodStats,
           topProducts,
           salesByDay,
+          canais,
         });
       }
 
@@ -474,6 +485,84 @@ export async function POST(req: Request) {
           .limit(50);
         if (error) throw error;
         return NextResponse.json({ paid: data ?? [] });
+      }
+
+      case "createInStoreSale": {
+        // Venda no balcão: usa a mesma função dos pedidos do site (trava e
+        // desconta o estoque do produto/sabor), já marcada como entregue e
+        // paga, sem e-mail nem aviso de WhatsApp. Conta no Monitoramento.
+        const PAYMENT_METHODS = ["dinheiro", "pix", "debito", "credito"];
+        const rawItems: unknown[] = Array.isArray(body.items) ? body.items : [];
+        const merged = new Map<string, { productId: string; flavorId: string | null; quantity: number; unitPriceCents: number }>();
+        for (const raw of rawItems) {
+          const it = raw as Record<string, unknown>;
+          const productId = String(it.productId ?? "");
+          const flavorId = it.flavorId ? String(it.flavorId) : null;
+          const quantity = Math.floor(Number(it.quantity));
+          const unitPriceCents = Math.round(Number(it.unitPriceCents));
+          if (!/^[0-9a-f-]{36}$/i.test(productId) || (flavorId && !/^[0-9a-f-]{36}$/i.test(flavorId))) {
+            return NextResponse.json({ error: "Produto inválido na venda." }, { status: 400 });
+          }
+          if (!Number.isFinite(quantity) || quantity < 1 || !Number.isFinite(unitPriceCents) || unitPriceCents < 0) {
+            return NextResponse.json({ error: "Confira a quantidade e o preço dos itens." }, { status: 400 });
+          }
+          const key = `${productId}:${flavorId ?? ""}`;
+          const prev = merged.get(key);
+          if (prev) prev.quantity += quantity;
+          else merged.set(key, { productId, flavorId, quantity, unitPriceCents });
+        }
+        const items = [...merged.values()];
+        if (items.length === 0) {
+          return NextResponse.json({ error: "Adicione pelo menos um produto." }, { status: 400 });
+        }
+        const paymentMethod = String(body.paymentMethod ?? "");
+        if (!PAYMENT_METHODS.includes(paymentMethod)) {
+          return NextResponse.json({ error: "Escolha a forma de pagamento." }, { status: 400 });
+        }
+        const customerName = String(body.customerName ?? "").trim().slice(0, 120) || "Cliente no balcão";
+        const customerPhone = String(body.customerPhone ?? "").replace(/\D/g, "").slice(0, 13) || null;
+        const note = String(body.note ?? "").trim().slice(0, 300) || null;
+
+        const { data: orderId, error: rpcError } = await db.rpc("create_order_with_items", {
+          p_customer_name: customerName,
+          p_customer_email: "",
+          p_customer_phone: customerPhone,
+          p_user_id: null,
+          p_shipping_address: { canal: "balcao", observacao: note },
+          p_shipping_zone_id: null,
+          p_shipping_fee_cents: 0,
+          p_service_fee_cents: 0,
+          p_shipping_breakdown: null,
+          p_items: items.map((i) => ({ product_id: i.productId, quantity: i.quantity, flavor_id: i.flavorId })),
+        });
+        if (rpcError || !orderId) {
+          // Ex.: "Estoque insuficiente para ..." vem da própria função.
+          return NextResponse.json({ error: rpcError?.message ?? "Não foi possível registrar a venda." }, { status: 400 });
+        }
+
+        // Preço cobrado no balcão (pode ter desconto): grava nos itens e no total.
+        for (const i of items) {
+          let q = db.from("order_items").update({ unit_price_cents: i.unitPriceCents }).eq("order_id", orderId).eq("product_id", i.productId);
+          q = i.flavorId ? q.eq("flavor_id", i.flavorId) : q.is("flavor_id", null);
+          const { error } = await q;
+          if (error) throw error;
+        }
+        const total = items.reduce((sum, i) => sum + i.unitPriceCents * i.quantity, 0);
+        const { data: order, error: updError } = await db
+          .from("orders")
+          .update({
+            status: "delivered",
+            payment_provider: "balcao",
+            payment_status: paymentMethod,
+            subtotal_cents: total,
+            total_cents: total,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", orderId)
+          .select("*, order_items(*)")
+          .single();
+        if (updError) throw updError;
+        return NextResponse.json({ order });
       }
 
       case "getOrder": {

@@ -30,6 +30,8 @@ async function sendMail(params: {
   settings: SiteSettings;
   attachments?: Attachment[];
 }): Promise<SendResult> {
+  // Vendas no balcão não têm e-mail do cliente.
+  if (!params.to.trim()) return { sent: false, error: "Pedido sem e-mail." };
   const transport = getTransport();
   if (!transport) {
     // eslint-disable-next-line no-console

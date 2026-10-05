@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageCircle, MapPin, CreditCard, Trash2 } from "lucide-react";
+import { MessageCircle, MapPin, CreditCard, Store, Trash2 } from "lucide-react";
+import { InStoreSaleDialog, PAYMENT_METHOD_LABELS } from "@/components/admin/InStoreSaleDialog";
 import { NEW_ORDER_EVENT } from "@/components/admin/NewOrderAlert";
 import { adminApi } from "@/lib/adminApi";
 import { centsToBRL } from "@/lib/money";
@@ -54,6 +55,10 @@ const STATUS_PILL: Record<OrderStatus, string> = {
 
 type OrderWithItems = Order & { order_items: OrderItem[] };
 
+type Channel = "" | "site" | "balcao";
+
+const isInStore = (o: Pick<Order, "payment_provider">) => o.payment_provider === "balcao";
+
 function formatAddress(address: Record<string, unknown>): string {
   const { street, number, complement, neighborhood, city, state, zip } = address as Record<string, string>;
   if (!street) return "—";
@@ -78,6 +83,8 @@ export function OrdersManager() {
   const [loading, setLoading] = useState(true);
   const [actionError, setActionError] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>("30d");
+  const [channel, setChannel] = useState<Channel>("");
+  const [saleOpen, setSaleOpen] = useState(false);
   const [page, setPage] = useState(1);
   const { confirm, dialog } = useConfirm();
 
@@ -90,7 +97,7 @@ export function OrdersManager() {
     setLoading(false);
   }
 
-  useEffect(() => setPage(1), [period, filter]);
+  useEffect(() => setPage(1), [period, filter, channel]);
 
   useEffect(() => {
     load();
@@ -147,7 +154,11 @@ export function OrdersManager() {
     await load();
   }
 
-  const visibleOrders = orders.filter((o) => isWithinPeriod(o.created_at, period));
+  const visibleOrders = orders.filter(
+    (o) =>
+      isWithinPeriod(o.created_at, period) &&
+      (!channel || (channel === "balcao" ? isInStore(o) : !isInStore(o)))
+  );
 
   const PAGE_SIZE = 15;
   const totalPages = Math.max(1, Math.ceil(visibleOrders.length / PAGE_SIZE));
@@ -165,18 +176,43 @@ export function OrdersManager() {
             </p>
           )}
         </div>
-        <select className="input w-56" value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="">Todos os status</option>
-          {STATUS_FLOW.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABELS[s]}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="btn-primary" onClick={() => setSaleOpen(true)}>
+            <Store size={18} /> Venda no balcão
+          </button>
+          <select className="input w-56" value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="">Todos os status</option>
+            {STATUS_FLOW.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <PeriodFilter value={period} onChange={setPeriod} />
+        <div className="flex gap-1 rounded-full border border-blue-100 bg-white p-1 text-sm">
+          {(
+            [
+              ["", "Todos"],
+              ["site", "Site"],
+              ["balcao", "Balcão"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setChannel(value)}
+              className={`rounded-full px-3 py-1 transition ${
+                channel === value ? "bg-brand text-white" : "text-slate-600 hover:text-brand"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {actionError && <p className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{actionError}</p>}
@@ -190,7 +226,14 @@ export function OrdersManager() {
           {pageItems.map((order) => (
             <div key={order.id} className="card p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="font-display text-brand">Pedido #{orderCode(order)}</p>
+                <p className="font-display flex items-center gap-2 text-brand">
+                  {isInStore(order) ? "Venda" : "Pedido"} #{orderCode(order)}
+                  {isInStore(order) && (
+                    <span className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                      <Store size={12} /> Balcão
+                    </span>
+                  )}
+                </p>
                 <div className="flex items-center gap-2">
                   <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_PILL[order.status]}`}>
                     {STATUS_LABELS[order.status]}
@@ -221,9 +264,11 @@ export function OrdersManager() {
                 <p>
                   <span className="font-bold">Cliente:</span> {order.customer_name}
                 </p>
-                <p className="flex items-center gap-1">
-                  <span className="font-bold">E-mail:</span> {order.customer_email}
-                </p>
+                {order.customer_email && (
+                  <p className="flex items-center gap-1">
+                    <span className="font-bold">E-mail:</span> {order.customer_email}
+                  </p>
+                )}
                 {order.customer_phone && (
                   <p className="flex items-center gap-1">
                     <MessageCircle size={14} className="text-green-600" />
@@ -237,18 +282,34 @@ export function OrdersManager() {
                     </a>
                   </p>
                 )}
-                <p className="flex items-start gap-1 sm:col-span-2">
-                  <MapPin size={14} className="mt-0.5 shrink-0 text-slate-400" />
-                  {formatAddress(order.shipping_address)}
-                </p>
+                {isInStore(order) ? (
+                  typeof order.shipping_address?.observacao === "string" &&
+                  order.shipping_address.observacao && (
+                    <p className="sm:col-span-2">
+                      <span className="font-bold">Obs.:</span> {order.shipping_address.observacao}
+                    </p>
+                  )
+                ) : (
+                  <p className="flex items-start gap-1 sm:col-span-2">
+                    <MapPin size={14} className="mt-0.5 shrink-0 text-slate-400" />
+                    {formatAddress(order.shipping_address)}
+                  </p>
+                )}
                 <p className="flex items-center gap-1">
                   <CreditCard size={14} className="text-slate-400" />
-                  {order.payment_provider === "mercadopago" ? "Mercado Pago" : order.payment_provider}
-                  {order.payment_status ? ` · ${PAYMENT_STATUS_LABELS[order.payment_status] ?? order.payment_status}` : ""}
+                  {isInStore(order)
+                    ? `No balcão · ${PAYMENT_METHOD_LABELS[order.payment_status ?? ""] ?? order.payment_status}`
+                    : `${order.payment_provider === "mercadopago" ? "Mercado Pago" : order.payment_provider}${
+                        order.payment_status
+                          ? ` · ${PAYMENT_STATUS_LABELS[order.payment_status] ?? order.payment_status}`
+                          : ""
+                      }`}
                 </p>
                 <p>
                   <span className="font-bold">
-                    {order.status === "awaiting_payment"
+                    {isInStore(order)
+                      ? "Total da venda:"
+                      : order.status === "awaiting_payment"
                       ? "Total a pagar:"
                       : order.status === "cancelled"
                         ? "Total do pedido:"
@@ -302,6 +363,7 @@ export function OrdersManager() {
       )}
       <Pagination page={currentPage} totalPages={totalPages} onChange={setPage} />
       {dialog}
+      {saleOpen && <InStoreSaleDialog onClose={() => setSaleOpen(false)} onSaved={() => load()} />}
     </div>
   );
 }
