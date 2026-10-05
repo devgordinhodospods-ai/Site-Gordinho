@@ -160,6 +160,23 @@ export async function POST(req: Request) {
         const fields = pick(body.fields ?? {}, PRODUCT_FIELDS);
         let productId: string = body.id;
 
+        // O link do produto (slug) não pode repetir: com nome igual a outro
+        // produto, vira "nome-2", "nome-3"... em vez de dar erro.
+        if (typeof fields.slug === "string" && fields.slug) {
+          const base = fields.slug;
+          const { data: taken, error: slugError } = await db
+            .from("products")
+            .select("id, slug")
+            .like("slug", `${base}%`);
+          if (slugError) throw slugError;
+          const used = new Set((taken ?? []).filter((p) => p.id !== productId).map((p) => p.slug));
+          if (used.has(fields.slug)) {
+            let n = 2;
+            while (used.has(`${base}-${n}`)) n += 1;
+            fields.slug = `${base}-${n}`;
+          }
+        }
+
         if (productId) {
           const { error } = await db
             .from("products")
