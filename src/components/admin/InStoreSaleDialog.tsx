@@ -44,6 +44,9 @@ type PaymentMethod = "dinheiro" | "pix" | "debito" | "credito";
 
 type Customer = { id: string; name: string; email: string; phone: string | null; cpf: string | null };
 
+/** Campos que sugerem clientes cadastrados enquanto digita. */
+type LookupField = "name" | "phone" | "cpf";
+
 const PAYMENTS: { id: PaymentMethod; label: string; icon: LucideIcon }[] = [
   { id: "dinheiro", label: "Dinheiro", icon: Banknote },
   { id: "pix", label: "Pix", icon: QrCode },
@@ -89,6 +92,8 @@ export function InStoreSaleDialog({ onClose, onSaved }: { onClose: () => void; o
   const [linked, setLinked] = useState<Customer | null>(null);
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerResults, setCustomerResults] = useState<Customer[] | null>(null);
+  const [lookupField, setLookupField] = useState<LookupField | null>(null);
+  const [highlight, setHighlight] = useState(0);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,9 +129,13 @@ export function InStoreSaleDialog({ onClose, onSaved }: { onClose: () => void; o
     let cancelled = false;
     const t = setTimeout(() => {
       adminApi<{ customers: Customer[] }>("searchCustomers", { q })
-        .then(({ customers }) => !cancelled && setCustomerResults(customers))
+        .then(({ customers }) => {
+          if (cancelled) return;
+          setCustomerResults(customers);
+          setHighlight(0);
+        })
         .catch(() => !cancelled && setCustomerResults([]));
-    }, 300);
+    }, 250);
     return () => {
       cancelled = true;
       clearTimeout(t);
@@ -141,6 +150,78 @@ export function InStoreSaleDialog({ onClose, onSaved }: { onClose: () => void; o
     setCustomerCpf(c.cpf ? formatCPF(c.cpf) : "");
     setCustomerQuery("");
     setCustomerResults(null);
+    setLookupField(null);
+  }
+
+  /** Digitando no nome, WhatsApp ou CPF: busca clientes cadastrados com aquilo. */
+  function typeCustomerField(field: LookupField, value: string) {
+    if (field === "name") setCustomerName(value);
+    if (field === "phone") setCustomerPhone(value);
+    if (field === "cpf") setCustomerCpf(value);
+    if (linked) return;
+    setLookupField(field);
+    setCustomerQuery(value);
+  }
+
+  function lookupKeys(e: React.KeyboardEvent<HTMLInputElement>) {
+    const list = customerResults ?? [];
+    if (!lookupField || list.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlight((h) => (h + 1) % list.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlight((h) => (h - 1 + list.length) % list.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      pickCustomer(list[Math.min(highlight, list.length - 1)]);
+    } else if (e.key === "Escape") {
+      // Fecha só a lista, não o caixa.
+      e.stopPropagation();
+      setLookupField(null);
+    }
+  }
+
+  function suggestions(field: LookupField) {
+    if (linked || lookupField !== field || !customerResults || customerQuery.trim().length < 2) return null;
+    return (
+      <div className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-blue-100 bg-white shadow-xl">
+        {customerResults.length === 0 ? (
+          <p className="p-3 text-xs text-slate-500">Nenhum cliente cadastrado com isso — é só continuar preenchendo.</p>
+        ) : (
+          <>
+            <p className="border-b border-blue-50 px-3 py-1.5 text-[11px] uppercase tracking-wide text-slate-400">
+              Clientes cadastrados no site
+            </p>
+            {customerResults.map((c, i) => (
+              <button
+                key={c.id}
+                type="button"
+                // mouseDown (e não click) pra escolher antes do campo perder o foco
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  pickCustomer(c);
+                }}
+                onMouseEnter={() => setHighlight(i)}
+                className={`flex w-full items-center gap-2.5 border-b border-blue-50 px-3 py-2 text-left last:border-0 ${
+                  i === highlight ? "bg-blue-50" : ""
+                }`}
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm text-brand">
+                  {c.name.charAt(0).toUpperCase()}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm text-slate-800">{c.name}</span>
+                  <span className="block truncate text-xs text-slate-500">
+                    {[c.phone, c.cpf ? formatCPF(c.cpf) : null, c.email].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </>
+        )}
+      </div>
+    );
   }
 
   function unlinkCustomer() {
@@ -540,65 +621,51 @@ export function InStoreSaleDialog({ onClose, onSaved }: { onClose: () => void; o
                       </button>
                     </div>
                   ) : (
-                    <div className="relative mb-2">
-                      <Search
-                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                        size={16}
-                      />
-                      <input
-                        className="input py-2 pl-9 text-sm"
-                        placeholder="Buscar cliente cadastrado (nome, e-mail, WhatsApp ou CPF)"
-                        value={customerQuery}
-                        onChange={(e) => setCustomerQuery(e.target.value)}
-                      />
-                      {customerResults && (
-                        <div className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-xl border border-blue-100 bg-white shadow-lg">
-                          {customerResults.length === 0 ? (
-                            <p className="p-3 text-sm text-slate-500">
-                              Nenhum cliente cadastrado com isso. Preencha os dados abaixo.
-                            </p>
-                          ) : (
-                            customerResults.map((c) => (
-                              <button
-                                key={c.id}
-                                type="button"
-                                onClick={() => pickCustomer(c)}
-                                className="block w-full border-b border-blue-50 px-3 py-2 text-left text-sm last:border-0 hover:bg-blue-50"
-                              >
-                                <span className="text-slate-800">{c.name}</span>
-                                <span className="block text-xs text-slate-500">
-                                  {c.email}
-                                  {c.phone ? ` · ${c.phone}` : ""}
-                                </span>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <p className="mb-2 text-xs text-slate-500">
+                      Comece a digitar o nome, WhatsApp ou CPF: se a pessoa tiver cadastro no site, ela aparece pra
+                      selecionar.
+                    </p>
                   )}
 
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <input
-                      className="input col-span-2 py-2"
-                      placeholder="Nome"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                    />
-                    <input
-                      className="input py-2"
-                      placeholder="WhatsApp (com DDD)"
-                      inputMode="tel"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                    />
-                    <input
-                      className="input py-2"
-                      placeholder="CPF"
-                      inputMode="numeric"
-                      value={customerCpf}
-                      onChange={(e) => setCustomerCpf(formatCPF(e.target.value))}
-                    />
+                    <div className="relative col-span-2">
+                      <input
+                        className="input py-2"
+                        placeholder="Nome"
+                        autoComplete="off"
+                        value={customerName}
+                        onChange={(e) => typeCustomerField("name", e.target.value)}
+                        onKeyDown={lookupKeys}
+                        onBlur={() => setLookupField(null)}
+                      />
+                      {suggestions("name")}
+                    </div>
+                    <div className="relative">
+                      <input
+                        className="input py-2"
+                        placeholder="WhatsApp (com DDD)"
+                        inputMode="tel"
+                        autoComplete="off"
+                        value={customerPhone}
+                        onChange={(e) => typeCustomerField("phone", e.target.value)}
+                        onKeyDown={lookupKeys}
+                        onBlur={() => setLookupField(null)}
+                      />
+                      {suggestions("phone")}
+                    </div>
+                    <div className="relative">
+                      <input
+                        className="input py-2"
+                        placeholder="CPF"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={customerCpf}
+                        onChange={(e) => typeCustomerField("cpf", formatCPF(e.target.value))}
+                        onKeyDown={lookupKeys}
+                        onBlur={() => setLookupField(null)}
+                      />
+                      {suggestions("cpf")}
+                    </div>
                     <input
                       className="input col-span-2 py-2"
                       placeholder="E-mail"
