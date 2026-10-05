@@ -12,6 +12,7 @@ import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { PeriodFilter, isWithinPeriod, type Period } from "@/components/ui/PeriodFilter";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 import { orderCode } from "@/lib/orderCode";
+import { formatCPF } from "@/lib/cpf";
 
 const STATUS_FLOW: OrderStatus[] = [
   "awaiting_payment",
@@ -280,6 +281,11 @@ export function OrdersManager() {
                     >
                       {order.customer_phone}
                     </a>
+                  </p>
+                )}
+                {isInStore(order) && typeof order.shipping_address?.cpf === "string" && order.shipping_address.cpf && (
+                  <p>
+                    <span className="font-bold">CPF:</span> {formatCPF(order.shipping_address.cpf)}
                   </p>
                 )}
                 {isInStore(order) ? (

@@ -14,6 +14,8 @@ import {
   ShoppingBag,
   Store,
   Trash2,
+  UserCheck,
+  UserRound,
   Wallet,
   X,
   type LucideIcon,
@@ -22,6 +24,7 @@ import { adminApi } from "@/lib/adminApi";
 import { centsToBRL } from "@/lib/money";
 import { orderCode } from "@/lib/orderCode";
 import { Loader } from "@/components/ui/Loader";
+import { formatCPF, isValidCPF } from "@/lib/cpf";
 import type { Order, ProductFlavor, ProductWithFullFlavors } from "@/lib/types";
 
 type Line = {
@@ -38,6 +41,8 @@ type Line = {
 };
 
 type PaymentMethod = "dinheiro" | "pix" | "debito" | "credito";
+
+type Customer = { id: string; name: string; email: string; phone: string | null; cpf: string | null };
 
 const PAYMENTS: { id: PaymentMethod; label: string; icon: LucideIcon }[] = [
   { id: "dinheiro", label: "Dinheiro", icon: Banknote },
@@ -79,6 +84,11 @@ export function InStoreSaleDialog({ onClose, onSaved }: { onClose: () => void; o
   const [received, setReceived] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerCpf, setCustomerCpf] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [linked, setLinked] = useState<Customer | null>(null);
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerResults, setCustomerResults] = useState<Customer[] | null>(null);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +113,43 @@ export function InStoreSaleDialog({ onClose, onSaved }: { onClose: () => void; o
       document.body.style.overflow = "";
     };
   }, [onClose, saving]);
+
+  // Busca de cliente já cadastrado no site (espera parar de digitar).
+  useEffect(() => {
+    const q = customerQuery.trim();
+    if (q.length < 2) {
+      setCustomerResults(null);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      adminApi<{ customers: Customer[] }>("searchCustomers", { q })
+        .then(({ customers }) => !cancelled && setCustomerResults(customers))
+        .catch(() => !cancelled && setCustomerResults([]));
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [customerQuery]);
+
+  function pickCustomer(c: Customer) {
+    setLinked(c);
+    setCustomerName(c.name);
+    setCustomerEmail(c.email);
+    setCustomerPhone(c.phone ?? "");
+    setCustomerCpf(c.cpf ? formatCPF(c.cpf) : "");
+    setCustomerQuery("");
+    setCustomerResults(null);
+  }
+
+  function unlinkCustomer() {
+    setLinked(null);
+    setCustomerName("");
+    setCustomerEmail("");
+    setCustomerPhone("");
+    setCustomerCpf("");
+  }
 
   const visible = useMemo(() => {
     const q = normalize(query.trim());
@@ -161,6 +208,7 @@ export function InStoreSaleDialog({ onClose, onSaved }: { onClose: () => void; o
       return setError("Confira o preço dos itens.");
     }
     if (!payment) return setError("Escolha a forma de pagamento.");
+    if (customerCpf.trim() && !isValidCPF(customerCpf)) return setError("Confira o CPF do cliente.");
     if (change != null && received.trim() && change < 0) {
       return setError("O valor recebido em dinheiro é menor que o total.");
     }
@@ -176,6 +224,9 @@ export function InStoreSaleDialog({ onClose, onSaved }: { onClose: () => void; o
         paymentMethod: payment,
         customerName,
         customerPhone,
+        customerCpf,
+        customerEmail,
+        userId: linked?.id ?? null,
         note,
       });
       setSaved(order);
@@ -192,8 +243,8 @@ export function InStoreSaleDialog({ onClose, onSaved }: { onClose: () => void; o
     setLines([]);
     setPayment(null);
     setReceived("");
-    setCustomerName("");
-    setCustomerPhone("");
+    unlinkCustomer();
+    setCustomerQuery("");
     setNote("");
     setMobileView("produtos");
     setProducts(null);
@@ -237,7 +288,9 @@ export function InStoreSaleDialog({ onClose, onSaved }: { onClose: () => void; o
             </span>
             <p className="font-display text-2xl text-slate-900">Venda registrada!</p>
             <p className="mt-1 text-slate-600">
-              Venda #{orderCode(saved)} · {centsToBRL(saved.total_cents)} ·{" "}
+              Venda #{orderCode(saved)}
+              {saved.customer_name && saved.customer_name !== "Cliente no balcão" ? ` · ${saved.customer_name}` : ""} ·{" "}
+              {centsToBRL(saved.total_cents)} ·{" "}
               {PAYMENT_METHOD_LABELS[saved.payment_status ?? ""] ?? saved.payment_status}
             </p>
             {change != null && change > 0 && (
@@ -464,12 +517,71 @@ export function InStoreSaleDialog({ onClose, onSaved }: { onClose: () => void; o
                   </div>
                 )}
 
-                <details className="mt-4 text-sm">
-                  <summary className="cursor-pointer text-slate-600">Dados do cliente (opcional)</summary>
-                  <div className="mt-2 space-y-2">
+                <div className="mt-5">
+                  <p className="font-display mb-2 flex items-center gap-2 text-sm text-slate-900">
+                    <UserRound size={16} className="text-brand" /> Quem comprou{" "}
+                    <span className="text-xs text-slate-400">(opcional)</span>
+                  </p>
+
+                  {linked ? (
+                    <div className="mb-2 flex items-center gap-2 rounded-xl border border-green-100 bg-green-50 p-2.5 text-sm text-green-700">
+                      <UserCheck size={16} className="shrink-0" />
+                      <span className="min-w-0 flex-1">
+                        Cliente do site: <strong>{linked.name}</strong>
+                        <span className="block text-xs">A venda também aparece em &quot;Meus pedidos&quot; dele.</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={unlinkCustomer}
+                        className="rounded-lg p-1 hover:bg-green-100"
+                        aria-label="Desvincular cliente"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative mb-2">
+                      <Search
+                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        size={16}
+                      />
+                      <input
+                        className="input py-2 pl-9 text-sm"
+                        placeholder="Buscar cliente cadastrado (nome, e-mail, WhatsApp ou CPF)"
+                        value={customerQuery}
+                        onChange={(e) => setCustomerQuery(e.target.value)}
+                      />
+                      {customerResults && (
+                        <div className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-xl border border-blue-100 bg-white shadow-lg">
+                          {customerResults.length === 0 ? (
+                            <p className="p-3 text-sm text-slate-500">
+                              Nenhum cliente cadastrado com isso. Preencha os dados abaixo.
+                            </p>
+                          ) : (
+                            customerResults.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => pickCustomer(c)}
+                                className="block w-full border-b border-blue-50 px-3 py-2 text-left text-sm last:border-0 hover:bg-blue-50"
+                              >
+                                <span className="text-slate-800">{c.name}</span>
+                                <span className="block text-xs text-slate-500">
+                                  {c.email}
+                                  {c.phone ? ` · ${c.phone}` : ""}
+                                </span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2 text-sm">
                     <input
-                      className="input py-2"
-                      placeholder="Nome do cliente"
+                      className="input col-span-2 py-2"
+                      placeholder="Nome"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                     />
@@ -482,12 +594,26 @@ export function InStoreSaleDialog({ onClose, onSaved }: { onClose: () => void; o
                     />
                     <input
                       className="input py-2"
+                      placeholder="CPF"
+                      inputMode="numeric"
+                      value={customerCpf}
+                      onChange={(e) => setCustomerCpf(formatCPF(e.target.value))}
+                    />
+                    <input
+                      className="input col-span-2 py-2"
+                      placeholder="E-mail"
+                      type="email"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                    />
+                    <input
+                      className="input col-span-2 py-2"
                       placeholder="Observação"
                       value={note}
                       onChange={(e) => setNote(e.target.value)}
                     />
                   </div>
-                </details>
+                </div>
               </div>
 
               <div className="border-t border-blue-100 p-4">

@@ -487,6 +487,26 @@ export async function POST(req: Request) {
         return NextResponse.json({ paid: data ?? [] });
       }
 
+      case "searchCustomers": {
+        // Busca de cliente cadastrado pro caixa do balcão (nome, e-mail, WhatsApp ou CPF).
+        const raw = String(body.q ?? "").trim().slice(0, 60);
+        const text = raw.replace(/[%,()*"\\]/g, " ").trim();
+        const digits = raw.replace(/\D/g, "");
+        if (text.length < 2) return NextResponse.json({ customers: [] });
+        const filters = [`name.ilike."*${text}*"`, `email.ilike."*${text}*"`];
+        if (digits.length >= 3) filters.push(`phone.ilike."*${digits}*"`, `cpf.ilike."*${digits}*"`);
+        // CPF às vezes fica salvo com pontos ("529.982..."): busca também do jeito que foi digitado.
+        if (/[\d.-]{3,}/.test(text)) filters.push(`cpf.ilike."*${text}*"`);
+        const { data, error } = await db
+          .from("site_users")
+          .select("id, name, email, phone, cpf")
+          .or(filters.join(","))
+          .order("name")
+          .limit(6);
+        if (error) throw error;
+        return NextResponse.json({ customers: data ?? [] });
+      }
+
       case "createInStoreSale": {
         // Venda no balcão: usa a mesma função dos pedidos do site (trava e
         // desconta o estoque do produto/sabor), já marcada como entregue e
@@ -521,14 +541,32 @@ export async function POST(req: Request) {
         }
         const customerName = String(body.customerName ?? "").trim().slice(0, 120) || "Cliente no balcão";
         const customerPhone = String(body.customerPhone ?? "").replace(/\D/g, "").slice(0, 13) || null;
+        const customerCpf = String(body.customerCpf ?? "").replace(/\D/g, "").slice(0, 11) || null;
+        let customerEmail = String(body.customerEmail ?? "").trim().toLowerCase().slice(0, 160);
+        if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+          return NextResponse.json({ error: "Confira o e-mail do cliente." }, { status: 400 });
+        }
         const note = String(body.note ?? "").trim().slice(0, 300) || null;
+        // Cliente cadastrado no site: a venda aparece em "Meus pedidos" dele.
+        let userId: string | null = null;
+        if (body.userId) {
+          const { data: user } = await db
+            .from("site_users")
+            .select("id, email")
+            .eq("id", String(body.userId))
+            .maybeSingle();
+          if (user) {
+            userId = user.id;
+            if (!customerEmail) customerEmail = user.email;
+          }
+        }
 
         const { data: orderId, error: rpcError } = await db.rpc("create_order_with_items", {
           p_customer_name: customerName,
-          p_customer_email: "",
+          p_customer_email: customerEmail,
           p_customer_phone: customerPhone,
-          p_user_id: null,
-          p_shipping_address: { canal: "balcao", observacao: note },
+          p_user_id: userId,
+          p_shipping_address: { canal: "balcao", observacao: note, cpf: customerCpf },
           p_shipping_zone_id: null,
           p_shipping_fee_cents: 0,
           p_service_fee_cents: 0,
