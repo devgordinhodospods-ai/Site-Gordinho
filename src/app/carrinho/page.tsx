@@ -9,6 +9,7 @@ import { centsToBRL } from "@/lib/money";
 import { LoaderPage } from "@/components/ui/Loader";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { FreightEstimator } from "@/components/loja/FreightEstimator";
+import { CartRemovedNotice } from "@/components/loja/CartRemovedNotice";
 
 export default function CarrinhoPage() {
   const { status: sessionStatus } = useSession();
@@ -25,6 +26,7 @@ export default function CarrinhoPage() {
   if (items.length === 0) {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center">
+        <CartRemovedNotice className="mb-8" />
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-brand">
           <ShoppingBag size={28} />
         </div>
@@ -42,6 +44,7 @@ export default function CarrinhoPage() {
       <h1 className="font-display mb-6 text-2xl text-slate-900">
         Seu carrinho <span className="text-base text-slate-400">({totalQuantity} {totalQuantity === 1 ? "item" : "itens"})</span>
       </h1>
+      <CartRemovedNotice className="mb-6" />
 
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
         <div className="card divide-y divide-blue-50">

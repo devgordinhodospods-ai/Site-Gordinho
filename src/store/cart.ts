@@ -10,14 +10,32 @@ function sameLine(a: CartItem, b: { productId: string; flavorId?: string | null 
   return a.productId === b.productId && (a.flavorId ?? null) === (b.flavorId ?? null);
 }
 
+/** Resultado da conferência do carrinho com o catálogo (api/carrinho/validar). */
+export type CatalogLine = {
+  productId: string;
+  flavorId: string | null;
+  status: "ok" | "removed";
+  reason?: "indisponivel" | "esgotado";
+  name?: string;
+  slug?: string;
+  priceCents?: number;
+  stock?: number;
+  flavorName?: string | null;
+  image?: string | null;
+};
+
 type CartState = {
   items: CartItem[];
+  /** Itens tirados do carrinho na última conferência (pra avisar o cliente). */
+  removedNotice: string[];
   /** true depois que o carrinho da conta atual foi carregado do navegador. */
   hydrated: boolean;
   addItem: (item: CartItem) => void;
   removeItem: (productId: string, flavorId?: string | null) => void;
   setQuantity: (productId: string, quantity: number, flavorId?: string | null) => void;
   clear: () => void;
+  syncWithCatalog: (lines: CatalogLine[]) => void;
+  dismissRemovedNotice: () => void;
   subtotalCents: () => number;
   totalQuantity: () => number;
 };
@@ -27,6 +45,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       hydrated: false,
+      removedNotice: [],
       addItem: (item) =>
         set((state) => {
           const existing = state.items.find((i) => sameLine(i, item));
@@ -53,6 +72,34 @@ export const useCartStore = create<CartState>()(
           ),
         })),
       clear: () => set({ items: [] }),
+      syncWithCatalog: (lines) =>
+        set((state) => {
+          const removed: string[] = [];
+          const items = state.items.flatMap((item) => {
+            const line = lines.find((l) => sameLine(item, l));
+            if (!line) return [item];
+            const label = item.flavorName ? `${item.name} (${item.flavorName})` : item.name;
+            if (line.status === "removed") {
+              removed.push(line.reason === "esgotado" ? `${label} — esgotou` : `${label} — não está mais à venda`);
+              return [];
+            }
+            const stock = line.stock ?? item.stock;
+            return [
+              {
+                ...item,
+                name: line.name ?? item.name,
+                slug: line.slug ?? item.slug,
+                priceCents: line.priceCents ?? item.priceCents,
+                stock,
+                flavorName: line.flavorName ?? item.flavorName,
+                image: line.image ?? item.image,
+                quantity: Math.max(1, Math.min(item.quantity, stock)),
+              },
+            ];
+          });
+          return { items, removedNotice: removed.length > 0 ? removed : state.removedNotice };
+        }),
+      dismissRemovedNotice: () => set({ removedNotice: [] }),
       subtotalCents: () => get().items.reduce((sum, i) => sum + i.priceCents * i.quantity, 0),
       totalQuantity: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
     }),

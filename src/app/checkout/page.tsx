@@ -10,6 +10,7 @@ import { useCartStore } from "@/store/cart";
 import { centsToBRL } from "@/lib/money";
 import { Loader, LoaderPage } from "@/components/ui/Loader";
 import { RecaptchaNotice } from "@/components/ui/RecaptchaNotice";
+import { CartRemovedNotice } from "@/components/loja/CartRemovedNotice";
 import { getRecaptchaToken } from "@/lib/recaptcha";
 import { AddressFields, EMPTY_ADDRESS_VALUES, type AddressValues } from "@/components/account/AddressFields";
 import type { UserAddress } from "@/lib/types";
@@ -124,6 +125,7 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center">
+        <CartRemovedNotice className="mb-8" />
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-brand">
           <ShoppingBag size={28} />
         </div>
@@ -193,6 +195,7 @@ export default function CheckoutPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="font-display mb-6 text-2xl text-slate-900">Finalizar compra</h1>
+      <CartRemovedNotice className="mb-6" />
 
       <form onSubmit={handleSubmit} className="grid items-start gap-6 lg:grid-cols-[1fr_380px]">
         <div className="space-y-6">
