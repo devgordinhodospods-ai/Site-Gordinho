@@ -165,6 +165,14 @@ async function alertStore(settings: SiteSettings, text: string, opts: { emailFal
   return result.ok;
 }
 
+/** +55 (35) 99911-2233 */
+function prettyPhone(phone: string | null) {
+  const full = customerWhatsapp(phone);
+  if (!full) return null;
+  const d = full.replace(/\D/g, "");
+  return d.length >= 12 ? `+${d.slice(0, 2)} (${d.slice(2, 4)}) ${d.slice(4, -4)}-${d.slice(-4)}` : full;
+}
+
 /**
  * Mensagem pronta pro dono copiar (ou encaminhar) pro cliente que fez o
  * pedido, confirmando o pedido com os itens e o total.
@@ -194,6 +202,12 @@ export function customerConfirmationText(order: Order, items: OrderItem[], store
     `🔢 Pedido: #${orderCode(order)}`,
     `📅 Data: ${created.replace(",", "")}`,
     "",
+    "👤 *SEUS DADOS*",
+    `Nome: ${order.customer_name.trim()}`,
+    ...(prettyPhone(order.customer_phone) ? [`Telefone: ${prettyPhone(order.customer_phone)}`] : []),
+    ...(order.customer_email ? [`E-mail: ${order.customer_email}`] : []),
+    ...(formatAddress(order.shipping_address) ? [`Endereço: ${formatAddress(order.shipping_address)}`] : []),
+    "",
     "🛒 *ITENS:*",
     ...itemLines,
     "",
@@ -213,11 +227,7 @@ export function customerConfirmationText(order: Order, items: OrderItem[], store
 export function customerConfirmationHeader(order: Order) {
   const phone = customerWhatsapp(order.customer_phone);
   const digits = phone?.replace(/\D/g, "") ?? "";
-  // +55 (35) 99911-2233
-  const pretty =
-    digits.length >= 12
-      ? `+${digits.slice(0, 2)} (${digits.slice(2, 4)}) ${digits.slice(4, -4)}-${digits.slice(-4)}`
-      : phone;
+  const pretty = prettyPhone(order.customer_phone);
   return [
     "🎉 *PEDIDO CONFIRMADO! COPIE E MANDE AO CLIENTE A MENSAGEM ABAIXO!* 👇",
     "",
