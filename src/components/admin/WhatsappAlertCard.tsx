@@ -88,7 +88,7 @@ export function WhatsappAlertCard({ number, onChange }: { number: string; onChan
     setError(null);
     try {
       await adminApi("sendTestWhatsapp", { to: number });
-      setMessage("Mensagem de teste enviada! Confira o WhatsApp da loja.");
+      setMessage("Teste enviado! Chegam 3 mensagens no WhatsApp da loja: o aviso do pedido, o contato do cliente e a mensagem pronta pra mandar pra ele.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível enviar.");
     } finally {

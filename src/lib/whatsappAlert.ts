@@ -142,9 +142,9 @@ export function newOrderAlertText(order: Order, items: OrderItem[], opts: { manu
  * WhatsApp estiver desconectado, o aviso vai por e-mail pros admins, pra
  * loja não perder pedido.
  */
-async function alertStore(settings: SiteSettings, text: string) {
+async function alertStore(settings: SiteSettings, text: string, opts: { emailFallback?: boolean } = {}) {
   const to = settings.whatsapp_alert_number;
-  if (!to || !whatsappAlertConfigured()) return;
+  if (!to || !whatsappAlertConfigured()) return false;
   let result = await sendWhatsappText(to, text);
   if (!result.ok) {
     await new Promise((r) => setTimeout(r, 3000));
@@ -153,6 +153,7 @@ async function alertStore(settings: SiteSettings, text: string) {
   if (!result.ok) {
     // eslint-disable-next-line no-console
     console.error("[whatsapp-alert]", result.error);
+    if (opts.emailFallback === false) return false;
     await sendAdminAlertEmail({
       settings,
       subject: "Aviso de pedido (WhatsApp não enviou)",
@@ -161,6 +162,67 @@ async function alertStore(settings: SiteSettings, text: string) {
       text: text.replace(/\*/g, ""),
     });
   }
+  return result.ok;
+}
+
+/**
+ * Mensagem pronta pro dono copiar (ou encaminhar) pro cliente que fez o
+ * pedido, confirmando o pedido com os itens e o total.
+ */
+export function customerConfirmationText(order: Order, items: OrderItem[], storeName: string) {
+  const line = "━━━━━━━━━━━━━━━━━━━━";
+  const created = new Date(order.created_at).toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const itemLines = items.flatMap((i) => [
+    `• ${i.product_name}`,
+    ...(i.flavor_name ? [`  Sabor: ${i.flavor_name}`] : []),
+    `  Qtd: ${i.quantity}x ${centsToBRL(i.unit_price_cents)} = ${centsToBRL(i.unit_price_cents * i.quantity)}`,
+  ]);
+  return [
+    `Olá *${order.customer_name.trim()}*! 👋`,
+    "",
+    `Seu pedido no ${storeName} foi confirmado com sucesso!`,
+    "",
+    "📋 *DETALHES DO PEDIDO*",
+    line,
+    `🔢 Pedido: #${orderCode(order)}`,
+    `📅 Data: ${created.replace(",", "")}`,
+    "",
+    "🛒 *ITENS:*",
+    ...itemLines,
+    "",
+    line,
+    `💰 *VALOR TOTAL: ${centsToBRL(order.total_cents)}*`,
+    ...(order.shipping_fee_cents > 0
+      ? [`🛵 Frete (pago na entrega ao motoboy): ${centsToBRL(order.shipping_fee_cents)}`]
+      : []),
+    line,
+  ].join("\n");
+}
+
+/** Cabeçalho que vem antes da mensagem pronta, com o link da conversa do cliente. */
+export function customerConfirmationHeader(order: Order) {
+  const phone = customerWhatsapp(order.customer_phone);
+  const digits = phone?.replace(/\D/g, "") ?? "";
+  // +55 (35) 99911-2233
+  const pretty =
+    digits.length >= 12
+      ? `+${digits.slice(0, 2)} (${digits.slice(2, 4)}) ${digits.slice(4, -4)}-${digits.slice(-4)}`
+      : phone;
+  return [
+    "🎉 *PEDIDO CONFIRMADO! COPIE E MANDE AO CLIENTE A MENSAGEM ABAIXO!* 👇",
+    "",
+    `👤 *Cliente:* ${order.customer_name.trim()}`,
+    phone
+      ? `📱 *WhatsApp:* ${pretty}\n👉 Toque pra abrir a conversa: https://wa.me/${digits}`
+      : "📱 O cliente não informou WhatsApp.",
+  ].join("\n");
 }
 
 /** Avisa a loja no WhatsApp que caiu um pedido pago (nunca derruba o webhook). */
@@ -170,7 +232,19 @@ export async function sendNewOrderAlert(params: {
   settings: SiteSettings;
   manual?: boolean;
 }) {
-  await alertStore(params.settings, newOrderAlertText(params.order, params.items, { manual: params.manual }));
+  const sent = await alertStore(
+    params.settings,
+    newOrderAlertText(params.order, params.items, { manual: params.manual })
+  );
+  // Depois do aviso, a mensagem pronta pro cliente (sozinha numa mensagem,
+  // pra dar pra encaminhar ou copiar inteira com um toque).
+  if (!sent) return;
+  await alertStore(params.settings, customerConfirmationHeader(params.order), { emailFallback: false });
+  await alertStore(
+    params.settings,
+    customerConfirmationText(params.order, params.items, params.settings.store_name),
+    { emailFallback: false }
+  );
 }
 
 /** Pix aprovado num pedido que já estava cancelado: o dono precisa resolver. */

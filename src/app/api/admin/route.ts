@@ -16,6 +16,8 @@ import { locateCep, suggestFreightPricing } from "@/lib/geo";
 import { mercadoPagoDiagnostics } from "@/lib/mercadopago";
 import { syncOrderPayment } from "@/lib/paymentSync";
 import {
+  customerConfirmationHeader,
+  customerConfirmationText,
   getWhatsappStatus,
   newOrderAlertText,
   sendNewOrderAlert,
@@ -860,6 +862,10 @@ export async function POST(req: Request) {
           `🧪 *MENSAGEM DE TESTE* (pedido de exemplo)\n\n${newOrderAlertText(sample, sampleItems)}`
         );
         if (!result.ok) return NextResponse.json({ error: result.error }, { status: 502 });
+        // Igual ao pedido de verdade: depois vem a mensagem pronta pro cliente.
+        const { store_name } = await getSiteSettings();
+        await sendWhatsappText(to, customerConfirmationHeader(sample));
+        await sendWhatsappText(to, customerConfirmationText(sample, sampleItems, store_name));
         return NextResponse.json({ ok: true });
       }
 
