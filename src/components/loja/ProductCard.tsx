@@ -70,13 +70,15 @@ export function ProductCard({ product }: { product: ProductWithFlavors }) {
             <p className="h-4 text-xs text-slate-400 line-through">
               {hasDiscount ? centsToBRL(product.compare_at_price_cents as number) : ""}
             </p>
-            <p className="text-lg leading-tight text-brand">{centsToBRL(product.price_cents)}</p>
+            <p className="whitespace-nowrap text-lg leading-tight text-brand">{centsToBRL(product.price_cents)}</p>
+            {/* Em linha própria: ao lado do preço não cabe em card estreito (celular). */}
+            {!outOfStock && hasFlavors && (
+              <p className="mt-0.5 text-xs text-slate-400 group-hover:text-brand">Ver sabores →</p>
+            )}
           </div>
 
           {!outOfStock &&
-            (hasFlavors ? (
-              <span className="shrink-0 pb-1 text-xs text-slate-400 group-hover:text-brand">Ver sabores</span>
-            ) : (
+            (hasFlavors ? null : (
               <button
                 onClick={handleQuickAdd}
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white shadow-brand transition-transform hover:scale-110 ${
