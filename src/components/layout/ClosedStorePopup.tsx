@@ -5,7 +5,9 @@ import { usePathname } from "next/navigation";
 import { Bike, Moon } from "lucide-react";
 import { closedMessage, getStoreStatus, type StoreHoursSettings } from "@/lib/storeHours";
 
-const SEEN_KEY = "closed-popup-seen";
+// Em memória: some ao recarregar a página (F5), então o aviso volta a cada
+// carregamento, mas não reaparece enquanto o cliente navega pelo site.
+let shownThisLoad = false;
 
 /** Cartão do aviso de loja fechada — usado no site e na prévia do painel. */
 export function ClosedStoreCard({
@@ -47,10 +49,9 @@ export function ClosedStoreCard({
 }
 
 /**
- * Popup de "loja fechada": aparece toda vez que o cliente abre o site num
- * dia/horário em que a loja não funciona. Depois de fechado, não volta
- * enquanto ele navega naquela aba (sessionStorage) — numa nova visita,
- * outra aba ou outro navegador, aparece de novo.
+ * Popup de "loja fechada": aparece toda vez que o cliente abre ou recarrega
+ * o site num dia/horário em que a loja não funciona. Depois de fechado, não
+ * volta enquanto ele navega pelas páginas sem recarregar.
  */
 export function ClosedStorePopup({ settings }: { settings: StoreHoursSettings }) {
   const pathname = usePathname();
@@ -61,13 +62,8 @@ export function ClosedStorePopup({ settings }: { settings: StoreHoursSettings })
     // Calculado no navegador: depende da hora atual.
     const current = getStoreStatus(settings);
     setStatus(current);
-    if (!current.closed) return;
-    const seenValue = `${current.dateKey}-${current.reason}`;
-    try {
-      if (sessionStorage.getItem(SEEN_KEY) === seenValue) return;
-    } catch {
-      // sem sessionStorage: mostra mesmo assim
-    }
+    if (!current.closed || shownThisLoad) return;
+    shownThisLoad = true;
     setOpen(true);
   }, [settings]);
 
@@ -81,13 +77,6 @@ export function ClosedStorePopup({ settings }: { settings: StoreHoursSettings })
 
   function close() {
     setOpen(false);
-    if (status.closed) {
-      try {
-        sessionStorage.setItem(SEEN_KEY, `${status.dateKey}-${status.reason}`);
-      } catch {
-        // ignora
-      }
-    }
   }
 
   if (!open || !status.closed || pathname.startsWith("/admin")) return null;
