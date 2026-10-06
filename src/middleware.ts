@@ -23,7 +23,9 @@ export function middleware(req: NextRequest) {
   }
 
   const url = new URL(req.nextUrl.pathname + req.nextUrl.search, target.origin);
-  return NextResponse.redirect(url, 308);
+  // 307 (temporário): o navegador não grava o redirecionamento, então se o
+  // domínio novo ainda não estiver no ar, basta voltar a APP_URL.
+  return NextResponse.redirect(url, 307);
 }
 
 export const config = {
