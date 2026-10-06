@@ -200,7 +200,10 @@ export function customerConfirmationText(order: Order, items: OrderItem[], store
     line,
     `💰 *VALOR TOTAL: ${centsToBRL(order.total_cents)}*`,
     ...(order.shipping_fee_cents > 0
-      ? [`🛵 Frete (pago na entrega ao motoboy): ${centsToBRL(order.shipping_fee_cents)}`]
+      ? [
+          `🛵 Frete previsto: ${centsToBRL(order.shipping_fee_cents)} (pago na entrega ao motoboy)`,
+          "_O valor do frete é uma estimativa e pode variar._",
+        ]
       : []),
     line,
   ].join("\n");
