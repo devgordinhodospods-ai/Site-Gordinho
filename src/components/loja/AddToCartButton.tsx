@@ -30,34 +30,13 @@ export function AddToCartButton({
   const addItem = useCartStore((s) => s.addItem);
   const router = useRouter();
 
-  // No celular, quando o botão principal sai da tela (rolando pra ler a
-  // descrição), aparece uma barra fixa embaixo com o preço e "Adicionar".
-  const actionsRef = useRef<HTMLDivElement>(null);
-  const [showStickyBar, setShowStickyBar] = useState(false);
+  // No celular, a barra fixa embaixo com o preço e "Adicionar" fica sempre
+  // visível na página do produto. (Aparecer/sumir conforme a rolagem falhava
+  // no Safari do iPhone, que só redesenhava a barra no fim da página.)
   useEffect(() => {
-    const actions = actionsRef.current;
-    if (!actions) return;
-    // O cabeçalho fixo cobre o topo da tela: botão escondido atrás dele conta
-    // como fora da tela (senão a barra sumia e o cliente não via nenhum dos dois).
-    let observer: IntersectionObserver | null = null;
-    const watch = () => {
-      observer?.disconnect();
-      const headerHeight = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
-      observer = new IntersectionObserver(
-        ([entry]) => setShowStickyBar(!entry.isIntersecting && entry.boundingClientRect.top < headerHeight),
-        { rootMargin: `-${Math.round(headerHeight)}px 0px 0px 0px` }
-      );
-      observer.observe(actions);
-    };
-    watch();
-    window.addEventListener("resize", watch);
     // Espaço no fim da página pra barra não cobrir o rodapé (só no celular, via CSS).
     document.body.classList.add("has-sticky-buy-bar");
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", watch);
-      document.body.classList.remove("has-sticky-buy-bar");
-    };
+    return () => document.body.classList.remove("has-sticky-buy-bar");
   }, []);
 
   const selectedFlavor = hasFlavors ? flavors.find((f) => f.id === selectedFlavorId) : null;
@@ -114,7 +93,7 @@ export function AddToCartButton({
         </div>
       )}
 
-      <div ref={actionsRef} className="flex gap-3">
+      <div className="flex gap-3">
         <QuantityStepper
           value={quantity}
           min={1}
@@ -150,14 +129,9 @@ export function AddToCartButton({
         </button>
       )}
 
-      {/* Fundo sólido e sem deslizar pra fora da tela: o Safari do iPhone (barra
-          de endereço flutuante) escondia a versão translúcida/animada. */}
       <div
-        className={`fixed inset-x-0 bottom-0 z-30 border-t border-blue-100 bg-white px-4 pt-3 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.25)] transition-opacity duration-200 sm:hidden ${
-          showStickyBar ? "visible opacity-100" : "pointer-events-none invisible opacity-0"
-        }`}
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-blue-100 bg-white px-4 pt-3 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.25)] sm:hidden"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-        aria-hidden={!showStickyBar}
       >
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
@@ -171,7 +145,6 @@ export function AddToCartButton({
             className="btn-primary shrink-0 px-5"
             onClick={handleAdd}
             disabled={outOfStock}
-            tabIndex={showStickyBar ? 0 : -1}
           >
             {outOfStock ? (
               "Esgotado"
