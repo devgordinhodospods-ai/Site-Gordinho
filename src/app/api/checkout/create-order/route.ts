@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/auth";
@@ -183,8 +183,10 @@ export async function POST(req: Request) {
     .select("*")
     .single();
 
+  // O e-mail sai depois da resposta: o cliente vê o Pix na hora, mesmo que o
+  // envio demore ou falhe.
   if (updated) {
-    await sendPixPendingEmail({ order: updated, items: orderItems ?? [], settings });
+    after(() => sendPixPendingEmail({ order: updated, items: orderItems ?? [], settings }));
   }
 
   return NextResponse.json({ orderId });

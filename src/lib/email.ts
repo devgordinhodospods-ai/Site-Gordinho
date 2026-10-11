@@ -7,8 +7,9 @@ import { orderCode } from "@/lib/orderCode";
 
 /**
  * E-mails da loja (pedido recebido com o Pix, pagamento aprovado, mudança
- * de status). Saem pelo SMTP configurado nas variáveis SMTP_* — pode ser o
- * mesmo Gmail + senha de app usado no SMTP do Supabase.
+ * de status). Saem pela API do Resend (RESEND_API_KEY) quando ela existe —
+ * é HTTPS, então funciona no Railway, que bloqueia SMTP. Sem ela, usam o
+ * SMTP das variáveis SMTP_* (ex.: Gmail + senha de app).
  */
 function getTransport() {
   const host = process.env.SMTP_HOST;
@@ -16,31 +17,72 @@ function getTransport() {
   const pass = process.env.SMTP_PASS;
   if (!host || !user || !pass) return null;
   const port = Number(process.env.SMTP_PORT ?? 465);
-  return nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+  // Prazos curtos: se o servidor bloquear a porta, desiste rápido em vez de
+  // segurar o pedido/pagamento por minutos.
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  });
 }
 
 type Attachment = { filename: string; content: Buffer; cid: string };
 
 type SendResult = { sent: true } | { sent: false; error: string };
 
-async function sendMail(params: {
+type MailParams = {
   to: string;
   subject: string;
   html: string;
   settings: SiteSettings;
   attachments?: Attachment[];
-}): Promise<SendResult> {
+};
+
+function fromAddress(settings: SiteSettings) {
+  return process.env.EMAIL_FROM || `${settings.store_name} <${process.env.SMTP_USER}>`;
+}
+
+/** Envio pela API HTTPS do Resend (resend.com). */
+async function sendViaResend(params: MailParams, apiKey: string): Promise<SendResult> {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: fromAddress(params.settings),
+      to: [params.to],
+      subject: params.subject,
+      html: params.html,
+      attachments: params.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content.toString("base64"),
+        content_id: a.cid,
+      })),
+    }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (res.ok) return { sent: true };
+  const body = await res.text().catch(() => "");
+  throw new Error(`Resend ${res.status}: ${body.slice(0, 300)}`);
+}
+
+async function sendMail(params: MailParams): Promise<SendResult> {
   // Vendas no balcão não têm e-mail do cliente.
   if (!params.to.trim()) return { sent: false, error: "Pedido sem e-mail." };
-  const transport = getTransport();
-  if (!transport) {
+  const resendKey = process.env.RESEND_API_KEY;
+  const transport = resendKey ? null : getTransport();
+  if (!resendKey && !transport) {
     // eslint-disable-next-line no-console
-    console.warn(`SMTP não configurado — e-mail "${params.subject}" não enviado.`);
-    return { sent: false, error: "SMTP não configurado (variáveis SMTP_HOST, SMTP_USER e SMTP_PASS na Vercel)." };
+    console.warn(`E-mail não configurado — "${params.subject}" não enviado.`);
+    return { sent: false, error: "E-mail não configurado (variável RESEND_API_KEY, ou SMTP_HOST, SMTP_USER e SMTP_PASS)." };
   }
   try {
-    await transport.sendMail({
-      from: process.env.EMAIL_FROM || `${params.settings.store_name} <${process.env.SMTP_USER}>`,
+    if (resendKey) return await sendViaResend(params, resendKey);
+    await transport!.sendMail({
+      from: fromAddress(params.settings),
       to: params.to,
       subject: params.subject,
       html: params.html,

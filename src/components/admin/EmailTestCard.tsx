@@ -36,7 +36,7 @@ export function EmailTestCard() {
       <p className="text-sm text-slate-600">
         Manda pro e-mail abaixo os dois e-mails que o cliente recebe (Pix com QR code e link, e pagamento aprovado),
         usando um pedido de exemplo.
-        <HelpTip text="O QR code do teste não é um Pix de verdade. Os e-mails saem pelo Gmail configurado na Vercel (SMTP)." />
+        <HelpTip text="O QR code do teste não é um Pix de verdade. Os e-mails saem pelo Resend (RESEND_API_KEY) ou, sem ele, pelo Gmail configurado nas variáveis SMTP." />
       </p>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
