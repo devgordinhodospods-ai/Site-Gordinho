@@ -139,9 +139,11 @@ export function AddToCartButton({
         </button>
       )}
 
+      {/* Fundo sólido e sem deslizar pra fora da tela: o Safari do iPhone (barra
+          de endereço flutuante) escondia a versão translúcida/animada. */}
       <div
-        className={`fixed inset-x-0 bottom-0 z-30 border-t border-blue-100 bg-white/95 px-4 pt-3 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.25)] backdrop-blur transition-transform duration-300 sm:hidden ${
-          showStickyBar ? "translate-y-0" : "pointer-events-none translate-y-full"
+        className={`fixed inset-x-0 bottom-0 z-30 border-t border-blue-100 bg-white px-4 pt-3 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.25)] transition-opacity duration-200 sm:hidden ${
+          showStickyBar ? "visible opacity-100" : "pointer-events-none invisible opacity-0"
         }`}
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
         aria-hidden={!showStickyBar}
