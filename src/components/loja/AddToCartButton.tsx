@@ -37,14 +37,25 @@ export function AddToCartButton({
   useEffect(() => {
     const actions = actionsRef.current;
     if (!actions) return;
-    const observer = new IntersectionObserver(([entry]) =>
-      setShowStickyBar(!entry.isIntersecting && entry.boundingClientRect.top < 0)
-    );
-    observer.observe(actions);
+    // O cabeçalho fixo cobre o topo da tela: botão escondido atrás dele conta
+    // como fora da tela (senão a barra sumia e o cliente não via nenhum dos dois).
+    let observer: IntersectionObserver | null = null;
+    const watch = () => {
+      observer?.disconnect();
+      const headerHeight = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+      observer = new IntersectionObserver(
+        ([entry]) => setShowStickyBar(!entry.isIntersecting && entry.boundingClientRect.top < headerHeight),
+        { rootMargin: `-${Math.round(headerHeight)}px 0px 0px 0px` }
+      );
+      observer.observe(actions);
+    };
+    watch();
+    window.addEventListener("resize", watch);
     // Espaço no fim da página pra barra não cobrir o rodapé (só no celular, via CSS).
     document.body.classList.add("has-sticky-buy-bar");
     return () => {
-      observer.disconnect();
+      observer?.disconnect();
+      window.removeEventListener("resize", watch);
       document.body.classList.remove("has-sticky-buy-bar");
     };
   }, []);

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Bell, BellOff, BellRing, X } from "lucide-react";
 import { adminApi } from "@/lib/adminApi";
 import { centsToBRL } from "@/lib/money";
@@ -203,57 +204,61 @@ export function NewOrderAlert() {
         )}
       </div>
 
-      {fresh.length > 0 && (
-        <div className="fixed bottom-24 right-4 z-[70] w-[min(92vw,360px)] animate-[popIn_.25s_ease-out]" role="alert">
-          <div className="theme-static overflow-hidden rounded-2xl text-white shadow-2xl">
-            <div
-              className="flex items-center gap-3 px-4 py-3"
-              style={{ background: "linear-gradient(135deg, #38bdf8 0%, #0ea5e9 45%, #0284c7 100%)" }}
-            >
-              <BellRing size={22} className="shrink-0 animate-bounce" />
-              <p className="font-display flex-1 text-lg">
-                {fresh.length === 1 ? "Pedido novo pago!" : `${fresh.length} pedidos novos pagos!`}
-              </p>
-              <button
-                type="button"
-                onClick={() => setFresh([])}
-                className="rounded-lg p-1 hover:bg-white/20"
-                aria-label="Fechar aviso"
+      {/* Direto no <body>: dentro da coluna lateral fixa o aviso ficava por baixo
+          de barras fixas da página (ex.: "Salvar configurações"). */}
+      {fresh.length > 0 &&
+        createPortal(
+          <div className="fixed bottom-24 right-4 z-[70] w-[min(92vw,360px)] animate-[popIn_.25s_ease-out]" role="alert">
+            <div className="theme-static overflow-hidden rounded-2xl text-white shadow-2xl">
+              <div
+                className="flex items-center gap-3 px-4 py-3"
+                style={{ background: "linear-gradient(135deg, #38bdf8 0%, #0ea5e9 45%, #0284c7 100%)" }}
               >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="bg-brand-ink px-4 py-3">
-              <ul className="space-y-1.5 text-sm">
-                {fresh.map((o) => (
-                  <li key={o.id} className="flex justify-between gap-3">
-                    <span className="truncate text-slate-200">
-                      #{orderCode(o)} · {o.customer_name}
-                    </span>
-                    <span className="shrink-0 text-accent">{centsToBRL(o.total_cents)}</span>
-                  </li>
-                ))}
-              </ul>
-              {audioBlocked && soundOn && (
+                <BellRing size={22} className="shrink-0 animate-bounce" />
+                <p className="font-display flex-1 text-lg">
+                  {fresh.length === 1 ? "Pedido novo pago!" : `${fresh.length} pedidos novos pagos!`}
+                </p>
                 <button
                   type="button"
-                  onClick={() => ring()}
-                  className="mt-3 w-full rounded-lg bg-white/10 px-3 py-2 text-xs text-slate-200 hover:bg-white/15"
+                  onClick={() => setFresh([])}
+                  className="rounded-lg p-1 hover:bg-white/20"
+                  aria-label="Fechar aviso"
                 >
-                  🔇 O navegador bloqueou o som. Toque aqui pra ativar.
+                  <X size={18} />
                 </button>
-              )}
-              <Link
-                href="/admin/pedidos"
-                onClick={() => setFresh([])}
-                className="btn-primary mt-3 w-full py-2 text-sm"
-              >
-                Ver pedidos
-              </Link>
+              </div>
+              <div className="bg-brand-ink px-4 py-3">
+                <ul className="space-y-1.5 text-sm">
+                  {fresh.map((o) => (
+                    <li key={o.id} className="flex justify-between gap-3">
+                      <span className="truncate text-slate-200">
+                        #{orderCode(o)} · {o.customer_name}
+                      </span>
+                      <span className="shrink-0 text-accent">{centsToBRL(o.total_cents)}</span>
+                    </li>
+                  ))}
+                </ul>
+                {audioBlocked && soundOn && (
+                  <button
+                    type="button"
+                    onClick={() => ring()}
+                    className="mt-3 w-full rounded-lg bg-white/10 px-3 py-2 text-xs text-slate-200 hover:bg-white/15"
+                  >
+                    🔇 O navegador bloqueou o som. Toque aqui pra ativar.
+                  </button>
+                )}
+                <Link
+                  href="/admin/pedidos"
+                  onClick={() => setFresh([])}
+                  className="btn-primary mt-3 w-full py-2 text-sm"
+                >
+                  Ver pedidos
+                </Link>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </>
   );
 }
