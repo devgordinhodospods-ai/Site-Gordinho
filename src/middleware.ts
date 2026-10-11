@@ -1,14 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Quem entra pelo endereço antigo da Vercel (*.vercel.app) em produção vai
- * pro domínio oficial (APP_URL), na mesma página. As rotas /api ficam de
- * fora: o Mercado Pago avisa pagamentos de Pix antigos no endereço antigo e
- * não segue redirecionamento, e o cron também chama por lá.
+ * Em produção, quem entra por qualquer endereço que não seja o oficial
+ * (APP_URL) vai pra ele, na mesma página: o domínio sem www, o antigo
+ * *.vercel.app e o *.up.railway.app. As rotas /api ficam de fora: o Mercado
+ * Pago avisa pagamentos de Pix antigos no endereço antigo e não segue
+ * redirecionamento, e o cron também pode chamar por lá.
  */
 export function middleware(req: NextRequest) {
   const appUrl = process.env.APP_URL;
-  if (!appUrl || process.env.VERCEL_ENV !== "production") return NextResponse.next();
+  if (!appUrl || process.env.NODE_ENV !== "production") return NextResponse.next();
 
   let target: URL;
   try {
@@ -17,14 +18,22 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
   const host = (req.headers.get("host") ?? "").toLowerCase();
-  // Só redireciona do .vercel.app pro domínio próprio (nunca em loop).
-  if (!host.endsWith(".vercel.app") || target.hostname.endsWith(".vercel.app") || host === target.host) {
+  const hostname = host.split(":")[0];
+  // Nunca em loop, e nunca rodando local (localhost/IP).
+  if (
+    !hostname ||
+    host === target.host ||
+    hostname === target.hostname ||
+    hostname === "localhost" ||
+    /^[\d.]+$/.test(hostname) ||
+    ["localhost", "127.0.0.1"].includes(target.hostname)
+  ) {
     return NextResponse.next();
   }
 
   const url = new URL(req.nextUrl.pathname + req.nextUrl.search, target.origin);
-  // 307 (temporário): o navegador não grava o redirecionamento, então se o
-  // domínio novo ainda não estiver no ar, basta voltar a APP_URL.
+  // 307 (temporário): o navegador não grava o redirecionamento, então dá pra
+  // trocar de domínio de novo sem ninguém ficar preso no endereço antigo.
   return NextResponse.redirect(url, 307);
 }
 
