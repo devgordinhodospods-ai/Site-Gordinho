@@ -12,10 +12,12 @@ import { FileInput } from "@/components/ui/FileInput";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { Loader } from "@/components/ui/Loader";
 import { EmailTestCard } from "@/components/admin/EmailTestCard";
+import { OptimizeImagesCard } from "@/components/admin/OptimizeImagesCard";
 import { WhatsappAlertCard } from "@/components/admin/WhatsappAlertCard";
 import { MercadoPagoCheck } from "@/components/admin/MercadoPagoCheck";
 import { ClosedStoreCard } from "@/components/layout/ClosedStorePopup";
 import type { SiteSettings } from "@/lib/types";
+import { compressImage } from "@/lib/compressImage";
 
 type ImageKind = "logo" | "favicon" | "footer" | "hero" | "heroMobile";
 type TabId = "loja" | "home" | "contato" | "horario" | "taxas" | "pagamento" | "avisos";
@@ -97,15 +99,17 @@ export function SettingsManager() {
   const set = <K extends keyof SiteSettings>(key: K, value: SiteSettings[K]) =>
     setSettings((s) => ({ ...s, [key]: value }));
 
-  async function handleUpload(file: File, kind: ImageKind) {
+  async function handleUpload(original: File, kind: ImageKind) {
     setUploading(kind);
     setError(null);
     try {
+      // Banner do computador e rodapé têm 1920px de largura; o resto cabe em bem menos.
+      const file = await compressImage(original, kind === "hero" || kind === "footer" ? 1920 : kind === "favicon" ? 256 : 1200);
       const path = `store/${kind}-${Date.now()}`;
       const { upload } = await adminApi<{ upload: { path: string; token: string } }>("createUploadUrl", { path });
       const { error: uploadError } = await supabase.storage
         .from("product-images")
-        .uploadToSignedUrl(upload.path, upload.token, file);
+        .uploadToSignedUrl(upload.path, upload.token, file, { cacheControl: "31536000" });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from("product-images").getPublicUrl(upload.path);
       setSettings((s) =>
@@ -295,6 +299,7 @@ export function SettingsManager() {
                 preview: "h-10 w-10 bg-slate-50",
               })}
             </div>
+            <OptimizeImagesCard />
           </div>
         )}
 

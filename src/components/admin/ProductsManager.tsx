@@ -11,6 +11,7 @@ import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { Pagination } from "@/components/ui/Pagination";
 import type { ProductWithFullFlavors, Category, ProductFlavor } from "@/lib/types";
+import { compressImage } from "@/lib/compressImage";
 
 function slugify(text: string) {
   return text
@@ -99,7 +100,8 @@ export function ProductsManager() {
     setFormOpen(false);
   }
 
-  async function uploadFile(file: File, folder: string) {
+  async function uploadFile(original: File, folder: string) {
+    const file = await compressImage(original);
     const path = `${folder}/${Date.now()}-${slugify(file.name)}`;
     const { upload } = await adminApi<{ upload: { signedUrl: string; token: string; path: string } }>(
       "createUploadUrl",
@@ -107,7 +109,7 @@ export function ProductsManager() {
     );
     const { error: uploadError } = await supabase.storage
       .from("product-images")
-      .uploadToSignedUrl(upload.path, upload.token, file);
+      .uploadToSignedUrl(upload.path, upload.token, file, { cacheControl: "31536000" });
     if (uploadError) throw uploadError;
     const { data } = supabase.storage.from("product-images").getPublicUrl(upload.path);
     return data.publicUrl;

@@ -21,6 +21,11 @@ const nextConfig = {
     return [{ source: "/produtos", destination: "/", permanent: false }];
   },
   images: {
+    // As fotos têm endereço único (nome com data), então dá pra guardar a
+    // versão otimizada por 30 dias em vez de buscar de novo no Supabase.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+    // Menos tamanhos gerados = menos downloads do original no Supabase.
+    deviceSizes: [640, 828, 1080, 1200, 1920],
     remotePatterns: [
       {
         protocol: "https",

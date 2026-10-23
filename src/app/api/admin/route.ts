@@ -15,6 +15,7 @@ import { cancelAndRestock, releaseAbandonedOrders } from "@/lib/orders";
 import { locateCep, suggestFreightPricing } from "@/lib/geo";
 import { mercadoPagoDiagnostics } from "@/lib/mercadopago";
 import { syncOrderPayment } from "@/lib/paymentSync";
+import { listHeavyImages, optimizeImages } from "@/lib/imageOptimizer";
 import {
   customerConfirmationHeader,
   customerConfirmationText,
@@ -903,6 +904,19 @@ export async function POST(req: Request) {
       }
 
       // ---------------- upload de imagens ----------------
+      case "listHeavyImages": {
+        const images = await listHeavyImages();
+        return NextResponse.json({ images });
+      }
+
+      case "optimizeImages": {
+        const paths: unknown = body.paths;
+        if (!Array.isArray(paths) || paths.length === 0 || paths.length > 10 || !paths.every((p) => typeof p === "string")) {
+          return NextResponse.json({ error: "Envie de 1 a 10 caminhos de imagem." }, { status: 400 });
+        }
+        return NextResponse.json(await optimizeImages(paths as string[]));
+      }
+
       case "createUploadUrl": {
         const path: string = body.path;
         if (!path) return NextResponse.json({ error: "path é obrigatório" }, { status: 400 });
