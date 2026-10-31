@@ -4,43 +4,32 @@ import type { ShippingRegion } from "@/lib/types";
 export type GeoPoint = { lat: number; lng: number };
 export type LocatedCep = CepLookup & GeoPoint;
 
-const USER_AGENT = "loja-ecommerce/1.0 (estimativa de frete)";
 const DAY = 60 * 60 * 24;
+const USER_AGENT = "GordinhoDosPods/1.0 (+https://www.gordinhodospods.com.br; estimativa de frete)";
 
 async function nominatim(params: Record<string, string>): Promise<GeoPoint | null> {
   try {
     const qs = new URLSearchParams({ format: "json", limit: "1", countrycodes: "br", ...params });
     const res = await fetch(`https://nominatim.openstreetmap.org/search?${qs}`, {
-      headers: { "User-Agent": USER_AGENT },
-      next: { revalidate: DAY },
+      headers: { "User-Agent": USER_AGENT, "Accept-Language": "pt-BR" },
+      signal: AbortSignal.timeout(6000),
+      cache: "no-store",
     });
-    if (!res.ok) return null;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!Array.isArray(data) || data.length === 0) return null;
     return { lat: Number(data[0].lat), lng: Number(data[0].lon) };
-  } catch {
-    return null;
-  }
-}
-
-async function brasilApiCoords(digits: string): Promise<GeoPoint | null> {
-  try {
-    const res = await fetch(`https://brasilapi.com.br/api/cep/v2/${digits}`, { next: { revalidate: DAY } });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const coords = data?.location?.coordinates;
-    const lat = Number(coords?.latitude);
-    const lng = Number(coords?.longitude);
-    return Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0) ? { lat, lng } : null;
-  } catch {
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("[cep] OpenStreetMap falhou:", err instanceof Error ? err.message : err);
     return null;
   }
 }
 
 /**
- * Descobre endereço e coordenadas de um CEP: ViaCEP pro endereço, BrasilAPI
- * pras coordenadas e, se ela não tiver, o OpenStreetMap (rua → bairro →
- * cidade, do mais preciso pro menos). Tudo gratuito e sem chave.
+ * Descobre endereço e coordenadas de um CEP: os serviços de CEP (que muitas
+ * vezes já trazem as coordenadas) e, se nenhum trouxer, o OpenStreetMap
+ * (rua → bairro → cidade, do mais preciso pro menos). Tudo gratuito e sem chave.
  */
 export async function locateCep(cep: string): Promise<LocatedCep | null> {
   const digits = cep.replace(/\D/g, "");
@@ -48,14 +37,19 @@ export async function locateCep(cep: string): Promise<LocatedCep | null> {
   if (!address) return null;
 
   const point =
-    (await brasilApiCoords(digits)) ??
+    (address.lat != null && address.lng != null ? { lat: address.lat, lng: address.lng } : null) ??
     (address.street
       ? await nominatim({ street: address.street, city: address.city, state: address.state })
       : null) ??
     (address.neighborhood ? await nominatim({ q: `${address.neighborhood}, ${address.city}, ${address.state}` }) : null) ??
     (await nominatim({ city: address.city, state: address.state }));
 
-  return point ? { ...address, ...point } : null;
+  if (!point) {
+    // eslint-disable-next-line no-console
+    console.warn(`[cep] sem coordenadas pro CEP ${digits} (${address.city}/${address.state})`);
+    return null;
+  }
+  return { ...address, ...point };
 }
 
 /** Distância em linha reta entre dois pontos, em km. */
