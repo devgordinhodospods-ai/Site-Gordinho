@@ -6,7 +6,7 @@ import { computeServiceFee } from "@/lib/money";
 import { estimateFreight } from "@/lib/geo";
 import { getSiteSettings } from "@/lib/settings";
 import { createPixPayment, describeMercadoPagoError } from "@/lib/mercadopago";
-import { PAYMENT_WINDOW_MS, releaseAbandonedOrders } from "@/lib/orders";
+import { MANUAL_PAYMENT_WINDOW_MS, PAYMENT_WINDOW_MS, releaseAbandonedOrders } from "@/lib/orders";
 import { sendPixPendingEmail } from "@/lib/email";
 import { orderCode } from "@/lib/orderCode";
 import { verifyRecaptcha } from "@/lib/recaptchaServer";
@@ -130,6 +130,20 @@ export async function POST(req: Request) {
       .select("*")
       .single();
     order = fixed ?? { ...order, total_cents: order.subtotal_cents + order.service_fee_cents };
+  }
+
+  // Modo WhatsApp: sem empresa de pagamento. O cliente manda o pedido no
+  // WhatsApp da loja, a loja passa o Pix por lá e confirma o pagamento no painel.
+  if (settings.payment_mode === "whatsapp") {
+    await db
+      .from("orders")
+      .update({
+        payment_provider: "whatsapp",
+        payment_status: "pending",
+        payment_expires_at: new Date(Date.now() + MANUAL_PAYMENT_WINDOW_MS).toISOString(),
+      })
+      .eq("id", orderId);
+    return NextResponse.json({ orderId });
   }
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";

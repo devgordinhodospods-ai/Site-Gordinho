@@ -42,7 +42,15 @@ export type SiteSettings = {
   closed_manual: boolean;
   closed_popup_title: string;
   closed_popup_message: string;
+  /**
+   * "pix": Pix automático (QR na hora, confirma sozinho).
+   * "whatsapp": o cliente manda o pedido no WhatsApp da loja e a loja passa o
+   * Pix por lá (enquanto não tem empresa de pagamento integrada).
+   */
+  payment_mode: PaymentMode;
 };
+
+export type PaymentMode = "pix" | "whatsapp";
 
 export type Category = {
   id: string;

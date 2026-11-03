@@ -88,6 +88,7 @@ const SETTINGS_KEYS = [
   "closed_manual",
   "closed_popup_title",
   "closed_popup_message",
+  "payment_mode",
 ] as const;
 
 const PAGE_ROWS = 1000;

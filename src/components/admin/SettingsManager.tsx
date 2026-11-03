@@ -490,7 +490,63 @@ export function SettingsManager() {
           </div>
         )}
 
-        {tab === "pagamento" && <MercadoPagoCheck />}
+        {tab === "pagamento" && (
+          <div className="space-y-6">
+            <Field
+              label="Como o cliente paga"
+              help="Pix automático: o QR aparece na hora e o pedido confirma sozinho (precisa da empresa de pagamento configurada). Pedido pelo WhatsApp: o cliente envia o pedido pronto pro WhatsApp da loja, vocês mandam o Pix por lá e, quando cair, marcam o pedido como Pago em Pedidos."
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                {(
+                  [
+                    { value: "pix", title: "Pix automático", text: "QR code na hora, confirmação sozinha." },
+                    {
+                      value: "whatsapp",
+                      title: "Pedido pelo WhatsApp",
+                      text: "Cliente envia o pedido no WhatsApp; vocês mandam o Pix e confirmam no painel.",
+                    },
+                  ] as const
+                ).map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`flex cursor-pointer gap-3 rounded-2xl border p-4 transition ${
+                      (settings.payment_mode ?? "pix") === opt.value
+                        ? "border-brand bg-blue-50/60"
+                        : "border-blue-100 hover:border-blue-200"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment_mode"
+                      className="mt-1 accent-[#0ea5e9]"
+                      checked={(settings.payment_mode ?? "pix") === opt.value}
+                      onChange={() => set("payment_mode", opt.value)}
+                    />
+                    <span>
+                      <span className="block font-display text-slate-900">{opt.title}</span>
+                      <span className="text-sm text-slate-600">{opt.text}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </Field>
+            {settings.payment_mode === "whatsapp" && (
+              <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+                Os pedidos vão pro WhatsApp de contato da loja
+                {settings.contact_whatsapp ? ` (${settings.contact_whatsapp})` : ""}
+                {!settings.contact_whatsapp && settings.whatsapp_alert_number
+                  ? ` — sem WhatsApp de contato, usamos o dos avisos (${settings.whatsapp_alert_number})`
+                  : ""}
+                {!settings.contact_whatsapp && !settings.whatsapp_alert_number
+                  ? ": cadastre um em Rodapé e contato, senão o cliente não consegue enviar"
+                  : ""}
+                . Quando o Pix cair, abra o pedido em <b>Pedidos</b> e mude o status pra <b>Pago</b>: o estoque fica
+                reservado por 6 horas até lá.
+              </p>
+            )}
+            {(settings.payment_mode ?? "pix") === "pix" && <MercadoPagoCheck />}
+          </div>
+        )}
 
         {tab === "taxas" && (
           <div className="space-y-4">

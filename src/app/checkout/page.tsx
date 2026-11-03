@@ -50,11 +50,15 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"pix" | "whatsapp">("pix");
 
   useEffect(() => {
     fetch("/api/settings/public")
       .then((res) => res.json())
-      .then((data) => setServiceFee({ percent: data.serviceFeePercent ?? 0, fixed: data.serviceFeeFixed ?? 0 }))
+      .then((data) => {
+        setServiceFee({ percent: data.serviceFeePercent ?? 0, fixed: data.serviceFeeFixed ?? 0 });
+        setPaymentMode(data.paymentMode === "whatsapp" ? "whatsapp" : "pix");
+      })
       .catch(() => null);
   }, []);
 
@@ -373,10 +377,19 @@ export default function CheckoutPage() {
           {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
           <button type="submit" className="btn-primary mt-5 w-full py-3" disabled={submitting || loadingAccount || freight?.status === "out_of_range"}>
-            {submitting ? <Loader size={18} color="#fff" /> : "Finalizar e pagar com Pix"}
+            {submitting ? (
+              <Loader size={18} color="#fff" />
+            ) : paymentMode === "whatsapp" ? (
+              "Confirmar pedido"
+            ) : (
+              "Finalizar e pagar com Pix"
+            )}
           </button>
-          <p className="mt-3 flex items-center justify-center gap-1 text-xs text-slate-400">
-            <Lock size={12} /> Pagamento seguro via Pix (Mercado Pago)
+          <p className="mt-3 flex items-center justify-center gap-1 text-center text-xs text-slate-400">
+            <Lock size={12} />
+            {paymentMode === "whatsapp"
+              ? "Na próxima tela você envia o pedido no WhatsApp da loja e recebe o Pix por lá"
+              : "Pagamento seguro via Pix (Mercado Pago)"}
           </p>
           <RecaptchaNotice className="mt-2" />
         </aside>

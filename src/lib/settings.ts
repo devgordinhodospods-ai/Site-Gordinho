@@ -32,6 +32,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   closed_popup_title: "Estamos fechados agora",
   closed_popup_message:
     "Mas pode comprar tranquilo: seu pedido fica registrado e será entregue {proximo_dia}.",
+  payment_mode: "pix",
 };
 
 /**

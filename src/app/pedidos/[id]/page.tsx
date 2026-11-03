@@ -7,6 +7,7 @@ import { ArrowLeft, CheckCircle2, Clock, MapPin, PartyPopper, XCircle } from "lu
 import { centsToBRL } from "@/lib/money";
 import { LoaderPage } from "@/components/ui/Loader";
 import { PixPaymentPanel } from "@/components/loja/PixPaymentPanel";
+import { WhatsappOrderPanel } from "@/components/loja/WhatsappOrderPanel";
 import { ConfirmDeliveryCard } from "@/components/loja/ConfirmDeliveryCard";
 import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 import { orderCode } from "@/lib/orderCode";
@@ -111,6 +112,9 @@ function PedidoDetalheContent() {
         </div>
       )}
 
+      {order.status === "awaiting_payment" && order.payment_provider === "whatsapp" && (
+        <WhatsappOrderPanel order={order} />
+      )}
       {order.status === "awaiting_payment" && (order.pix_qr_code || order.payment_url) && (
         <PixPaymentPanel order={order} />
       )}

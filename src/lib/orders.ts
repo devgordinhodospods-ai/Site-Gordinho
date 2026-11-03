@@ -6,6 +6,12 @@ import { getSiteSettings } from "@/lib/settings";
 export const PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 
 /**
+ * Pedido pelo WhatsApp (Pix passado na mão pela loja): o estoque fica
+ * reservado por mais tempo, até a loja responder e confirmar o pagamento.
+ */
+export const MANUAL_PAYMENT_WINDOW_MS = 6 * 60 * 60 * 1000;
+
+/**
  * Folga depois do prazo antes de cancelar: um Pix pago no último minuto
  * ainda tem tempo de ser confirmado pelo webhook do Mercado Pago.
  */
