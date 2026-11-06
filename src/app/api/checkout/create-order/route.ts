@@ -6,7 +6,13 @@ import { computeServiceFee } from "@/lib/money";
 import { estimateFreight } from "@/lib/geo";
 import { getSiteSettings } from "@/lib/settings";
 import { createPixPayment, describeMercadoPagoError } from "@/lib/mercadopago";
-import { MANUAL_PAYMENT_WINDOW_MS, PAYMENT_WINDOW_MS, releaseAbandonedOrders } from "@/lib/orders";
+import { createCheckoutLink, infinitepayConfigured } from "@/lib/infinitepay";
+import {
+  INFINITEPAY_PAYMENT_WINDOW_MS,
+  MANUAL_PAYMENT_WINDOW_MS,
+  PAYMENT_WINDOW_MS,
+  releaseAbandonedOrders,
+} from "@/lib/orders";
 import { sendPixPendingEmail } from "@/lib/email";
 import { orderCode } from "@/lib/orderCode";
 import { verifyRecaptcha } from "@/lib/recaptchaServer";
@@ -147,6 +153,59 @@ export async function POST(req: Request) {
   }
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+
+  // InfinitePay: o cliente paga (Pix ou cartão) na página da InfinitePay e
+  // volta pro pedido; a confirmação chega pelo webhook e pelo retorno.
+  if (settings.payment_mode === "infinitepay") {
+    const code = order ? orderCode(order) : orderId.slice(0, 8).toUpperCase();
+    try {
+      if (!infinitepayConfigured()) throw new Error("INFINITEPAY_HANDLE não configurado.");
+      const total = order?.total_cents ?? 0;
+      let items = (orderItems ?? []).map((i) => ({
+        description: `${i.product_name}${i.flavor_name ? ` (${i.flavor_name})` : ""}`,
+        quantity: i.quantity,
+        priceCents: i.unit_price_cents,
+      }));
+      if (order && order.service_fee_cents > 0) {
+        items.push({ description: "Taxa de serviço", quantity: 1, priceCents: order.service_fee_cents });
+      }
+      // Se a soma não bater com o total (ex.: arredondamento), cobra o pedido como um item só.
+      if (items.reduce((n, i) => n + i.priceCents * i.quantity, 0) !== total) {
+        items = [{ description: `Pedido #${code} - ${settings.store_name}`, quantity: 1, priceCents: total }];
+      }
+      const { data: customer } = await db
+        .from("site_users")
+        .select("name")
+        .eq("email", session.user.email.toLowerCase())
+        .maybeSingle();
+      const url = await createCheckoutLink({
+        orderId,
+        items,
+        redirectUrl: `${appUrl}/pedidos/${orderId}`,
+        webhookUrl: `${appUrl}/api/infinitepay/webhook`,
+        customer: { name: customer?.name ?? session.user.name ?? undefined, email: session.user.email, phone: customerPhone },
+      });
+      await db
+        .from("orders")
+        .update({
+          payment_provider: "infinitepay",
+          payment_status: "pending",
+          payment_url: url,
+          payment_expires_at: new Date(Date.now() + INFINITEPAY_PAYMENT_WINDOW_MS).toISOString(),
+        })
+        .eq("id", orderId);
+      return NextResponse.json({ orderId, paymentUrl: url });
+    } catch (err) {
+      await db.rpc("cancel_order", { p_order_id: orderId });
+      // eslint-disable-next-line no-console
+      console.error("[create-order] InfinitePay:", err instanceof Error ? err.message : err);
+      return NextResponse.json(
+        { error: "Não foi possível abrir o pagamento agora. Tente de novo em instantes ou fale com a loja no WhatsApp." },
+        { status: 502 }
+      );
+    }
+  }
+
   const expiresAt = new Date(Date.now() + PAYMENT_WINDOW_MS);
   const notificationUrl = `${appUrl}/api/mercadopago/webhook`;
 

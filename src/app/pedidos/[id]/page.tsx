@@ -52,26 +52,33 @@ function PedidoDetalheContent() {
   const [loading, setLoading] = useState(true);
   const [justDelivered, setJustDelivered] = useState(false);
 
+  // Volta da InfinitePay com ?transaction_nsu=&slug=: repassa pro servidor conferir o pagamento.
+  const returnQuery = (() => {
+    const t = searchParams.get("transaction_nsu");
+    const s = searchParams.get("slug");
+    return t && s ? `?${new URLSearchParams({ transaction_nsu: t, slug: s })}` : "";
+  })();
+
   useEffect(() => {
-    fetch(`/api/pedidos/${params.id}`)
+    fetch(`/api/pedidos/${params.id}${returnQuery}`)
       .then((res) => res.json())
       .then((data) => setOrder(data.order ?? null))
       .catch(() => setOrder(null))
       .finally(() => setLoading(false));
-  }, [params.id]);
+  }, [params.id, returnQuery]);
 
   // Enquanto aguarda o Pix, confere a cada 5 s se o pagamento já caiu.
   const awaiting = order?.status === "awaiting_payment";
   useEffect(() => {
     if (!awaiting) return;
     const id = setInterval(() => {
-      fetch(`/api/pedidos/${params.id}`)
+      fetch(`/api/pedidos/${params.id}${returnQuery}`)
         .then((res) => res.json())
         .then((data) => data.order && setOrder(data.order))
         .catch(() => null);
     }, 5000);
     return () => clearInterval(id);
-  }, [awaiting, params.id]);
+  }, [awaiting, params.id, returnQuery]);
 
   if (loading) return <LoaderPage label="Carregando pedido..." />;
   if (!order) {
@@ -115,9 +122,24 @@ function PedidoDetalheContent() {
       {order.status === "awaiting_payment" && order.payment_provider === "whatsapp" && (
         <WhatsappOrderPanel order={order} />
       )}
-      {order.status === "awaiting_payment" && (order.pix_qr_code || order.payment_url) && (
-        <PixPaymentPanel order={order} />
+      {order.status === "awaiting_payment" && order.payment_provider === "infinitepay" && order.payment_url && (
+        <div className="card mb-4 space-y-3 border border-blue-100 p-5 text-sm text-slate-700">
+          <p className="font-display text-lg text-slate-900">
+            {returnQuery ? "Confirmando seu pagamento..." : "Falta só pagar!"}
+          </p>
+          <p>
+            {returnQuery
+              ? "Assim que a InfinitePay confirmar, esta página atualiza sozinha. Se você não concluiu o pagamento, pode abrir de novo:"
+              : "Pague por Pix ou cartão na página segura da InfinitePay. Depois de pagar, você volta pra cá e o pedido atualiza sozinho."}
+          </p>
+          <a href={order.payment_url} className="btn-primary w-full">
+            Pagar agora ({centsToBRL(order.total_cents)})
+          </a>
+        </div>
       )}
+      {order.status === "awaiting_payment" &&
+        order.payment_provider !== "infinitepay" &&
+        (order.pix_qr_code || order.payment_url) && <PixPaymentPanel order={order} />}
       {order.status === "shipped" && (
         <ConfirmDeliveryCard
           orderId={order.id}

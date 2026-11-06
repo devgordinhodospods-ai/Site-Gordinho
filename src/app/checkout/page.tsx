@@ -50,14 +50,14 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paymentMode, setPaymentMode] = useState<"pix" | "whatsapp">("pix");
+  const [paymentMode, setPaymentMode] = useState<"pix" | "whatsapp" | "infinitepay">("pix");
 
   useEffect(() => {
     fetch("/api/settings/public")
       .then((res) => res.json())
       .then((data) => {
         setServiceFee({ percent: data.serviceFeePercent ?? 0, fixed: data.serviceFeeFixed ?? 0 });
-        setPaymentMode(data.paymentMode === "whatsapp" ? "whatsapp" : "pix");
+        setPaymentMode(["whatsapp", "infinitepay"].includes(data.paymentMode) ? data.paymentMode : "pix");
       })
       .catch(() => null);
   }, []);
@@ -189,6 +189,11 @@ export default function CheckoutPage() {
 
       setRedirecting(true);
       clearCart();
+      // InfinitePay: vai direto pra página de pagamento (Pix ou cartão).
+      if (typeof data.paymentUrl === "string" && data.paymentUrl.startsWith("https://")) {
+        window.location.href = data.paymentUrl;
+        return;
+      }
       router.push(`/pedidos/${data.orderId}`);
     } catch {
       setError("Erro de conexão. Tente novamente.");
@@ -381,6 +386,8 @@ export default function CheckoutPage() {
               <Loader size={18} color="#fff" />
             ) : paymentMode === "whatsapp" ? (
               "Confirmar pedido"
+            ) : paymentMode === "infinitepay" ? (
+              "Ir para o pagamento"
             ) : (
               "Finalizar e pagar com Pix"
             )}
@@ -389,7 +396,9 @@ export default function CheckoutPage() {
             <Lock size={12} />
             {paymentMode === "whatsapp"
               ? "Na próxima tela você envia o pedido no WhatsApp da loja e recebe o Pix por lá"
-              : "Pagamento seguro via Pix (Mercado Pago)"}
+              : paymentMode === "infinitepay"
+                ? "Pagamento seguro por Pix ou cartão (InfinitePay)"
+                : "Pagamento seguro via Pix (Mercado Pago)"}
           </p>
           <RecaptchaNotice className="mt-2" />
         </aside>

@@ -3,9 +3,9 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admins";
 import { releaseAbandonedOrders } from "@/lib/orders";
-import { syncOrderPayment } from "@/lib/paymentSync";
+import { confirmInfinitepayPayment, syncOrderPayment } from "@/lib/paymentSync";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
   if (!session?.user?.email) {
@@ -31,6 +31,28 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     (session.user.id != null && order.user_id === session.user.id);
   if (!isOwner && !isAdminEmail(session.user.email)) {
     return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+  }
+
+  // Voltou da InfinitePay com os dados da transação: confere lá e, se pago,
+  // marca o pedido (caso o webhook demore ou se perca).
+  const search = new URL(req.url).searchParams;
+  const transactionNsu = search.get("transaction_nsu");
+  const slug = search.get("slug");
+  if (
+    order.payment_provider === "infinitepay" &&
+    (order.status === "awaiting_payment" || order.status === "cancelled") &&
+    transactionNsu &&
+    slug &&
+    shouldCheck(order.id)
+  ) {
+    try {
+      await confirmInfinitepayPayment({ orderId: order.id, transactionNsu, slug });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[infinitepay retorno]", order.id, err instanceof Error ? err.message : err);
+    }
+    const { data: fresh } = await db.from("orders").select("*, order_items(*)").eq("id", id).maybeSingle();
+    return NextResponse.json({ order: fresh ?? order });
   }
 
   // Pix ainda "aguardando": confere direto no Mercado Pago (se o aviso do MP

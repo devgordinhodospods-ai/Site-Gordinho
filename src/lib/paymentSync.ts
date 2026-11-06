@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getPaymentState, type PaymentState } from "@/lib/mercadopago";
+import { checkPayment } from "@/lib/infinitepay";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getSiteSettings } from "@/lib/settings";
 import { cancelExpiredOrder } from "@/lib/orders";
@@ -92,4 +93,27 @@ export async function syncOrderPayment(order: { id: string; status: string; paym
     // eslint-disable-next-line no-console
     console.error("[pagamento] consulta ao Mercado Pago:", order.id, err instanceof Error ? err.message : err);
   }
+}
+
+/**
+ * Confere na InfinitePay uma transação de um pedido (vinda do webhook ou do
+ * retorno do cliente) e, se estiver paga com o valor certo, marca o pedido
+ * como pago. Devolve se o pedido ficou pago.
+ */
+export async function confirmInfinitepayPayment(params: { orderId: string; transactionNsu: string; slug: string }) {
+  const db = getSupabaseAdmin();
+  const { data: order } = await db
+    .from("orders")
+    .select("id, status, total_cents, payment_provider, payment_status")
+    .eq("id", params.orderId)
+    .maybeSingle();
+  if (!order || order.payment_provider !== "infinitepay") return false;
+  if (order.status !== "awaiting_payment" && order.status !== "cancelled") return true; // já pago antes
+
+  const check = await checkPayment(params);
+  // amount é o valor do pedido (paid_amount inclui juros do parcelamento).
+  if (!check.paid || (check.amountCents != null && check.amountCents < order.total_cents)) return false;
+
+  await applyPayment({ id: params.transactionNsu, status: "approved", external_reference: params.orderId });
+  return true;
 }

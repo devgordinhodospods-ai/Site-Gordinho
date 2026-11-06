@@ -50,7 +50,7 @@ export type SiteSettings = {
   payment_mode: PaymentMode;
 };
 
-export type PaymentMode = "pix" | "whatsapp";
+export type PaymentMode = "pix" | "whatsapp" | "infinitepay";
 
 export type Category = {
   id: string;

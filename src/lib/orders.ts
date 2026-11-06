@@ -11,6 +11,9 @@ export const PAYMENT_WINDOW_MS = 30 * 60 * 1000;
  */
 export const MANUAL_PAYMENT_WINDOW_MS = 6 * 60 * 60 * 1000;
 
+/** Pedido pela InfinitePay: tempo pra pagar no link (Pix ou cartão). */
+export const INFINITEPAY_PAYMENT_WINDOW_MS = 60 * 60 * 1000;
+
 /**
  * Folga depois do prazo antes de cancelar: um Pix pago no último minuto
  * ainda tem tempo de ser confirmado pelo webhook do Mercado Pago.

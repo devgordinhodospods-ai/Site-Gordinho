@@ -494,12 +494,17 @@ export function SettingsManager() {
           <div className="space-y-6">
             <Field
               label="Como o cliente paga"
-              help="Pix automático: o QR aparece na hora e o pedido confirma sozinho (precisa da empresa de pagamento configurada). Pedido pelo WhatsApp: o cliente envia o pedido pronto pro WhatsApp da loja, vocês mandam o Pix por lá e, quando cair, marcam o pedido como Pago em Pedidos."
+              help="InfinitePay: o cliente paga por Pix ou cartão na página da InfinitePay e o pedido confirma sozinho. Pix automático: QR do Mercado Pago na hora. Pedido pelo WhatsApp: o cliente envia o pedido pronto pro WhatsApp da loja, vocês mandam o Pix por lá e, quando cair, marcam o pedido como Pago em Pedidos."
             >
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 {(
                   [
-                    { value: "pix", title: "Pix automático", text: "QR code na hora, confirmação sozinha." },
+                    {
+                      value: "infinitepay",
+                      title: "InfinitePay",
+                      text: "Pix ou cartão na página da InfinitePay, confirmação sozinha.",
+                    },
+                    { value: "pix", title: "Pix automático (Mercado Pago)", text: "QR code na hora, confirmação sozinha." },
                     {
                       value: "whatsapp",
                       title: "Pedido pelo WhatsApp",
@@ -542,6 +547,13 @@ export function SettingsManager() {
                   : ""}
                 . Quando o Pix cair, abra o pedido em <b>Pedidos</b> e mude o status pra <b>Pago</b>: o estoque fica
                 reservado por 6 horas até lá.
+              </p>
+            )}
+            {settings.payment_mode === "infinitepay" && (
+              <p className="rounded-xl bg-blue-50 p-3 text-sm text-slate-700">
+                Precisa das variáveis <code>INFINITEPAY_HANDLE</code> (sua InfiniteTag, sem o $) e{" "}
+                <code>INFINITEPAY_API_KEY</code> no Railway. O pedido confirma sozinho quando o pagamento cair; faça um
+                pedido de teste depois de ativar.
               </p>
             )}
             {(settings.payment_mode ?? "pix") === "pix" && <MercadoPagoCheck />}
