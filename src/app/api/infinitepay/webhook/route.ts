@@ -7,7 +7,15 @@ import { confirmInfinitepayPayment } from "@/lib/paymentSync";
  * o pedido como pago. Responder 400 faz a InfinitePay tentar de novo.
  */
 export async function POST(req: Request) {
-  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+  const raw = await req.text().catch(() => "");
+  // eslint-disable-next-line no-console
+  console.log("[infinitepay webhook] recebido", raw.slice(0, 600));
+  let body: Record<string, unknown> | null = null;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    body = Object.fromEntries(new URLSearchParams(raw));
+  }
   const orderId = String(body?.order_nsu ?? "");
   const transactionNsu = String(body?.transaction_nsu ?? "");
   const slug = String(body?.invoice_slug ?? body?.slug ?? "");

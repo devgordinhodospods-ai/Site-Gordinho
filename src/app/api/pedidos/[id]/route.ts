@@ -47,6 +47,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     shouldCheck(order.id)
   ) {
     try {
+      // eslint-disable-next-line no-console
+      console.log("[infinitepay retorno]", order.id, search.toString().slice(0, 400));
       await confirmInfinitepayPayment({ orderId: order.id, transactionNsu, slug });
     } catch (err) {
       // eslint-disable-next-line no-console
