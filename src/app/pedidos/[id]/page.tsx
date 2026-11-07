@@ -56,7 +56,8 @@ function PedidoDetalheContent() {
   const returnQuery = (() => {
     const t = searchParams.get("transaction_nsu");
     const s = searchParams.get("slug");
-    return t && s ? `?${new URLSearchParams({ transaction_nsu: t, slug: s })}` : "";
+    const o = searchParams.get("order_nsu");
+    return t && s ? `?${new URLSearchParams({ transaction_nsu: t, slug: s, ...(o ? { order_nsu: o } : {}) })}` : "";
   })();
 
   useEffect(() => {

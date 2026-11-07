@@ -39,6 +39,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const stored = storedInfinitepayTransaction(order.payment_id);
   const transactionNsu = search.get("transaction_nsu") ?? stored?.transactionNsu ?? null;
   const slug = search.get("slug") ?? stored?.slug ?? null;
+  const providerOrderNsu = search.get("order_nsu") ?? stored?.orderNsu ?? null;
   if (
     order.payment_provider === "infinitepay" &&
     (order.status === "awaiting_payment" || order.status === "cancelled") &&
@@ -49,7 +50,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     try {
       // eslint-disable-next-line no-console
       console.log("[infinitepay retorno]", order.id, search.toString().slice(0, 400));
-      await confirmInfinitepayPayment({ orderId: order.id, transactionNsu, slug });
+      await confirmInfinitepayPayment({ orderId: order.id, transactionNsu, slug, orderNsu: providerOrderNsu });
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("[infinitepay retorno]", order.id, err instanceof Error ? err.message : err);

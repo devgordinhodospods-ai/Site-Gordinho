@@ -140,16 +140,21 @@ export async function createCheckoutLink(params: {
 export type PaymentCheck = { paid: boolean; amountCents: number[]; captureMethod: string | null };
 
 /** Confere na InfinitePay se a transação do pedido foi paga. */
-export async function checkPayment(params: { orderId: string; transactionNsu: string; slug: string }): Promise<PaymentCheck> {
+export async function checkPayment(params: {
+  /** O order_nsu da InfinitePay (ela gera o próprio; vem no webhook e no retorno). */
+  orderNsu: string;
+  transactionNsu: string;
+  slug: string;
+}): Promise<PaymentCheck> {
   const data = await post("/payment_check", {
     handle: handle(),
-    order_nsu: params.orderId,
+    order_nsu: params.orderNsu,
     transaction_nsu: params.transactionNsu,
     slug: params.slug,
   });
   // Fica no log pra conferir o formato real da resposta.
   // eslint-disable-next-line no-console
-  console.log("[infinitepay] payment_check", params.orderId, JSON.stringify(data).slice(0, 400));
+  console.log("[infinitepay] payment_check", params.orderNsu, JSON.stringify(data).slice(0, 400));
   const status = String(data?.status ?? "").toLowerCase();
   const paid =
     data?.success !== false && (data?.paid === true || ["paid", "approved", "captured", "completed"].includes(status));

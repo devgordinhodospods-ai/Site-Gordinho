@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { confirmInfinitepayPayment } from "@/lib/paymentSync";
+import { confirmInfinitepayPayment, findInfinitepayOrder } from "@/lib/paymentSync";
 
 /**
  * Aviso de pagamento da InfinitePay. O aviso não vem assinado, então nada é
@@ -16,15 +16,26 @@ export async function POST(req: Request) {
   } catch {
     body = Object.fromEntries(new URLSearchParams(raw));
   }
-  const orderId = String(body?.order_nsu ?? "");
+
+  const orderNsu = String(body?.order_nsu ?? "");
   const transactionNsu = String(body?.transaction_nsu ?? "");
   const slug = String(body?.invoice_slug ?? body?.slug ?? "");
-  if (!/^[0-9a-f-]{36}$/i.test(orderId) || !transactionNsu || !slug) {
+  if (!orderNsu || !transactionNsu || !slug) {
     return NextResponse.json({ error: "Aviso incompleto." }, { status: 400 });
   }
 
+  // O order_nsu é o da InfinitePay: acha o pedido do site por ele ou pela
+  // transação (guardada quando o cliente volta pro site).
+  const orderId = await findInfinitepayOrder(orderNsu, transactionNsu);
+  if (!orderId) {
+    // eslint-disable-next-line no-console
+    console.warn("[infinitepay webhook] pedido não encontrado ainda", orderNsu, transactionNsu);
+    // 400 faz a InfinitePay tentar de novo (até lá o retorno do cliente liga a transação ao pedido).
+    return NextResponse.json({ error: "Pedido não encontrado." }, { status: 400 });
+  }
+
   try {
-    const paid = await confirmInfinitepayPayment({ orderId, transactionNsu, slug });
+    const paid = await confirmInfinitepayPayment({ orderId, transactionNsu, slug, orderNsu });
     if (!paid) return NextResponse.json({ error: "Pagamento não confirmado." }, { status: 400 });
     return NextResponse.json({ received: true });
   } catch (err) {
