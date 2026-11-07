@@ -95,6 +95,12 @@ export async function syncOrderPayment(order: { id: string; status: string; paym
   }
 }
 
+/** Transação da InfinitePay guardada no pedido ("nsu|slug"), se houver. */
+export function storedInfinitepayTransaction(paymentId: string | null) {
+  const [transactionNsu, slug] = (paymentId ?? "").split("|");
+  return transactionNsu && slug ? { transactionNsu, slug } : null;
+}
+
 /**
  * Confere na InfinitePay uma transação de um pedido (vinda do webhook ou do
  * retorno do cliente) e, se estiver paga com o valor certo, marca o pedido
@@ -109,6 +115,14 @@ export async function confirmInfinitepayPayment(params: { orderId: string; trans
     .maybeSingle();
   if (!order || order.payment_provider !== "infinitepay") return false;
   if (order.status !== "awaiting_payment" && order.status !== "cancelled") return true; // já pago antes
+
+  // Guarda a transação no pedido: se a conferência falhar agora, a página do
+  // pedido confere de novo depois, mesmo sem os dados no endereço.
+  await db
+    .from("orders")
+    .update({ payment_id: `${params.transactionNsu}|${params.slug}` })
+    .eq("id", params.orderId)
+    .in("status", ["awaiting_payment", "cancelled"]);
 
   const check = await checkPayment(params);
   // O valor pago tem que cobrir o pedido: em centavos (>= total) ou, se vier

@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getSession } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admins";
 import { releaseAbandonedOrders } from "@/lib/orders";
-import { confirmInfinitepayPayment, syncOrderPayment } from "@/lib/paymentSync";
+import { confirmInfinitepayPayment, storedInfinitepayTransaction, syncOrderPayment } from "@/lib/paymentSync";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -36,8 +36,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   // Voltou da InfinitePay com os dados da transação: confere lá e, se pago,
   // marca o pedido (caso o webhook demore ou se perca).
   const search = new URL(req.url).searchParams;
-  const transactionNsu = search.get("transaction_nsu");
-  const slug = search.get("slug");
+  const stored = storedInfinitepayTransaction(order.payment_id);
+  const transactionNsu = search.get("transaction_nsu") ?? stored?.transactionNsu ?? null;
+  const slug = search.get("slug") ?? stored?.slug ?? null;
   if (
     order.payment_provider === "infinitepay" &&
     (order.status === "awaiting_payment" || order.status === "cancelled") &&
