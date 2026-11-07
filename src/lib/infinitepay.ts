@@ -9,7 +9,10 @@
  * INFINITEPAY_API_KEY (chave da API, enviada no header X-Api-Key).
  */
 
-const BASE_URL = process.env.INFINITEPAY_API_URL || "https://api.checkout.infinitepay.io";
+// Endereço atual da API e o antigo (algumas contas/integrações ainda usam).
+const BASE_URLS = process.env.INFINITEPAY_API_URL
+  ? [process.env.INFINITEPAY_API_URL]
+  : ["https://api.checkout.infinitepay.io", "https://api.infinitepay.io/invoices/public/checkout"];
 
 export function infinitepayConfigured() {
   return Boolean(handle());
@@ -25,8 +28,28 @@ function headers() {
   return h;
 }
 
+/** Tenta o endereço atual e, se ele recusar, o antigo. Guarda qual funcionou. */
+let workingBase: string | null = null;
 async function post(path: string, body: unknown) {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const bases = workingBase ? [workingBase, ...BASE_URLS.filter((b) => b !== workingBase)] : BASE_URLS;
+  const errors: string[] = [];
+  for (const base of bases) {
+    try {
+      const data = await postTo(base, path, body);
+      workingBase = base;
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      errors.push(`${base}${path} → ${message}`);
+      // eslint-disable-next-line no-console
+      console.warn("[infinitepay]", errors[errors.length - 1]);
+    }
+  }
+  throw new Error(errors.join(" | "));
+}
+
+async function postTo(base: string, path: string, body: unknown) {
+  const res = await fetch(`${base}${path}`, {
     method: "POST",
     headers: headers(),
     body: JSON.stringify(body),
@@ -60,7 +83,7 @@ export async function createCheckoutLink(params: {
   const tag = handle();
   if (!tag) throw new Error("INFINITEPAY_HANDLE não configurado.");
   const phone = params.customer?.phone?.replace(/\D/g, "");
-  const data = await post("/links", {
+  const base = {
     handle: tag,
     order_nsu: params.orderId,
     redirect_url: params.redirectUrl,
@@ -70,14 +93,24 @@ export async function createCheckoutLink(params: {
       price: i.priceCents, // em centavos
       description: i.description.slice(0, 120),
     })),
-    customer: params.customer
-      ? {
-          name: params.customer.name,
-          email: params.customer.email,
-          phone_number: phone ? (phone.startsWith("55") ? `+${phone}` : `+55${phone}`) : undefined,
-        }
-      : undefined,
-  });
+  };
+  const customer = params.customer
+    ? {
+        name: params.customer.name,
+        email: params.customer.email,
+        phone_number: phone ? (phone.startsWith("55") ? `+${phone}` : `+55${phone}`) : undefined,
+      }
+    : undefined;
+  let data: Record<string, unknown>;
+  try {
+    data = await post("/links", customer ? { ...base, customer } : base);
+  } catch (err) {
+    if (!customer) throw err;
+    // Dados do cliente são opcionais: se a InfinitePay recusar o formato, tenta sem eles.
+    // eslint-disable-next-line no-console
+    console.warn("[infinitepay] tentando o link sem os dados do cliente");
+    data = await post("/links", base);
+  }
   // As fontes divergem no nome do campo: aceita os mais comuns.
   const url = [data?.url, data?.checkout_url, data?.link, data?.payment_url].find(
     (v): v is string => typeof v === "string" && v.startsWith("http")
