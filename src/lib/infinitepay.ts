@@ -79,6 +79,8 @@ export async function createCheckoutLink(params: {
   redirectUrl: string;
   webhookUrl: string;
   customer?: { name?: string; email?: string; phone?: string };
+  /** Endereço de entrega, pra InfinitePay não pedir de novo. */
+  address?: { cep?: string; number?: string; complement?: string };
 }) {
   const tag = handle();
   if (!tag) throw new Error("INFINITEPAY_HANDLE não configurado.");
@@ -101,16 +103,31 @@ export async function createCheckoutLink(params: {
         phone_number: phone ? (phone.startsWith("55") ? `+${phone}` : `+55${phone}`) : undefined,
       }
     : undefined;
-  let data: Record<string, unknown>;
-  try {
-    data = await post("/links", customer ? { ...base, customer } : base);
-  } catch (err) {
-    if (!customer) throw err;
-    // Dados do cliente são opcionais: se a InfinitePay recusar o formato, tenta sem eles.
-    // eslint-disable-next-line no-console
-    console.warn("[infinitepay] tentando o link sem os dados do cliente");
-    data = await post("/links", base);
+  const cep = params.address?.cep?.replace(/\D/g, "");
+  const address =
+    cep && cep.length === 8
+      ? { cep, number: params.address?.number || undefined, complement: params.address?.complement || undefined }
+      : undefined;
+  // Dados do cliente e endereço são opcionais: se a InfinitePay recusar o
+  // formato de algum, tenta com menos dados em vez de não gerar o link.
+  const attempts = [
+    { ...base, ...(customer && { customer }), ...(address && { address }) },
+    ...(address ? [{ ...base, ...(customer && { customer }) }] : []),
+    ...(customer ? [base] : []),
+  ];
+  let data: Record<string, unknown> | null = null;
+  let lastError: unknown = null;
+  for (const body of attempts) {
+    try {
+      data = await post("/links", body);
+      break;
+    } catch (err) {
+      lastError = err;
+      // eslint-disable-next-line no-console
+      console.warn("[infinitepay] link recusado, tentando com menos dados");
+    }
   }
+  if (!data) throw lastError;
   // As fontes divergem no nome do campo: aceita os mais comuns.
   const url = [data?.url, data?.checkout_url, data?.link, data?.payment_url].find(
     (v): v is string => typeof v === "string" && v.startsWith("http")

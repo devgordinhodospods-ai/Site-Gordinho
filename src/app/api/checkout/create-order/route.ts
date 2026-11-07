@@ -184,6 +184,7 @@ export async function POST(req: Request) {
         redirectUrl: `${appUrl}/pedidos/${orderId}`,
         webhookUrl: `${appUrl}/api/infinitepay/webhook`,
         customer: { name: customer?.name ?? session.user.name ?? undefined, email: session.user.email, phone: customerPhone },
+        address: { cep: address.zip, number: address.number, complement: address.complement },
       });
       await db
         .from("orders")
