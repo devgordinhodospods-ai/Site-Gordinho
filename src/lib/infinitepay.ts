@@ -141,14 +141,14 @@ export type PaymentCheck = { paid: boolean; amountCents: number[]; captureMethod
 
 /** Confere na InfinitePay se a transação do pedido foi paga. */
 export async function checkPayment(params: {
-  /** O order_nsu da InfinitePay (ela gera o próprio; vem no webhook e no retorno). */
-  orderNsu: string;
+  /** O order_nsu da InfinitePay (ela gera o próprio; vem no webhook e no retorno). null = não envia. */
+  orderNsu: string | null;
   transactionNsu: string;
   slug: string;
 }): Promise<PaymentCheck> {
   const data = await post("/payment_check", {
     handle: handle(),
-    order_nsu: params.orderNsu,
+    ...(params.orderNsu ? { order_nsu: params.orderNsu } : {}),
     transaction_nsu: params.transactionNsu,
     slug: params.slug,
   });

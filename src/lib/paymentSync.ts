@@ -146,7 +146,12 @@ export async function confirmInfinitepayPayment(params: {
     .eq("id", params.orderId)
     .in("status", ["awaiting_payment", "cancelled"]);
 
-  const check = await checkPayment({ orderNsu, transactionNsu: params.transactionNsu, slug: params.slug });
+  let check = await checkPayment({ orderNsu, transactionNsu: params.transactionNsu, slug: params.slug });
+  // Sem o order_nsu da InfinitePay (página antiga aberta no navegador), confere
+  // só pela transação e pelo slug.
+  if (!check.paid && !params.orderNsu) {
+    check = await checkPayment({ orderNsu: null, transactionNsu: params.transactionNsu, slug: params.slug });
+  }
   // O valor pago tem que bater com o pedido: em centavos (>= total) ou, se vier
   // em reais, igual ao total.
   const [asCents, fromReais] = check.amountCents;
