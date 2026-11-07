@@ -111,8 +111,18 @@ export async function confirmInfinitepayPayment(params: { orderId: string; trans
   if (order.status !== "awaiting_payment" && order.status !== "cancelled") return true; // já pago antes
 
   const check = await checkPayment(params);
-  // amount é o valor do pedido (paid_amount inclui juros do parcelamento).
-  if (!check.paid || (check.amountCents != null && check.amountCents < order.total_cents)) return false;
+  // O valor pago tem que cobrir o pedido: em centavos (>= total) ou, se vier
+  // em reais, batendo exatamente com o total.
+  const [asCents, fromReais] = check.amountCents;
+  const amountOk =
+    check.amountCents.length === 0 ||
+    asCents >= order.total_cents ||
+    (fromReais != null && Math.abs(fromReais - order.total_cents) <= 1);
+  if (!check.paid || !amountOk) {
+    // eslint-disable-next-line no-console
+    console.warn("[infinitepay] pagamento não confirmado", params.orderId, JSON.stringify(check));
+    return false;
+  }
 
   await applyPayment({ id: params.transactionNsu, status: "approved", external_reference: params.orderId });
   return true;

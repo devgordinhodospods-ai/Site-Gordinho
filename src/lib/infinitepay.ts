@@ -136,7 +136,8 @@ export async function createCheckoutLink(params: {
   return url;
 }
 
-export type PaymentCheck = { paid: boolean; amountCents: number | null; captureMethod: string | null };
+/** amount pode vir em centavos (101) ou em reais (1.01): os dois valores possíveis, em centavos. */
+export type PaymentCheck = { paid: boolean; amountCents: number[]; captureMethod: string | null };
 
 /** Confere na InfinitePay se a transação do pedido foi paga. */
 export async function checkPayment(params: { orderId: string; transactionNsu: string; slug: string }): Promise<PaymentCheck> {
@@ -146,10 +147,16 @@ export async function checkPayment(params: { orderId: string; transactionNsu: st
     transaction_nsu: params.transactionNsu,
     slug: params.slug,
   });
-  const amount = Number(data?.amount);
+  // Fica no log pra conferir o formato real da resposta.
+  // eslint-disable-next-line no-console
+  console.log("[infinitepay] payment_check", params.orderId, JSON.stringify(data).slice(0, 400));
+  const status = String(data?.status ?? "").toLowerCase();
+  const paid =
+    data?.success !== false && (data?.paid === true || ["paid", "approved", "captured", "completed"].includes(status));
+  const raw = Number(data?.amount ?? data?.paid_amount);
   return {
-    paid: data?.success === true && data?.paid === true,
-    amountCents: Number.isFinite(amount) ? amount : null,
+    paid,
+    amountCents: Number.isFinite(raw) ? [Math.round(raw), Math.round(raw * 100)] : [],
     captureMethod: typeof data?.capture_method === "string" ? data.capture_method : null,
   };
 }
