@@ -255,10 +255,10 @@ export async function sendPaidAfterCancelAlert(params: { order: Order; settings:
   const { order } = params;
   const phone = (order.customer_phone ?? "").replace(/\D/g, "");
   const text = [
-    "⚠️ *Pix pago em pedido cancelado*",
+    "⚠️ *Pagamento em pedido cancelado*",
     `*#${orderCode(order)}* · ${centsToBRL(order.total_cents)}`,
     "",
-    "O cliente pagou depois que o pedido já tinha sido cancelado (prazo do Pix). O dinheiro entrou na conta do Mercado Pago.",
+    "O cliente pagou depois que o pedido já tinha sido cancelado (prazo de pagamento). O dinheiro entrou na conta de pagamentos da loja.",
     "Fale com o cliente pra entregar mesmo assim ou devolver o valor.",
     "",
     `👤 ${order.customer_name}${phone ? ` · wa.me/${phone.length <= 11 ? `55${phone}` : phone}` : ""}`,

@@ -168,7 +168,7 @@ export async function confirmInfinitepayPayment(params: {
 }
 
 /** Acha o pedido do site de um aviso da InfinitePay (pelo order_nsu ou pela transação já guardada). */
-export async function findInfinitepayOrder(orderNsu: string, transactionNsu: string) {
+export async function findInfinitepayOrder(orderNsu: string, transactionNsu: string, amountCents?: number | null) {
   const db = getSupabaseAdmin();
   if (/^[0-9a-f-]{36}$/i.test(orderNsu)) {
     const { data } = await db.from("orders").select("id").eq("id", orderNsu).eq("payment_provider", "infinitepay").maybeSingle();
@@ -181,5 +181,25 @@ export async function findInfinitepayOrder(orderNsu: string, transactionNsu: str
     .or(`payment_id.like.${transactionNsu}|%,payment_id.like.%|${orderNsu}`)
     .limit(1)
     .maybeSingle();
-  return (data?.id as string | undefined) ?? null;
+  if (data?.id) return data.id as string;
+
+  // Cliente pagou e fechou a página sem voltar pro site: a InfinitePay só
+  // manda o código dela. Liga pelo valor, entre os pedidos da InfinitePay
+  // aguardando pagamento nas últimas 2 h — só se houver exatamente um com
+  // esse valor (o pagamento ainda é conferido na InfinitePay depois).
+  if (!amountCents || amountCents <= 0) return null;
+  const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const { data: candidates } = await db
+    .from("orders")
+    .select("id")
+    .eq("payment_provider", "infinitepay")
+    .in("status", ["awaiting_payment", "cancelled"])
+    .eq("total_cents", amountCents)
+    .gte("created_at", since)
+    .or("payment_id.is.null,payment_id.not.like.%|%")
+    .limit(2);
+  if (candidates?.length === 1) return candidates[0].id as string;
+  // eslint-disable-next-line no-console
+  console.warn("[infinitepay webhook] sem pedido único pelo valor", amountCents, candidates?.length ?? 0);
+  return null;
 }

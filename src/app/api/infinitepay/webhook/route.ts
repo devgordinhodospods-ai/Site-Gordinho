@@ -26,7 +26,8 @@ export async function POST(req: Request) {
 
   // O order_nsu é o da InfinitePay: acha o pedido do site por ele ou pela
   // transação (guardada quando o cliente volta pro site).
-  const orderId = await findInfinitepayOrder(orderNsu, transactionNsu);
+  const amount = Number(body?.amount);
+  const orderId = await findInfinitepayOrder(orderNsu, transactionNsu, Number.isFinite(amount) ? Math.round(amount) : null);
   if (!orderId) {
     // eslint-disable-next-line no-console
     console.warn("[infinitepay webhook] pedido não encontrado ainda", orderNsu, transactionNsu);
